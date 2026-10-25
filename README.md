@@ -1,5 +1,9 @@
 # Elm TodoMVC with types
 
+Live: https://rokomari-com.github.io/todos/
+
+Built on [Evan Czaplicki's Elm TodoMVC](https://github.com/evancz/elm-todomvc) (BSD-3-Clause) and the [TodoMVC](https://todomvc.com) stylesheets. MIT licensed; see `LICENSE` and `THIRD_PARTY_NOTICES.md`.
+
 TodoMVC (Elm 0.19.1) plus Personal/Work todo types. Original TodoMVC styling is vendored in `css/` (todomvc-common 1.0.5, todomvc-app-css 2.4.3); `css/types.css` adds the type UI. No CDN at runtime.
 
 ## Build and run

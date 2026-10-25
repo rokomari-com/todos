@@ -7129,7 +7129,14 @@ var $elm$html$Html$Attributes$classList = function (classes) {
 				A2($elm$core$List$filter, $elm$core$Tuple$second, classes))));
 };
 var $elm$html$Html$div = _VirtualDom_node('div');
+var $elm$html$Html$a = _VirtualDom_node('a');
 var $elm$html$Html$footer = _VirtualDom_node('footer');
+var $elm$html$Html$Attributes$href = function (url) {
+	return A2(
+		$elm$html$Html$Attributes$stringProperty,
+		'href',
+		_VirtualDom_noJavaScriptUri(url));
+};
 var $elm$html$Html$p = _VirtualDom_node('p');
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
@@ -7160,6 +7167,37 @@ var $author$project$Main$infoFooter = A2(
 			_List_fromArray(
 				[
 					$elm$html$Html$text('Tap a todo to edit it. Press and hold to delete.')
+				])),
+			A2(
+			$elm$html$Html$p,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('credits')
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text('Based on '),
+					A2(
+					$elm$html$Html$a,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$href('https://github.com/evancz/elm-todomvc')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text('Elm TodoMVC')
+						])),
+					$elm$html$Html$text(' by Evan Czaplicki. '),
+					A2(
+					$elm$html$Html$a,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$href('https://github.com/rokomari-com/todos')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text('Source')
+						]))
 				]))
 		]));
 var $elm$core$List$isEmpty = function (xs) {
@@ -7172,7 +7210,6 @@ var $elm$core$List$isEmpty = function (xs) {
 var $elm$virtual_dom$VirtualDom$lazy2 = _VirtualDom_lazy2;
 var $elm$html$Html$Lazy$lazy2 = $elm$virtual_dom$VirtualDom$lazy2;
 var $elm$html$Html$section = _VirtualDom_node('section');
-var $elm$html$Html$a = _VirtualDom_node('a');
 var $author$project$Main$doneMs = function (e) {
 	var _v0 = _Utils_Tuple2(e.completedAt, e.archivedAt);
 	if (_v0.a.$ === 'Just') {
@@ -7388,12 +7425,6 @@ var $elm$virtual_dom$VirtualDom$attribute = F2(
 			_VirtualDom_noJavaScriptOrHtmlUri(value));
 	});
 var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
-var $elm$html$Html$Attributes$href = function (url) {
-	return A2(
-		$elm$html$Html$Attributes$stringProperty,
-		'href',
-		_VirtualDom_noJavaScriptUri(url));
-};
 var $author$project$Main$isArchived = function (e) {
 	return !_Utils_eq(e.archivedAt, $elm$core$Maybe$Nothing);
 };

@@ -1725,4 +1725,10 @@ infoFooter =
     footer [ class "info" ]
         [ p [ class "hint-pointer" ] [ text "Double-click to edit a todo. Alt+T switches the type." ]
         , p [ class "hint-touch" ] [ text "Tap a todo to edit it. Press and hold to delete." ]
+        , p [ class "credits" ]
+            [ text "Based on "
+            , a [ href "https://github.com/evancz/elm-todomvc" ] [ text "Elm TodoMVC" ]
+            , text " by Evan Czaplicki. "
+            , a [ href "https://github.com/rokomari-com/todos" ] [ text "Source" ]
+            ]
         ]
