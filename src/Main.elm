@@ -41,6 +41,10 @@ main =
 port setStorage : Encode.Value -> Cmd msg
 
 
+{-| Document-level pointer events (move / up / cancel), forwarded by ports.js. Only subscribed while dragging. -}
+port dragEvents : ({ kind : String, x : Float, y : Float, pageY : Float } -> msg) -> Sub msg
+
+
 updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
 updateWithStorage msg model =
     let
@@ -48,8 +52,41 @@ updateWithStorage msg model =
             update msg model
     in
     ( newModel
-    , Cmd.batch [ setStorage (encodeModel newModel), cmds ]
+    , if isTransient msg then
+        cmds
+
+      else
+        Cmd.batch [ setStorage (encodeModel newModel), cmds ]
     )
+
+
+{-| High-frequency drag bookkeeping never changes persisted state; skip the storage write. -}
+isTransient : Msg -> Bool
+isTransient msg =
+    case msg of
+        NoOp ->
+            True
+
+        DragStart _ _ _ _ _ ->
+            True
+
+        DragCancel ->
+            True
+
+        DragMoved _ _ _ ->
+            True
+
+        DragFrame ->
+            True
+
+        GotViewport _ ->
+            True
+
+        GotRects _ _ _ ->
+            True
+
+        _ ->
+            False
 
 
 
@@ -161,6 +198,8 @@ type alias Model =
     , pressing : Maybe Press
     , pressSeq : Int
     , confirmingDelete : Maybe Int
+    , drag : Maybe Drag
+    , announce : String
     , key : Nav.Key
     , zone : Time.Zone
     }
@@ -175,6 +214,30 @@ type alias Press =
     }
 
 
+{-| A row drag. `rects` are the visible rows' document-space boxes cached at drag start; `slot` is the
+final index among the visible rows if dropped now. A drag is `active` once the pointer moved > 6px (touch handle: at once).
+-}
+type alias Drag =
+    { id : Int
+    , seq : Int
+    , startX : Float
+    , startY : Float
+    , startPageY : Float
+    , clientY : Float
+    , pageY : Float
+    , active : Bool
+    , rects : List Rect
+    , slot : Int
+    }
+
+
+type alias Rect =
+    { id : Int
+    , top : Float
+    , height : Float
+    }
+
+
 type alias Entry =
     { description : String
     , completed : Bool
@@ -183,11 +246,12 @@ type alias Entry =
     , entryType : EntryType
     , completedAt : Maybe Time.Posix
     , archivedAt : Maybe Time.Posix
+    , order : Int
     }
 
 
-newEntry : String -> Int -> EntryType -> Entry
-newEntry desc id t =
+newEntry : String -> Int -> EntryType -> Int -> Entry
+newEntry desc id t order =
     { description = desc
     , completed = False
     , editing = False
@@ -195,6 +259,7 @@ newEntry desc id t =
     , entryType = t
     , completedAt = Nothing
     , archivedAt = Nothing
+    , order = order
     }
 
 
@@ -221,7 +286,7 @@ init flags url key =
             Decode.decodeValue savedDecoder flags
                 |> Result.withDefault emptySaved
     in
-    ( { entries = saved.entries
+    ( { entries = withOrders saved.entries
       , field = saved.field
       , uid = Basics.max saved.uid (1 + maxId saved.entries)
       , newType = saved.newType
@@ -232,12 +297,29 @@ init flags url key =
       , pressing = Nothing
       , pressSeq = 0
       , confirmingDelete = Nothing
+      , drag = Nothing
+      , announce = ""
       , key = key
       , zone = Time.utc
       }
     , Task.perform identity (Task.map2 GotTime Time.here Time.now)
     )
 
+
+
+{-| Entries saved before ordering existed (or with a bad order) take their stored position. -}
+withOrders : List Entry -> List Entry
+withOrders entries =
+    if List.any (\e -> e.order < 0) entries then
+        List.indexedMap (\i e -> { e | order = i }) entries
+
+    else
+        entries
+
+
+maxOrder : List Entry -> Int
+maxOrder entries =
+    List.map .order entries |> List.maximum |> Maybe.withDefault -1
 
 
 maxId : List Entry -> Int
@@ -294,6 +376,7 @@ entryDecoder =
         |> andMap (typeOrPersonal "type")
         |> andMap (optionalTime "completedAt")
         |> andMap (optionalTime "archivedAt")
+        |> andMap (Decode.oneOf [ Decode.field "order" Decode.int, Decode.succeed -1 ])
 
 
 andMap : Decoder a -> Decoder (a -> b) -> Decoder b
@@ -353,6 +436,7 @@ encodeEntry e =
         , ( "type", Encode.string (typeKey e.entryType) )
         , ( "completedAt", encodeTime e.completedAt )
         , ( "archivedAt", encodeTime e.archivedAt )
+        , ( "order", Encode.int e.order )
         ]
 
 
@@ -395,6 +479,14 @@ type Msg
     | UpdateField String
     | EditingEntry Int Bool
     | CancelEdit Int
+    | DragStart Int Float Float Float Bool
+    | GotRects Int (List Int) (Result Dom.Error (List Dom.Element))
+    | DragMoved Float Float Float
+    | DragEnded
+    | DragCancel
+    | DragFrame
+    | GotViewport Dom.Viewport
+    | MoveBy Int Int
     | PressStart Int Float Float
     | PressMove Float Float
     | PressEnd Int
@@ -514,7 +606,46 @@ inScope filter e =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch [ Time.every (60 * 60 * 1000) Tick, confirmSubs model ]
+    Sub.batch [ Time.every (60 * 60 * 1000) Tick, confirmSubs model, dragSubs model ]
+
+
+dragSubs : Model -> Sub Msg
+dragSubs model =
+    case model.drag of
+        Nothing ->
+            Sub.none
+
+        Just d ->
+            Sub.batch
+                [ dragEvents
+                    (\e ->
+                        case e.kind of
+                            "move" ->
+                                DragMoved e.x e.y e.pageY
+
+                            "up" ->
+                                DragEnded
+
+                            _ ->
+                                DragCancel
+                    )
+                , Browser.Events.onKeyDown
+                    (Decode.field "key" Decode.string
+                        |> Decode.andThen
+                            (\k ->
+                                if k == "Escape" then
+                                    Decode.succeed DragCancel
+
+                                else
+                                    Decode.fail "not escape"
+                            )
+                    )
+                , if d.active then
+                    Browser.Events.onAnimationFrame (\_ -> DragFrame)
+
+                  else
+                    Sub.none
+                ]
 
 
 confirmSubs : Model -> Sub Msg
@@ -587,7 +718,7 @@ update msg model =
                         model.entries
 
                     else
-                        model.entries ++ [ newEntry (String.trim model.field) model.uid model.newType ]
+                        model.entries ++ [ newEntry (String.trim model.field) model.uid model.newType (1 + maxOrder model.entries) ]
               }
             , Cmd.none
             )
@@ -669,6 +800,164 @@ update msg model =
               }
             , Cmd.none
             )
+
+        DragStart id cx cy py immediate ->
+            let
+                seq =
+                    model.pressSeq
+            in
+            ( { model
+                | drag =
+                    Just
+                        { id = id
+                        , seq = seq
+                        , startX = cx
+                        , startY = cy
+                        , startPageY = py
+                        , clientY = cy
+                        , pageY = py
+                        , active = immediate
+                        , rects = []
+                        , slot = -1
+                        }
+                , pressSeq = seq + 1
+                , pressing = Nothing
+                , confirmingDelete = Nothing
+              }
+            , if immediate then
+                fetchRects seq model
+
+              else
+                Cmd.none
+            )
+
+        GotRects seq ids result ->
+            case ( model.drag, result ) of
+                ( Just d, Ok els ) ->
+                    if d.seq == seq then
+                        ( { model
+                            | drag =
+                                Just
+                                    (withSlot
+                                        { d
+                                            | rects =
+                                                List.map2
+                                                    (\i el -> { id = i, top = el.element.y, height = el.element.height })
+                                                    ids
+                                                    els
+                                        }
+                                    )
+                          }
+                        , Cmd.none
+                        )
+
+                    else
+                        ( model, Cmd.none )
+
+                ( Just d, Err _ ) ->
+                    if d.seq == seq then
+                        ( { model | drag = Nothing }, Cmd.none )
+
+                    else
+                        ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        DragMoved cx cy py ->
+            case model.drag of
+                Just d ->
+                    let
+                        far =
+                            sqrt ((cx - d.startX) ^ 2 + (cy - d.startY) ^ 2) > 6
+                    in
+                    ( { model | drag = Just (withSlot { d | clientY = cy, pageY = py, active = d.active || far }) }
+                    , if far && not d.active then
+                        fetchRects d.seq model
+
+                      else
+                        Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        DragEnded ->
+            case model.drag of
+                Just d ->
+                    if d.active && not (List.isEmpty d.rects) then
+                        moveTo d.id d.slot { model | drag = Nothing }
+
+                    else
+                        ( { model | drag = Nothing }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        DragCancel ->
+            ( { model | drag = Nothing }, Cmd.none )
+
+        DragFrame ->
+            case model.drag of
+                Just d ->
+                    if d.active then
+                        ( model, Task.perform GotViewport Dom.getViewport )
+
+                    else
+                        ( model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        GotViewport vp ->
+            case model.drag of
+                Just d ->
+                    let
+                        h =
+                            vp.viewport.height
+
+                        want =
+                            if d.clientY < edgeZone then
+                                -autoScrollStep
+
+                            else if d.clientY > h - edgeZone then
+                                autoScrollStep
+
+                            else
+                                0
+
+                        newY =
+                            clamp 0 (Basics.max 0 (vp.scene.height - h)) (vp.viewport.y + want)
+
+                        delta =
+                            newY - vp.viewport.y
+                    in
+                    if d.active && delta /= 0 then
+                        ( { model | drag = Just (withSlot { d | pageY = d.pageY + delta }) }
+                        , Task.perform (\_ -> NoOp) (Dom.setViewport vp.viewport.x newY)
+                        )
+
+                    else
+                        ( model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        MoveBy id delta ->
+            let
+                ids =
+                    List.map .id (visibleList model)
+            in
+            case indexOf id ids of
+                Just i ->
+                    let
+                        ( m, cmd ) =
+                            moveTo id (i + delta) model
+                    in
+                    ( m, Cmd.batch [ cmd, focusId ("check-" ++ String.fromInt id) ] )
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         PressStart id x y ->
             ( { model
@@ -763,7 +1052,9 @@ update msg model =
         Restore id ->
             ( { model
                 | entries =
-                    mapEntry id (\t -> { t | archivedAt = Nothing, completed = False, completedAt = Nothing }) model.entries
+                    mapEntry id
+                        (\t -> { t | archivedAt = Nothing, completed = False, completedAt = Nothing, order = 1 + maxOrder model.entries })
+                        model.entries
                 , confirmingDelete = Nothing
                 , pressing = Nothing
               }
@@ -861,6 +1152,142 @@ update msg model =
             ( { model | visibility = visibilityFromUrl url, confirmingDelete = Nothing, pressing = Nothing }, Cmd.none )
 
 
+{-| Row boxes for the visible rows, fetched once when a drag activates. -}
+fetchRects : Int -> Model -> Cmd Msg
+fetchRects seq model =
+    let
+        ids =
+            List.map .id (visibleList model)
+    in
+    ids
+        |> List.map (\i -> Dom.getElement ("row-" ++ String.fromInt i))
+        |> Task.sequence
+        |> Task.attempt (GotRects seq ids)
+
+
+edgeZone : Float
+edgeZone =
+    60
+
+
+autoScrollStep : Float
+autoScrollStep =
+    8
+
+
+indexOf : a -> List a -> Maybe Int
+indexOf x xs =
+    xs
+        |> List.indexedMap Tuple.pair
+        |> List.filter (\( _, y ) -> y == x)
+        |> List.head
+        |> Maybe.map Tuple.first
+
+
+{-| Index among the other visible rows where the dragged row would land: rows whose midpoint is above the pointer. -}
+withSlot : Drag -> Drag
+withSlot d =
+    if List.isEmpty d.rects then
+        d
+
+    else
+        { d
+            | slot =
+                d.rects
+                    |> List.filter (\r -> r.id /= d.id && r.top + r.height / 2 < d.pageY)
+                    |> List.length
+        }
+
+
+{-| Visible main-list rows, in display order. -}
+visibleList : Model -> List Entry
+visibleList model =
+    model.entries
+        |> List.filter (\e -> isLive e && inScope model.typeFilter e && isVisible model.visibility e)
+        |> List.sortBy (\e -> ( e.order, e.id ))
+
+
+{-| Move a row to final index `k` among the visible rows. All live entries are renumbered 0..n-1:
+global order with the row removed, the row re-inserted right after visible neighbour k-1 (or first when k = 0),
+so hidden rows keep their relative positions. No-op when the index does not change.
+-}
+moveTo : Int -> Int -> Model -> ( Model, Cmd Msg )
+moveTo id k0 model =
+    let
+        visIds =
+            List.map .id (visibleList model)
+
+        n =
+            List.length visIds
+
+        k =
+            clamp 0 (n - 1) k0
+    in
+    case indexOf id visIds of
+        Just i ->
+            if i == k || k0 < 0 || k0 >= n then
+                ( model, Cmd.none )
+
+            else
+                let
+                    live =
+                        model.entries
+                            |> List.filter isLive
+                            |> List.sortBy (\e -> ( e.order, e.id ))
+
+                    rest =
+                        List.filter (\e -> e.id /= id) live
+
+                    anchor =
+                        visIds |> List.filter (\x -> x /= id) |> List.drop (k - 1) |> List.head
+
+                    placed =
+                        case ( List.filter (\e -> e.id == id) live |> List.head, anchor ) of
+                            ( Just m, Just a ) ->
+                                if k == 0 then
+                                    m :: rest
+
+                                else
+                                    List.concatMap
+                                        (\e ->
+                                            if e.id == a then
+                                                [ e, m ]
+
+                                            else
+                                                [ e ]
+                                        )
+                                        rest
+
+                            ( Just m, Nothing ) ->
+                                m :: rest
+
+                            ( Nothing, _ ) ->
+                                rest
+
+                    newOrder =
+                        placed |> List.indexedMap (\j e -> ( e.id, j ))
+                in
+                ( { model
+                    | entries =
+                        List.map
+                            (\e ->
+                                case List.filter (\( x, _ ) -> x == e.id) newOrder |> List.head of
+                                    Just ( _, j ) ->
+                                        { e | order = j }
+
+                                    Nothing ->
+                                        e
+                            )
+                            model.entries
+                    , announce = "Moved to position " ++ String.fromInt (k + 1) ++ " of " ++ String.fromInt n
+                  }
+                , Cmd.none
+                )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
 {-| Unchanged when the state already matches, so a completedAt stamp is never refreshed by a no-op.
 -}
 setCompleted : Bool -> Time.Posix -> Entry -> Entry
@@ -949,7 +1376,7 @@ viewMain model =
             List.filter isLive model.entries
 
         visible =
-            List.filter (isVisible model.visibility) scoped
+            visibleList model
 
         allCompleted =
             not (List.isEmpty scoped) && List.all .completed scoped
@@ -983,9 +1410,181 @@ viewMain model =
             viewEmptyFiltered model.visibility model.typeFilter (List.length live)
 
           else
-            Keyed.ul [ class "todo-list" ]
-                (List.map (\t -> viewKeyedEntry (model.typeFilter == AnyType) (model.confirmingDelete == Just t.id) t) visible)
+            Keyed.ul
+                [ classList
+                    [ ( "todo-list", True )
+                    , ( "drag-armed", model.drag /= Nothing )
+                    , ( "drag-active", Maybe.map .active model.drag == Just True )
+                    ]
+                ]
+                (viewRows model visible)
+        , div [ class "drag-live", attribute "role" "status", attribute "aria-live" "polite" ] [ text model.announce ]
         ]
+
+
+viewRows : Model -> List Entry -> List ( String, Html Msg )
+viewRows model visible =
+    let
+        row t =
+            viewKeyedEntry
+                (model.typeFilter == AnyType)
+                (model.confirmingDelete == Just t.id)
+                (case model.drag of
+                    Just d ->
+                        if d.id == t.id && d.active then
+                            Just (d.pageY - d.startPageY)
+
+                        else
+                            Nothing
+
+                    Nothing ->
+                        Nothing
+                )
+                t
+
+        indicator =
+            ( "drop-indicator", li [ class "drop-indicator", attribute "aria-hidden" "true" ] [] )
+    in
+    case model.drag of
+        Just d ->
+            if d.active && not (List.isEmpty d.rects) then
+                interleave d.id d.slot indicator row False 0 visible
+
+            else
+                List.map row visible
+
+        Nothing ->
+            List.map row visible
+
+
+interleave : Int -> Int -> a -> (Entry -> a) -> Bool -> Int -> List Entry -> List a
+interleave dragId slot ind rowFn done seen entries =
+    case entries of
+        [] ->
+            if done then
+                []
+
+            else
+                [ ind ]
+
+        e :: rest ->
+            if e.id == dragId then
+                rowFn e :: interleave dragId slot ind rowFn done seen rest
+
+            else if not done && seen == slot then
+                ind :: rowFn e :: interleave dragId slot ind rowFn True (seen + 1) rest
+
+            else
+                rowFn e :: interleave dragId slot ind rowFn done (seen + 1) rest
+
+
+{-| Mouse/pen row drag: pointerdown anywhere on the row except checkbox, textarea, buttons and the handle.
+Touch rows drag only from the handle (touch on the label stays tap / long-press).
+-}
+type alias Down =
+    { pointerType : String
+    , button : Int
+    , x : Float
+    , y : Float
+    , pageY : Float
+    }
+
+
+downDecoder : Decoder Down
+downDecoder =
+    Decode.succeed Down
+        |> andMap (Decode.field "pointerType" Decode.string)
+        |> andMap (Decode.field "button" Decode.int)
+        |> andMap (Decode.field "clientX" Decode.float)
+        |> andMap (Decode.field "clientY" Decode.float)
+        |> andMap (Decode.field "pageY" Decode.float)
+
+
+onRowDown : Int -> Bool -> Attribute Msg
+onRowDown id editing =
+    on "pointerdown"
+        (downDecoder
+            |> Decode.andThen
+                (\d ->
+                    if editing || d.button /= 0 || d.pointerType == "touch" then
+                        Decode.fail "not a mouse/pen primary press"
+
+                    else
+                        Decode.field "target" (climbToDraggable ())
+                            |> Decode.andThen
+                                (\ok ->
+                                    if ok then
+                                        Decode.succeed (DragStart id d.x d.y d.pageY False)
+
+                                    else
+                                        Decode.fail "interactive target"
+                                )
+                )
+        )
+
+
+onHandleDown : Int -> Attribute Msg
+onHandleDown id =
+    on "pointerdown"
+        (downDecoder
+            |> Decode.andThen
+                (\d ->
+                    if d.button /= 0 then
+                        Decode.fail "not primary"
+
+                    else
+                        Decode.succeed (DragStart id d.x d.y d.pageY (d.pointerType == "touch"))
+                )
+        )
+
+
+climbToDraggable : () -> Decoder Bool
+climbToDraggable _ =
+    Decode.field "tagName" Decode.string
+        |> Decode.andThen
+            (\tag ->
+                if List.member tag [ "INPUT", "TEXTAREA", "BUTTON" ] then
+                    Decode.succeed False
+
+                else
+                    Decode.field "className" (Decode.oneOf [ Decode.string, Decode.succeed "" ])
+                        |> Decode.andThen
+                            (\cls ->
+                                if List.any (\c -> List.member c [ "drag-handle", "confirm-delete" ]) (String.words cls) then
+                                    Decode.succeed False
+
+                                else if tag == "LI" then
+                                    Decode.succeed True
+
+                                else
+                                    Decode.oneOf
+                                        [ Decode.field "parentElement" (Decode.lazy climbToDraggable)
+                                        , Decode.succeed True
+                                        ]
+                            )
+            )
+
+
+{-| Alt+ArrowUp / Alt+ArrowDown moves the row one visible slot (not inside the edit textarea). -}
+onRowKeydown : Int -> Attribute Msg
+onRowKeydown id =
+    preventDefaultOn "keydown"
+        (Decode.map3 (\key alt tag -> ( key, alt, tag ))
+            (Decode.field "key" Decode.string)
+            (Decode.field "altKey" Decode.bool)
+            (Decode.at [ "target", "tagName" ] Decode.string)
+            |> Decode.andThen
+                (\( key, alt, tag ) ->
+                    if alt && tag /= "TEXTAREA" && key == "ArrowUp" then
+                        Decode.succeed ( MoveBy id -1, True )
+
+                    else if alt && tag /= "TEXTAREA" && key == "ArrowDown" then
+                        Decode.succeed ( MoveBy id 1, True )
+
+                    else
+                        Decode.fail "ignored key"
+                )
+        )
 
 
 {-| Touch rows: pointerdown starts a press (long-press timer), pointerup within it is a tap that edits,
@@ -1242,20 +1841,38 @@ isVisible visibility todo =
             False
 
 
-viewKeyedEntry : Bool -> Bool -> Entry -> ( String, Html Msg )
-viewKeyedEntry showMark confirming todo =
-    ( String.fromInt todo.id, lazy3 viewEntry showMark confirming todo )
+viewKeyedEntry : Bool -> Bool -> Maybe Float -> Entry -> ( String, Html Msg )
+viewKeyedEntry showMark confirming dragOffset todo =
+    ( String.fromInt todo.id, lazy4 viewEntry showMark confirming dragOffset todo )
 
 
-viewEntry : Bool -> Bool -> Entry -> Html Msg
-viewEntry showMark confirming todo =
+viewEntry : Bool -> Bool -> Maybe Float -> Entry -> Html Msg
+viewEntry showMark confirming dragOffset todo =
     li
-        [ classList [ ( "completed", todo.completed ), ( "editing", todo.editing ), ( "confirming", confirming ) ]
-        , onTouchContextMenu
-        ]
+        ([ classList
+            [ ( "completed", todo.completed )
+            , ( "editing", todo.editing )
+            , ( "confirming", confirming )
+            , ( "dragging", dragOffset /= Nothing )
+            ]
+         , id ("row-" ++ String.fromInt todo.id)
+         , onTouchContextMenu
+         , onRowDown todo.id todo.editing
+         , onRowKeydown todo.id
+         ]
+            ++ (case dragOffset of
+                    Just dy ->
+                        [ style "transform" ("translateY(" ++ String.fromFloat dy ++ "px)") ]
+
+                    Nothing ->
+                        []
+               )
+        )
         [ div [ class "view" ]
-            [ input
+            [ div [ class "drag-handle", attribute "aria-hidden" "true", onHandleDown todo.id ] [ text "\u{22EE}\u{22EE}" ]
+            , input
                 [ class "toggle"
+                , id ("check-" ++ String.fromInt todo.id)
                 , type_ "checkbox"
                 , checked todo.completed
                 , attribute "aria-label" "Completed"
@@ -1723,6 +2340,6 @@ viewTypeMenu current open =
 infoFooter : Html msg
 infoFooter =
     footer [ class "info" ]
-        [ p [ class "hint-pointer" ] [ text "Double-click to edit a todo. Alt+T switches the type." ]
-        , p [ class "hint-touch" ] [ text "Tap a todo to edit it. Press and hold to delete." ]
+        [ p [ class "hint-pointer" ] [ text "Double-click to edit a todo. Drag a row (or Alt+\u{2191}/\u{2193}) to reorder. Alt+T switches the type." ]
+        , p [ class "hint-touch" ] [ text "Tap a todo to edit it. Press and hold to delete. Drag the handle to reorder." ]
         ]

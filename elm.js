@@ -5276,18 +5276,18 @@ var $author$project$Main$Saved = F5(
 	});
 var $elm$json$Json$Decode$field = _Json_decodeField;
 var $elm$json$Json$Decode$int = _Json_decodeInt;
-var $author$project$Main$Entry = F7(
-	function (description, completed, editing, id, entryType, completedAt, archivedAt) {
-		return {archivedAt: archivedAt, completed: completed, completedAt: completedAt, description: description, editing: editing, entryType: entryType, id: id};
+var $author$project$Main$Entry = F8(
+	function (description, completed, editing, id, entryType, completedAt, archivedAt, order) {
+		return {archivedAt: archivedAt, completed: completed, completedAt: completedAt, description: description, editing: editing, entryType: entryType, id: id, order: order};
 	});
 var $author$project$Main$andMap = $elm$json$Json$Decode$map2($elm$core$Basics$apR);
 var $elm$json$Json$Decode$bool = _Json_decodeBool;
+var $elm$json$Json$Decode$oneOf = _Json_oneOf;
 var $elm$core$Basics$composeL = F3(
 	function (g, f, x) {
 		return g(
 			f(x));
 	});
-var $elm$json$Json$Decode$oneOf = _Json_oneOf;
 var $author$project$Main$optionalTime = function (name) {
 	return $elm$json$Json$Decode$oneOf(
 		_List_fromArray(
@@ -5378,26 +5378,34 @@ var $author$project$Main$typeOrPersonal = function (name) {
 };
 var $author$project$Main$entryDecoder = A2(
 	$author$project$Main$andMap,
-	$author$project$Main$optionalTime('archivedAt'),
+	$elm$json$Json$Decode$oneOf(
+		_List_fromArray(
+			[
+				A2($elm$json$Json$Decode$field, 'order', $elm$json$Json$Decode$int),
+				$elm$json$Json$Decode$succeed(-1)
+			])),
 	A2(
 		$author$project$Main$andMap,
-		$author$project$Main$optionalTime('completedAt'),
+		$author$project$Main$optionalTime('archivedAt'),
 		A2(
 			$author$project$Main$andMap,
-			$author$project$Main$typeOrPersonal('type'),
+			$author$project$Main$optionalTime('completedAt'),
 			A2(
 				$author$project$Main$andMap,
-				A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$int),
+				$author$project$Main$typeOrPersonal('type'),
 				A2(
 					$author$project$Main$andMap,
-					$elm$json$Json$Decode$succeed(false),
+					A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$int),
 					A2(
 						$author$project$Main$andMap,
-						A2($elm$json$Json$Decode$field, 'completed', $elm$json$Json$Decode$bool),
+						$elm$json$Json$Decode$succeed(false),
 						A2(
 							$author$project$Main$andMap,
-							A2($elm$json$Json$Decode$field, 'description', $elm$json$Json$Decode$string),
-							$elm$json$Json$Decode$succeed($author$project$Main$Entry))))))));
+							A2($elm$json$Json$Decode$field, 'completed', $elm$json$Json$Decode$bool),
+							A2(
+								$author$project$Main$andMap,
+								A2($elm$json$Json$Decode$field, 'description', $elm$json$Json$Decode$string),
+								$elm$json$Json$Decode$succeed($author$project$Main$Entry)))))))));
 var $elm$core$List$maybeCons = F3(
 	function (f, mx, xs) {
 		var _v0 = f(mx);
@@ -5507,6 +5515,43 @@ var $elm$core$Result$withDefault = F2(
 			return def;
 		}
 	});
+var $elm$core$List$any = F2(
+	function (isOkay, list) {
+		any:
+		while (true) {
+			if (!list.b) {
+				return false;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				if (isOkay(x)) {
+					return true;
+				} else {
+					var $temp$isOkay = isOkay,
+						$temp$list = xs;
+					isOkay = $temp$isOkay;
+					list = $temp$list;
+					continue any;
+				}
+			}
+		}
+	});
+var $author$project$Main$withOrders = function (entries) {
+	return A2(
+		$elm$core$List$any,
+		function (e) {
+			return e.order < 0;
+		},
+		entries) ? A2(
+		$elm$core$List$indexedMap,
+		F2(
+			function (i, e) {
+				return _Utils_update(
+					e,
+					{order: i});
+			}),
+		entries) : entries;
+};
 var $author$project$Main$init = F3(
 	function (flags, url, key) {
 		var saved = A2(
@@ -5515,9 +5560,11 @@ var $author$project$Main$init = F3(
 			A2($elm$json$Json$Decode$decodeValue, $author$project$Main$savedDecoder, flags));
 		return _Utils_Tuple2(
 			{
+				announce: '',
 				confirmingDelete: $elm$core$Maybe$Nothing,
+				drag: $elm$core$Maybe$Nothing,
 				editBackup: $elm$core$Maybe$Nothing,
-				entries: saved.entries,
+				entries: $author$project$Main$withOrders(saved.entries),
 				field: saved.field,
 				key: key,
 				newType: saved.newType,
@@ -5548,27 +5595,6 @@ var $elm$json$Json$Decode$lazy = function (thunk) {
 		thunk,
 		$elm$json$Json$Decode$succeed(_Utils_Tuple0));
 };
-var $elm$core$List$any = F2(
-	function (isOkay, list) {
-		any:
-		while (true) {
-			if (!list.b) {
-				return false;
-			} else {
-				var x = list.a;
-				var xs = list.b;
-				if (isOkay(x)) {
-					return true;
-				} else {
-					var $temp$isOkay = isOkay,
-						$temp$list = xs;
-					isOkay = $temp$isOkay;
-					list = $temp$list;
-					continue any;
-				}
-			}
-		}
-	});
 var $elm$core$List$member = F2(
 	function (x, xs) {
 		return A2(
@@ -6020,6 +6046,196 @@ var $author$project$Main$confirmSubs = function (model) {
 				]));
 	}
 };
+var $author$project$Main$DragCancel = {$: 'DragCancel'};
+var $author$project$Main$DragEnded = {$: 'DragEnded'};
+var $author$project$Main$DragFrame = {$: 'DragFrame'};
+var $author$project$Main$DragMoved = F3(
+	function (a, b, c) {
+		return {$: 'DragMoved', a: a, b: b, c: c};
+	});
+var $elm$json$Json$Decode$float = _Json_decodeFloat;
+var $author$project$Main$dragEvents = _Platform_incomingPort(
+	'dragEvents',
+	A2(
+		$elm$json$Json$Decode$andThen,
+		function (y) {
+			return A2(
+				$elm$json$Json$Decode$andThen,
+				function (x) {
+					return A2(
+						$elm$json$Json$Decode$andThen,
+						function (pageY) {
+							return A2(
+								$elm$json$Json$Decode$andThen,
+								function (kind) {
+									return $elm$json$Json$Decode$succeed(
+										{kind: kind, pageY: pageY, x: x, y: y});
+								},
+								A2($elm$json$Json$Decode$field, 'kind', $elm$json$Json$Decode$string));
+						},
+						A2($elm$json$Json$Decode$field, 'pageY', $elm$json$Json$Decode$float));
+				},
+				A2($elm$json$Json$Decode$field, 'x', $elm$json$Json$Decode$float));
+		},
+		A2($elm$json$Json$Decode$field, 'y', $elm$json$Json$Decode$float)));
+var $elm$browser$Browser$AnimationManager$Time = function (a) {
+	return {$: 'Time', a: a};
+};
+var $elm$browser$Browser$AnimationManager$State = F3(
+	function (subs, request, oldTime) {
+		return {oldTime: oldTime, request: request, subs: subs};
+	});
+var $elm$browser$Browser$AnimationManager$init = $elm$core$Task$succeed(
+	A3($elm$browser$Browser$AnimationManager$State, _List_Nil, $elm$core$Maybe$Nothing, 0));
+var $elm$browser$Browser$AnimationManager$now = _Browser_now(_Utils_Tuple0);
+var $elm$browser$Browser$AnimationManager$rAF = _Browser_rAF(_Utils_Tuple0);
+var $elm$core$Process$spawn = _Scheduler_spawn;
+var $elm$browser$Browser$AnimationManager$onEffects = F3(
+	function (router, subs, _v0) {
+		var request = _v0.request;
+		var oldTime = _v0.oldTime;
+		var _v1 = _Utils_Tuple2(request, subs);
+		if (_v1.a.$ === 'Nothing') {
+			if (!_v1.b.b) {
+				var _v2 = _v1.a;
+				return $elm$browser$Browser$AnimationManager$init;
+			} else {
+				var _v4 = _v1.a;
+				return A2(
+					$elm$core$Task$andThen,
+					function (pid) {
+						return A2(
+							$elm$core$Task$andThen,
+							function (time) {
+								return $elm$core$Task$succeed(
+									A3(
+										$elm$browser$Browser$AnimationManager$State,
+										subs,
+										$elm$core$Maybe$Just(pid),
+										time));
+							},
+							$elm$browser$Browser$AnimationManager$now);
+					},
+					$elm$core$Process$spawn(
+						A2(
+							$elm$core$Task$andThen,
+							$elm$core$Platform$sendToSelf(router),
+							$elm$browser$Browser$AnimationManager$rAF)));
+			}
+		} else {
+			if (!_v1.b.b) {
+				var pid = _v1.a.a;
+				return A2(
+					$elm$core$Task$andThen,
+					function (_v3) {
+						return $elm$browser$Browser$AnimationManager$init;
+					},
+					$elm$core$Process$kill(pid));
+			} else {
+				return $elm$core$Task$succeed(
+					A3($elm$browser$Browser$AnimationManager$State, subs, request, oldTime));
+			}
+		}
+	});
+var $elm$browser$Browser$AnimationManager$onSelfMsg = F3(
+	function (router, newTime, _v0) {
+		var subs = _v0.subs;
+		var oldTime = _v0.oldTime;
+		var send = function (sub) {
+			if (sub.$ === 'Time') {
+				var tagger = sub.a;
+				return A2(
+					$elm$core$Platform$sendToApp,
+					router,
+					tagger(
+						$elm$time$Time$millisToPosix(newTime)));
+			} else {
+				var tagger = sub.a;
+				return A2(
+					$elm$core$Platform$sendToApp,
+					router,
+					tagger(newTime - oldTime));
+			}
+		};
+		return A2(
+			$elm$core$Task$andThen,
+			function (pid) {
+				return A2(
+					$elm$core$Task$andThen,
+					function (_v1) {
+						return $elm$core$Task$succeed(
+							A3(
+								$elm$browser$Browser$AnimationManager$State,
+								subs,
+								$elm$core$Maybe$Just(pid),
+								newTime));
+					},
+					$elm$core$Task$sequence(
+						A2($elm$core$List$map, send, subs)));
+			},
+			$elm$core$Process$spawn(
+				A2(
+					$elm$core$Task$andThen,
+					$elm$core$Platform$sendToSelf(router),
+					$elm$browser$Browser$AnimationManager$rAF)));
+	});
+var $elm$browser$Browser$AnimationManager$Delta = function (a) {
+	return {$: 'Delta', a: a};
+};
+var $elm$browser$Browser$AnimationManager$subMap = F2(
+	function (func, sub) {
+		if (sub.$ === 'Time') {
+			var tagger = sub.a;
+			return $elm$browser$Browser$AnimationManager$Time(
+				A2($elm$core$Basics$composeL, func, tagger));
+		} else {
+			var tagger = sub.a;
+			return $elm$browser$Browser$AnimationManager$Delta(
+				A2($elm$core$Basics$composeL, func, tagger));
+		}
+	});
+_Platform_effectManagers['Browser.AnimationManager'] = _Platform_createManager($elm$browser$Browser$AnimationManager$init, $elm$browser$Browser$AnimationManager$onEffects, $elm$browser$Browser$AnimationManager$onSelfMsg, 0, $elm$browser$Browser$AnimationManager$subMap);
+var $elm$browser$Browser$AnimationManager$subscription = _Platform_leaf('Browser.AnimationManager');
+var $elm$browser$Browser$AnimationManager$onAnimationFrame = function (tagger) {
+	return $elm$browser$Browser$AnimationManager$subscription(
+		$elm$browser$Browser$AnimationManager$Time(tagger));
+};
+var $elm$browser$Browser$Events$onAnimationFrame = $elm$browser$Browser$AnimationManager$onAnimationFrame;
+var $author$project$Main$dragSubs = function (model) {
+	var _v0 = model.drag;
+	if (_v0.$ === 'Nothing') {
+		return $elm$core$Platform$Sub$none;
+	} else {
+		var d = _v0.a;
+		return $elm$core$Platform$Sub$batch(
+			_List_fromArray(
+				[
+					$author$project$Main$dragEvents(
+					function (e) {
+						var _v1 = e.kind;
+						switch (_v1) {
+							case 'move':
+								return A3($author$project$Main$DragMoved, e.x, e.y, e.pageY);
+							case 'up':
+								return $author$project$Main$DragEnded;
+							default:
+								return $author$project$Main$DragCancel;
+						}
+					}),
+					$elm$browser$Browser$Events$onKeyDown(
+					A2(
+						$elm$json$Json$Decode$andThen,
+						function (k) {
+							return (k === 'Escape') ? $elm$json$Json$Decode$succeed($author$project$Main$DragCancel) : $elm$json$Json$Decode$fail('not escape');
+						},
+						A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string))),
+					d.active ? $elm$browser$Browser$Events$onAnimationFrame(
+					function (_v2) {
+						return $author$project$Main$DragFrame;
+					}) : $elm$core$Platform$Sub$none
+				]));
+	}
+};
 var $elm$time$Time$Every = F2(
 	function (a, b) {
 		return {$: 'Every', a: a, b: b};
@@ -6083,7 +6299,6 @@ var $elm$time$Time$addMySub = F2(
 		}
 	});
 var $elm$time$Time$setInterval = _Time_setInterval;
-var $elm$core$Process$spawn = _Scheduler_spawn;
 var $elm$time$Time$spawnHelp = F3(
 	function (router, intervals, processes) {
 		if (!intervals.b) {
@@ -6220,7 +6435,8 @@ var $author$project$Main$subscriptions = function (model) {
 		_List_fromArray(
 			[
 				A2($elm$time$Time$every, (60 * 60) * 1000, $author$project$Main$Tick),
-				$author$project$Main$confirmSubs(model)
+				$author$project$Main$confirmSubs(model),
+				$author$project$Main$dragSubs(model)
 			]));
 };
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
@@ -6276,7 +6492,10 @@ var $author$project$Main$encodeEntry = function (e) {
 				$author$project$Main$encodeTime(e.completedAt)),
 				_Utils_Tuple2(
 				'archivedAt',
-				$author$project$Main$encodeTime(e.archivedAt))
+				$author$project$Main$encodeTime(e.archivedAt)),
+				_Utils_Tuple2(
+				'order',
+				$elm$json$Json$Encode$int(e.order))
 			]));
 };
 var $elm$json$Json$Encode$list = F2(
@@ -6319,6 +6538,26 @@ var $author$project$Main$encodeModel = function (m) {
 					}()))
 			]));
 };
+var $author$project$Main$isTransient = function (msg) {
+	switch (msg.$) {
+		case 'NoOp':
+			return true;
+		case 'DragStart':
+			return true;
+		case 'DragCancel':
+			return true;
+		case 'DragMoved':
+			return true;
+		case 'DragFrame':
+			return true;
+		case 'GotViewport':
+			return true;
+		case 'GotRects':
+			return true;
+		default:
+			return false;
+	}
+};
 var $author$project$Main$setStorage = _Platform_outgoingPort('setStorage', $elm$core$Basics$identity);
 var $author$project$Main$ArchiveCompletedAt = function (a) {
 	return {$: 'ArchiveCompletedAt', a: a};
@@ -6339,6 +6578,9 @@ var $author$project$Main$EditingEntry = F2(
 	function (a, b) {
 		return {$: 'EditingEntry', a: a, b: b};
 	});
+var $author$project$Main$GotViewport = function (a) {
+	return {$: 'GotViewport', a: a};
+};
 var $author$project$Main$LongPress = F2(
 	function (a, b) {
 		return {$: 'LongPress', a: a, b: b};
@@ -6370,15 +6612,17 @@ var $elm$core$Task$attempt = F2(
 							$elm$core$Result$Ok),
 						task))));
 	});
-var $elm$browser$Browser$Dom$focus = _Browser_call('focus');
-var $author$project$Main$focusId = function (id) {
-	return A2(
-		$elm$core$Task$attempt,
-		function (_v0) {
-			return $author$project$Main$NoOp;
-		},
-		$elm$browser$Browser$Dom$focus(id));
-};
+var $author$project$Main$autoScrollStep = 8;
+var $elm$core$Basics$clamp = F3(
+	function (low, high, number) {
+		return (_Utils_cmp(number, low) < 0) ? low : ((_Utils_cmp(number, high) > 0) ? high : number);
+	});
+var $author$project$Main$edgeZone = 60;
+var $author$project$Main$GotRects = F3(
+	function (a, b, c) {
+		return {$: 'GotRects', a: a, b: b, c: c};
+	});
+var $elm$browser$Browser$Dom$getElement = _Browser_getElement;
 var $author$project$Main$inScope = F2(
 	function (filter, e) {
 		if (filter.$ === 'AnyType') {
@@ -6391,7 +6635,64 @@ var $author$project$Main$inScope = F2(
 var $author$project$Main$isLive = function (e) {
 	return _Utils_eq(e.archivedAt, $elm$core$Maybe$Nothing);
 };
-var $elm$browser$Browser$Navigation$load = _Browser_load;
+var $elm$core$Basics$not = _Basics_not;
+var $author$project$Main$isVisible = F2(
+	function (visibility, todo) {
+		switch (visibility.$) {
+			case 'Completed':
+				return todo.completed;
+			case 'Active':
+				return !todo.completed;
+			case 'All':
+				return true;
+			default:
+				return false;
+		}
+	});
+var $elm$core$List$sortBy = _List_sortBy;
+var $author$project$Main$visibleList = function (model) {
+	return A2(
+		$elm$core$List$sortBy,
+		function (e) {
+			return _Utils_Tuple2(e.order, e.id);
+		},
+		A2(
+			$elm$core$List$filter,
+			function (e) {
+				return $author$project$Main$isLive(e) && (A2($author$project$Main$inScope, model.typeFilter, e) && A2($author$project$Main$isVisible, model.visibility, e));
+			},
+			model.entries));
+};
+var $author$project$Main$fetchRects = F2(
+	function (seq, model) {
+		var ids = A2(
+			$elm$core$List$map,
+			function ($) {
+				return $.id;
+			},
+			$author$project$Main$visibleList(model));
+		return A2(
+			$elm$core$Task$attempt,
+			A2($author$project$Main$GotRects, seq, ids),
+			$elm$core$Task$sequence(
+				A2(
+					$elm$core$List$map,
+					function (i) {
+						return $elm$browser$Browser$Dom$getElement(
+							'row-' + $elm$core$String$fromInt(i));
+					},
+					ids)));
+	});
+var $elm$browser$Browser$Dom$focus = _Browser_call('focus');
+var $author$project$Main$focusId = function (id) {
+	return A2(
+		$elm$core$Task$attempt,
+		function (_v0) {
+			return $author$project$Main$NoOp;
+		},
+		$elm$browser$Browser$Dom$focus(id));
+};
+var $elm$browser$Browser$Dom$getViewport = _Browser_withWindow(_Browser_getViewport);
 var $elm$core$Maybe$map = F2(
 	function (f, maybe) {
 		if (maybe.$ === 'Just') {
@@ -6402,6 +6703,32 @@ var $elm$core$Maybe$map = F2(
 			return $elm$core$Maybe$Nothing;
 		}
 	});
+var $elm$core$Tuple$pair = F2(
+	function (a, b) {
+		return _Utils_Tuple2(a, b);
+	});
+var $author$project$Main$indexOf = F2(
+	function (x, xs) {
+		return A2(
+			$elm$core$Maybe$map,
+			$elm$core$Tuple$first,
+			$elm$core$List$head(
+				A2(
+					$elm$core$List$filter,
+					function (_v0) {
+						var y = _v0.b;
+						return _Utils_eq(y, x);
+					},
+					A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, xs))));
+	});
+var $elm$core$List$isEmpty = function (xs) {
+	if (!xs.b) {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $elm$browser$Browser$Navigation$load = _Browser_load;
 var $author$project$Main$mapEntry = F2(
 	function (id, f) {
 		return $elm$core$List$map(
@@ -6409,14 +6736,22 @@ var $author$project$Main$mapEntry = F2(
 				return _Utils_eq(t.id, id) ? f(t) : t;
 			});
 	});
+var $author$project$Main$maxOrder = function (entries) {
+	return A2(
+		$elm$core$Maybe$withDefault,
+		-1,
+		$elm$core$List$maximum(
+			A2(
+				$elm$core$List$map,
+				function ($) {
+					return $.order;
+				},
+				entries)));
+};
 var $author$project$Main$menuFilters = A2(
 	$elm$core$List$cons,
 	$author$project$Main$AnyType,
 	A2($elm$core$List$map, $author$project$Main$OnlyType, $author$project$Main$allTypes));
-var $elm$core$Tuple$pair = F2(
-	function (a, b) {
-		return _Utils_Tuple2(a, b);
-	});
 var $author$project$Main$menuIndex = function (f) {
 	return A2(
 		$elm$core$Maybe$withDefault,
@@ -6464,10 +6799,160 @@ var $author$project$Main$migrate = function (now) {
 				{archivedAt: archivedAt, completedAt: completedAt});
 		});
 };
+var $elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
+		} else {
+			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
+		}
+	});
+var $elm$core$List$concat = function (lists) {
+	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
+};
+var $elm$core$List$concatMap = F2(
+	function (f, list) {
+		return $elm$core$List$concat(
+			A2($elm$core$List$map, f, list));
+	});
+var $elm$core$List$drop = F2(
+	function (n, list) {
+		drop:
+		while (true) {
+			if (n <= 0) {
+				return list;
+			} else {
+				if (!list.b) {
+					return list;
+				} else {
+					var x = list.a;
+					var xs = list.b;
+					var $temp$n = n - 1,
+						$temp$list = xs;
+					n = $temp$n;
+					list = $temp$list;
+					continue drop;
+				}
+			}
+		}
+	});
+var $elm$core$Basics$ge = _Utils_ge;
 var $elm$core$Basics$neq = _Utils_notEqual;
-var $author$project$Main$newEntry = F3(
-	function (desc, id, t) {
-		return {archivedAt: $elm$core$Maybe$Nothing, completed: false, completedAt: $elm$core$Maybe$Nothing, description: desc, editing: false, entryType: t, id: id};
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Main$moveTo = F3(
+	function (id, k0, model) {
+		var visIds = A2(
+			$elm$core$List$map,
+			function ($) {
+				return $.id;
+			},
+			$author$project$Main$visibleList(model));
+		var n = $elm$core$List$length(visIds);
+		var k = A3($elm$core$Basics$clamp, 0, n - 1, k0);
+		var _v0 = A2($author$project$Main$indexOf, id, visIds);
+		if (_v0.$ === 'Just') {
+			var i = _v0.a;
+			if (_Utils_eq(i, k) || ((k0 < 0) || (_Utils_cmp(k0, n) > -1))) {
+				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+			} else {
+				var live = A2(
+					$elm$core$List$sortBy,
+					function (e) {
+						return _Utils_Tuple2(e.order, e.id);
+					},
+					A2($elm$core$List$filter, $author$project$Main$isLive, model.entries));
+				var rest = A2(
+					$elm$core$List$filter,
+					function (e) {
+						return !_Utils_eq(e.id, id);
+					},
+					live);
+				var anchor = $elm$core$List$head(
+					A2(
+						$elm$core$List$drop,
+						k - 1,
+						A2(
+							$elm$core$List$filter,
+							function (x) {
+								return !_Utils_eq(x, id);
+							},
+							visIds)));
+				var placed = function () {
+					var _v4 = _Utils_Tuple2(
+						$elm$core$List$head(
+							A2(
+								$elm$core$List$filter,
+								function (e) {
+									return _Utils_eq(e.id, id);
+								},
+								live)),
+						anchor);
+					if (_v4.a.$ === 'Just') {
+						if (_v4.b.$ === 'Just') {
+							var m = _v4.a.a;
+							var a = _v4.b.a;
+							return (!k) ? A2($elm$core$List$cons, m, rest) : A2(
+								$elm$core$List$concatMap,
+								function (e) {
+									return _Utils_eq(e.id, a) ? _List_fromArray(
+										[e, m]) : _List_fromArray(
+										[e]);
+								},
+								rest);
+						} else {
+							var m = _v4.a.a;
+							var _v5 = _v4.b;
+							return A2($elm$core$List$cons, m, rest);
+						}
+					} else {
+						var _v6 = _v4.a;
+						return rest;
+					}
+				}();
+				var newOrder = A2(
+					$elm$core$List$indexedMap,
+					F2(
+						function (j, e) {
+							return _Utils_Tuple2(e.id, j);
+						}),
+					placed);
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							announce: 'Moved to position ' + ($elm$core$String$fromInt(k + 1) + (' of ' + $elm$core$String$fromInt(n))),
+							entries: A2(
+								$elm$core$List$map,
+								function (e) {
+									var _v1 = $elm$core$List$head(
+										A2(
+											$elm$core$List$filter,
+											function (_v2) {
+												var x = _v2.a;
+												return _Utils_eq(x, e.id);
+											},
+											newOrder));
+									if (_v1.$ === 'Just') {
+										var _v3 = _v1.a;
+										var j = _v3.b;
+										return _Utils_update(
+											e,
+											{order: j});
+									} else {
+										return e;
+									}
+								},
+								model.entries)
+						}),
+					$elm$core$Platform$Cmd$none);
+			}
+		} else {
+			return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+		}
+	});
+var $author$project$Main$newEntry = F4(
+	function (desc, id, t, order) {
+		return {archivedAt: $elm$core$Maybe$Nothing, completed: false, completedAt: $elm$core$Maybe$Nothing, description: desc, editing: false, entryType: t, id: id, order: order};
 	});
 var $author$project$Main$nextType = function (t) {
 	if (t.$ === 'Personal') {
@@ -6476,7 +6961,7 @@ var $author$project$Main$nextType = function (t) {
 		return $author$project$Main$Personal;
 	}
 };
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $elm$core$Basics$pow = _Basics_pow;
 var $elm$browser$Browser$Navigation$pushUrl = _Browser_pushUrl;
 var $elm$core$Tuple$second = function (_v0) {
 	var y = _v0.b;
@@ -6493,7 +6978,9 @@ var $author$project$Main$setCompleted = F3(
 			t,
 			{completed: false, completedAt: $elm$core$Maybe$Nothing}));
 	});
+var $elm$browser$Browser$Dom$setViewport = _Browser_setViewport;
 var $elm$core$Process$sleep = _Process_sleep;
+var $elm$core$Basics$sqrt = _Basics_sqrt;
 var $author$project$Main$thirtyDaysMs = (((30 * 24) * 60) * 60) * 1000;
 var $author$project$Main$sweep = function (now) {
 	return $elm$core$List$map(
@@ -6562,6 +7049,19 @@ var $elm$core$String$trim = _String_trim;
 var $author$project$Main$withNow = function (toMsg) {
 	return A2($elm$core$Task$perform, toMsg, $elm$time$Time$now);
 };
+var $author$project$Main$withSlot = function (d) {
+	return $elm$core$List$isEmpty(d.rects) ? d : _Utils_update(
+		d,
+		{
+			slot: $elm$core$List$length(
+				A2(
+					$elm$core$List$filter,
+					function (r) {
+						return (!_Utils_eq(r.id, d.id)) && (_Utils_cmp(r.top + (r.height / 2), d.pageY) < 0);
+					},
+					d.rects))
+		});
+};
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		update:
@@ -6579,11 +7079,12 @@ var $author$project$Main$update = F2(
 									model.entries,
 									_List_fromArray(
 										[
-											A3(
+											A4(
 											$author$project$Main$newEntry,
 											$elm$core$String$trim(model.field),
 											model.uid,
-											model.newType)
+											model.newType,
+											1 + $author$project$Main$maxOrder(model.entries))
 										])),
 								field: '',
 								uid: model.uid + 1
@@ -6736,6 +7237,180 @@ var $author$project$Main$update = F2(
 								pressing: $elm$core$Maybe$Nothing
 							}),
 						$elm$core$Platform$Cmd$none);
+				case 'DragStart':
+					var id = msg.a;
+					var cx = msg.b;
+					var cy = msg.c;
+					var py = msg.d;
+					var immediate = msg.e;
+					var seq = model.pressSeq;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								confirmingDelete: $elm$core$Maybe$Nothing,
+								drag: $elm$core$Maybe$Just(
+									{active: immediate, clientY: cy, id: id, pageY: py, rects: _List_Nil, seq: seq, slot: -1, startPageY: py, startX: cx, startY: cy}),
+								pressSeq: seq + 1,
+								pressing: $elm$core$Maybe$Nothing
+							}),
+						immediate ? A2($author$project$Main$fetchRects, seq, model) : $elm$core$Platform$Cmd$none);
+				case 'GotRects':
+					var seq = msg.a;
+					var ids = msg.b;
+					var result = msg.c;
+					var _v4 = _Utils_Tuple2(model.drag, result);
+					if (_v4.a.$ === 'Just') {
+						if (_v4.b.$ === 'Ok') {
+							var d = _v4.a.a;
+							var els = _v4.b.a;
+							return _Utils_eq(d.seq, seq) ? _Utils_Tuple2(
+								_Utils_update(
+									model,
+									{
+										drag: $elm$core$Maybe$Just(
+											$author$project$Main$withSlot(
+												_Utils_update(
+													d,
+													{
+														rects: A3(
+															$elm$core$List$map2,
+															F2(
+																function (i, el) {
+																	return {height: el.element.height, id: i, top: el.element.y};
+																}),
+															ids,
+															els)
+													})))
+									}),
+								$elm$core$Platform$Cmd$none) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+						} else {
+							var d = _v4.a.a;
+							return _Utils_eq(d.seq, seq) ? _Utils_Tuple2(
+								_Utils_update(
+									model,
+									{drag: $elm$core$Maybe$Nothing}),
+								$elm$core$Platform$Cmd$none) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+						}
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'DragMoved':
+					var cx = msg.a;
+					var cy = msg.b;
+					var py = msg.c;
+					var _v5 = model.drag;
+					if (_v5.$ === 'Just') {
+						var d = _v5.a;
+						var far = $elm$core$Basics$sqrt(
+							A2($elm$core$Basics$pow, cx - d.startX, 2) + A2($elm$core$Basics$pow, cy - d.startY, 2)) > 6;
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									drag: $elm$core$Maybe$Just(
+										$author$project$Main$withSlot(
+											_Utils_update(
+												d,
+												{active: d.active || far, clientY: cy, pageY: py})))
+								}),
+							(far && (!d.active)) ? A2($author$project$Main$fetchRects, d.seq, model) : $elm$core$Platform$Cmd$none);
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'DragEnded':
+					var _v6 = model.drag;
+					if (_v6.$ === 'Just') {
+						var d = _v6.a;
+						return (d.active && (!$elm$core$List$isEmpty(d.rects))) ? A3(
+							$author$project$Main$moveTo,
+							d.id,
+							d.slot,
+							_Utils_update(
+								model,
+								{drag: $elm$core$Maybe$Nothing})) : _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{drag: $elm$core$Maybe$Nothing}),
+							$elm$core$Platform$Cmd$none);
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'DragCancel':
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{drag: $elm$core$Maybe$Nothing}),
+						$elm$core$Platform$Cmd$none);
+				case 'DragFrame':
+					var _v7 = model.drag;
+					if (_v7.$ === 'Just') {
+						var d = _v7.a;
+						return d.active ? _Utils_Tuple2(
+							model,
+							A2($elm$core$Task$perform, $author$project$Main$GotViewport, $elm$browser$Browser$Dom$getViewport)) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'GotViewport':
+					var vp = msg.a;
+					var _v8 = model.drag;
+					if (_v8.$ === 'Just') {
+						var d = _v8.a;
+						var h = vp.viewport.height;
+						var want = (_Utils_cmp(d.clientY, $author$project$Main$edgeZone) < 0) ? (-$author$project$Main$autoScrollStep) : ((_Utils_cmp(d.clientY, h - $author$project$Main$edgeZone) > 0) ? $author$project$Main$autoScrollStep : 0);
+						var newY = A3(
+							$elm$core$Basics$clamp,
+							0,
+							A2($elm$core$Basics$max, 0, vp.scene.height - h),
+							vp.viewport.y + want);
+						var delta = newY - vp.viewport.y;
+						return (d.active && (!(!delta))) ? _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									drag: $elm$core$Maybe$Just(
+										$author$project$Main$withSlot(
+											_Utils_update(
+												d,
+												{pageY: d.pageY + delta})))
+								}),
+							A2(
+								$elm$core$Task$perform,
+								function (_v9) {
+									return $author$project$Main$NoOp;
+								},
+								A2($elm$browser$Browser$Dom$setViewport, vp.viewport.x, newY))) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'MoveBy':
+					var id = msg.a;
+					var delta = msg.b;
+					var ids = A2(
+						$elm$core$List$map,
+						function ($) {
+							return $.id;
+						},
+						$author$project$Main$visibleList(model));
+					var _v10 = A2($author$project$Main$indexOf, id, ids);
+					if (_v10.$ === 'Just') {
+						var i = _v10.a;
+						var _v11 = A3($author$project$Main$moveTo, id, i + delta, model);
+						var m = _v11.a;
+						var cmd = _v11.b;
+						return _Utils_Tuple2(
+							m,
+							$elm$core$Platform$Cmd$batch(
+								_List_fromArray(
+									[
+										cmd,
+										$author$project$Main$focusId(
+										'check-' + $elm$core$String$fromInt(id))
+									])));
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
 				case 'PressStart':
 					var id = msg.a;
 					var x = msg.b;
@@ -6751,16 +7426,16 @@ var $author$project$Main$update = F2(
 							}),
 						A2(
 							$elm$core$Task$perform,
-							function (_v4) {
+							function (_v12) {
 								return A2($author$project$Main$LongPress, id, model.pressSeq);
 							},
 							$elm$core$Process$sleep(500)));
 				case 'PressMove':
 					var x = msg.a;
 					var y = msg.b;
-					var _v5 = model.pressing;
-					if (_v5.$ === 'Just') {
-						var p = _v5.a;
+					var _v13 = model.pressing;
+					if (_v13.$ === 'Just') {
+						var p = _v13.a;
 						return (($elm$core$Basics$abs(x - p.x) > 10) || ($elm$core$Basics$abs(y - p.y) > 10)) ? _Utils_Tuple2(
 							_Utils_update(
 								model,
@@ -6771,9 +7446,9 @@ var $author$project$Main$update = F2(
 					}
 				case 'PressEnd':
 					var id = msg.a;
-					var _v6 = model.pressing;
-					if (_v6.$ === 'Just') {
-						var p = _v6.a;
+					var _v14 = model.pressing;
+					if (_v14.$ === 'Just') {
+						var p = _v14.a;
 						if (_Utils_eq(p.id, id)) {
 							var $temp$msg = A2($author$project$Main$EditingEntry, id, true),
 								$temp$model = _Utils_update(
@@ -6801,9 +7476,9 @@ var $author$project$Main$update = F2(
 				case 'LongPress':
 					var id = msg.a;
 					var seq = msg.b;
-					var _v7 = model.pressing;
-					if (_v7.$ === 'Just') {
-						var p = _v7.a;
+					var _v15 = model.pressing;
+					if (_v15.$ === 'Just') {
+						var p = _v15.a;
 						return (_Utils_eq(p.id, id) && _Utils_eq(p.seq, seq)) ? _Utils_Tuple2(
 							_Utils_update(
 								model,
@@ -6884,7 +7559,12 @@ var $author$project$Main$update = F2(
 									function (t) {
 										return _Utils_update(
 											t,
-											{archivedAt: $elm$core$Maybe$Nothing, completed: false, completedAt: $elm$core$Maybe$Nothing});
+											{
+												archivedAt: $elm$core$Maybe$Nothing,
+												completed: false,
+												completedAt: $elm$core$Maybe$Nothing,
+												order: 1 + $author$project$Main$maxOrder(model.entries)
+											});
 									},
 									model.entries),
 								pressing: $elm$core$Maybe$Nothing
@@ -7101,7 +7781,7 @@ var $author$project$Main$updateWithStorage = F2(
 		var cmds = _v0.b;
 		return _Utils_Tuple2(
 			newModel,
-			$elm$core$Platform$Cmd$batch(
+			$author$project$Main$isTransient(msg) ? cmds : $elm$core$Platform$Cmd$batch(
 				_List_fromArray(
 					[
 						$author$project$Main$setStorage(
@@ -7149,7 +7829,7 @@ var $author$project$Main$infoFooter = A2(
 				]),
 			_List_fromArray(
 				[
-					$elm$html$Html$text('Double-click to edit a todo. Alt+T switches the type.')
+					$elm$html$Html$text('Double-click to edit a todo. Drag a row (or Alt+\u2191/\u2193) to reorder. Alt+T switches the type.')
 				])),
 			A2(
 			$elm$html$Html$p,
@@ -7159,16 +7839,9 @@ var $author$project$Main$infoFooter = A2(
 				]),
 			_List_fromArray(
 				[
-					$elm$html$Html$text('Tap a todo to edit it. Press and hold to delete.')
+					$elm$html$Html$text('Tap a todo to edit it. Press and hold to delete. Drag the handle to reorder.')
 				]))
 		]));
-var $elm$core$List$isEmpty = function (xs) {
-	if (!xs.b) {
-		return true;
-	} else {
-		return false;
-	}
-};
 var $elm$virtual_dom$VirtualDom$lazy2 = _VirtualDom_lazy2;
 var $elm$html$Html$Lazy$lazy2 = $elm$virtual_dom$VirtualDom$lazy2;
 var $elm$html$Html$section = _VirtualDom_node('section');
@@ -7268,7 +7941,6 @@ var $elm$time$Time$toAdjustedMinutes = F2(
 				60000),
 			eras);
 	});
-var $elm$core$Basics$ge = _Utils_ge;
 var $elm$time$Time$toCivil = function (minutes) {
 	var rawDay = A2($elm$time$Time$flooredDiv, minutes, 60 * 24) + 719468;
 	var era = (((rawDay >= 0) ? rawDay : (rawDay - 146096)) / 146097) | 0;
@@ -7369,7 +8041,6 @@ var $author$project$Main$groupSorted = F2(
 				A2($author$project$Main$groupSorted, zone, others));
 		}
 	});
-var $elm$core$List$sortBy = _List_sortBy;
 var $author$project$Main$archiveGroups = F2(
 	function (zone, entries) {
 		return A2(
@@ -7458,7 +8129,6 @@ var $author$project$Main$PressMove = F2(
 	function (a, b) {
 		return {$: 'PressMove', a: a, b: b};
 	});
-var $elm$json$Json$Decode$float = _Json_decodeFloat;
 var $author$project$Main$onPressMove = A2(
 	$elm$html$Html$Events$on,
 	'pointermove',
@@ -8062,20 +8732,6 @@ var $author$project$Main$viewArchive = function (model) {
 			A2($author$project$Main$archiveGroups, model.zone, archived)));
 };
 var $author$project$Main$ArchiveCompleted = {$: 'ArchiveCompleted'};
-var $elm$core$Basics$not = _Basics_not;
-var $author$project$Main$isVisible = F2(
-	function (visibility, todo) {
-		switch (visibility.$) {
-			case 'Completed':
-				return todo.completed;
-			case 'Active':
-				return !todo.completed;
-			case 'All':
-				return true;
-			default:
-				return false;
-		}
-	});
 var $elm$virtual_dom$VirtualDom$lazy3 = _VirtualDom_lazy3;
 var $elm$html$Html$Lazy$lazy3 = $elm$virtual_dom$VirtualDom$lazy3;
 var $author$project$Main$ShowAll = {$: 'ShowAll'};
@@ -8516,6 +9172,29 @@ var $author$project$Main$viewEmptyFiltered = F3(
 						]))
 				]));
 	});
+var $author$project$Main$interleave = F7(
+	function (dragId, slot, ind, rowFn, done, seen, entries) {
+		if (!entries.b) {
+			return done ? _List_Nil : _List_fromArray(
+				[ind]);
+		} else {
+			var e = entries.a;
+			var rest = entries.b;
+			return _Utils_eq(e.id, dragId) ? A2(
+				$elm$core$List$cons,
+				rowFn(e),
+				A7($author$project$Main$interleave, dragId, slot, ind, rowFn, done, seen, rest)) : (((!done) && _Utils_eq(seen, slot)) ? A2(
+				$elm$core$List$cons,
+				ind,
+				A2(
+					$elm$core$List$cons,
+					rowFn(e),
+					A7($author$project$Main$interleave, dragId, slot, ind, rowFn, true, seen + 1, rest))) : A2(
+				$elm$core$List$cons,
+				rowFn(e),
+				A7($author$project$Main$interleave, dragId, slot, ind, rowFn, done, seen + 1, rest)));
+		}
+	});
 var $author$project$Main$ArchiveItem = function (a) {
 	return {$: 'ArchiveItem', a: a};
 };
@@ -8530,6 +9209,7 @@ var $author$project$Main$UpdateEntry = F2(
 	function (a, b) {
 		return {$: 'UpdateEntry', a: a, b: b};
 	});
+var $elm$core$String$fromFloat = _String_fromNumber;
 var $elm$html$Html$Events$onBlur = function (msg) {
 	return A2(
 		$elm$html$Html$Events$on,
@@ -8568,6 +9248,42 @@ var $author$project$Main$onEditKeydown = function (id) {
 				A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string),
 				A2($elm$json$Json$Decode$field, 'shiftKey', $elm$json$Json$Decode$bool))));
 };
+var $author$project$Main$DragStart = F5(
+	function (a, b, c, d, e) {
+		return {$: 'DragStart', a: a, b: b, c: c, d: d, e: e};
+	});
+var $author$project$Main$Down = F5(
+	function (pointerType, button, x, y, pageY) {
+		return {button: button, pageY: pageY, pointerType: pointerType, x: x, y: y};
+	});
+var $author$project$Main$downDecoder = A2(
+	$author$project$Main$andMap,
+	A2($elm$json$Json$Decode$field, 'pageY', $elm$json$Json$Decode$float),
+	A2(
+		$author$project$Main$andMap,
+		A2($elm$json$Json$Decode$field, 'clientY', $elm$json$Json$Decode$float),
+		A2(
+			$author$project$Main$andMap,
+			A2($elm$json$Json$Decode$field, 'clientX', $elm$json$Json$Decode$float),
+			A2(
+				$author$project$Main$andMap,
+				A2($elm$json$Json$Decode$field, 'button', $elm$json$Json$Decode$int),
+				A2(
+					$author$project$Main$andMap,
+					A2($elm$json$Json$Decode$field, 'pointerType', $elm$json$Json$Decode$string),
+					$elm$json$Json$Decode$succeed($author$project$Main$Down))))));
+var $author$project$Main$onHandleDown = function (id) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'pointerdown',
+		A2(
+			$elm$json$Json$Decode$andThen,
+			function (d) {
+				return (!(!d.button)) ? $elm$json$Json$Decode$fail('not primary') : $elm$json$Json$Decode$succeed(
+					A5($author$project$Main$DragStart, id, d.x, d.y, d.pageY, d.pointerType === 'touch'));
+			},
+			$author$project$Main$downDecoder));
+};
 var $author$project$Main$PressEnd = function (a) {
 	return {$: 'PressEnd', a: a};
 };
@@ -8579,21 +9295,143 @@ var $author$project$Main$onPressEnd = function (id) {
 			$elm$json$Json$Decode$succeed(
 				$author$project$Main$PressEnd(id))));
 };
-var $author$project$Main$viewEntry = F3(
-	function (showMark, confirming, todo) {
+var $author$project$Main$climbToDraggable = function (_v0) {
+	return A2(
+		$elm$json$Json$Decode$andThen,
+		function (tag) {
+			return A2(
+				$elm$core$List$member,
+				tag,
+				_List_fromArray(
+					['INPUT', 'TEXTAREA', 'BUTTON'])) ? $elm$json$Json$Decode$succeed(false) : A2(
+				$elm$json$Json$Decode$andThen,
+				function (cls) {
+					return A2(
+						$elm$core$List$any,
+						function (c) {
+							return A2(
+								$elm$core$List$member,
+								c,
+								_List_fromArray(
+									['drag-handle', 'confirm-delete']));
+						},
+						$elm$core$String$words(cls)) ? $elm$json$Json$Decode$succeed(false) : ((tag === 'LI') ? $elm$json$Json$Decode$succeed(true) : $elm$json$Json$Decode$oneOf(
+						_List_fromArray(
+							[
+								A2(
+								$elm$json$Json$Decode$field,
+								'parentElement',
+								$elm$json$Json$Decode$lazy($author$project$Main$climbToDraggable)),
+								$elm$json$Json$Decode$succeed(true)
+							])));
+				},
+				A2(
+					$elm$json$Json$Decode$field,
+					'className',
+					$elm$json$Json$Decode$oneOf(
+						_List_fromArray(
+							[
+								$elm$json$Json$Decode$string,
+								$elm$json$Json$Decode$succeed('')
+							]))));
+		},
+		A2($elm$json$Json$Decode$field, 'tagName', $elm$json$Json$Decode$string));
+};
+var $author$project$Main$onRowDown = F2(
+	function (id, editing) {
+		return A2(
+			$elm$html$Html$Events$on,
+			'pointerdown',
+			A2(
+				$elm$json$Json$Decode$andThen,
+				function (d) {
+					return (editing || ((!(!d.button)) || (d.pointerType === 'touch'))) ? $elm$json$Json$Decode$fail('not a mouse/pen primary press') : A2(
+						$elm$json$Json$Decode$andThen,
+						function (ok) {
+							return ok ? $elm$json$Json$Decode$succeed(
+								A5($author$project$Main$DragStart, id, d.x, d.y, d.pageY, false)) : $elm$json$Json$Decode$fail('interactive target');
+						},
+						A2(
+							$elm$json$Json$Decode$field,
+							'target',
+							$author$project$Main$climbToDraggable(_Utils_Tuple0)));
+				},
+				$author$project$Main$downDecoder));
+	});
+var $author$project$Main$MoveBy = F2(
+	function (a, b) {
+		return {$: 'MoveBy', a: a, b: b};
+	});
+var $elm$json$Json$Decode$map3 = _Json_map3;
+var $author$project$Main$onRowKeydown = function (id) {
+	return A2(
+		$elm$html$Html$Events$preventDefaultOn,
+		'keydown',
+		A2(
+			$elm$json$Json$Decode$andThen,
+			function (_v0) {
+				var key = _v0.a;
+				var alt = _v0.b;
+				var tag = _v0.c;
+				return (alt && ((tag !== 'TEXTAREA') && (key === 'ArrowUp'))) ? $elm$json$Json$Decode$succeed(
+					_Utils_Tuple2(
+						A2($author$project$Main$MoveBy, id, -1),
+						true)) : ((alt && ((tag !== 'TEXTAREA') && (key === 'ArrowDown'))) ? $elm$json$Json$Decode$succeed(
+					_Utils_Tuple2(
+						A2($author$project$Main$MoveBy, id, 1),
+						true)) : $elm$json$Json$Decode$fail('ignored key'));
+			},
+			A4(
+				$elm$json$Json$Decode$map3,
+				F3(
+					function (key, alt, tag) {
+						return _Utils_Tuple3(key, alt, tag);
+					}),
+				A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string),
+				A2($elm$json$Json$Decode$field, 'altKey', $elm$json$Json$Decode$bool),
+				A2(
+					$elm$json$Json$Decode$at,
+					_List_fromArray(
+						['target', 'tagName']),
+					$elm$json$Json$Decode$string))));
+};
+var $author$project$Main$viewEntry = F4(
+	function (showMark, confirming, dragOffset, todo) {
 		return A2(
 			$elm$html$Html$li,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$classList(
-					_List_fromArray(
-						[
-							_Utils_Tuple2('completed', todo.completed),
-							_Utils_Tuple2('editing', todo.editing),
-							_Utils_Tuple2('confirming', confirming)
-						])),
-					$author$project$Main$onTouchContextMenu
-				]),
+			_Utils_ap(
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$classList(
+						_List_fromArray(
+							[
+								_Utils_Tuple2('completed', todo.completed),
+								_Utils_Tuple2('editing', todo.editing),
+								_Utils_Tuple2('confirming', confirming),
+								_Utils_Tuple2(
+								'dragging',
+								!_Utils_eq(dragOffset, $elm$core$Maybe$Nothing))
+							])),
+						$elm$html$Html$Attributes$id(
+						'row-' + $elm$core$String$fromInt(todo.id)),
+						$author$project$Main$onTouchContextMenu,
+						A2($author$project$Main$onRowDown, todo.id, todo.editing),
+						$author$project$Main$onRowKeydown(todo.id)
+					]),
+				function () {
+					if (dragOffset.$ === 'Just') {
+						var dy = dragOffset.a;
+						return _List_fromArray(
+							[
+								A2(
+								$elm$html$Html$Attributes$style,
+								'transform',
+								'translateY(' + ($elm$core$String$fromFloat(dy) + 'px)'))
+							]);
+					} else {
+						return _List_Nil;
+					}
+				}()),
 			_List_fromArray(
 				[
 					A2(
@@ -8605,10 +9443,24 @@ var $author$project$Main$viewEntry = F3(
 					_List_fromArray(
 						[
 							A2(
+							$elm$html$Html$div,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('drag-handle'),
+									A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true'),
+									$author$project$Main$onHandleDown(todo.id)
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('\u22EE\u22EE')
+								])),
+							A2(
 							$elm$html$Html$input,
 							_List_fromArray(
 								[
 									$elm$html$Html$Attributes$class('toggle'),
+									$elm$html$Html$Attributes$id(
+									'check-' + $elm$core$String$fromInt(todo.id)),
 									$elm$html$Html$Attributes$type_('checkbox'),
 									$elm$html$Html$Attributes$checked(todo.completed),
 									A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Completed'),
@@ -8752,23 +9604,58 @@ var $author$project$Main$viewEntry = F3(
 						])) : $elm$html$Html$text('')
 				]));
 	});
-var $author$project$Main$viewKeyedEntry = F3(
-	function (showMark, confirming, todo) {
+var $author$project$Main$viewKeyedEntry = F4(
+	function (showMark, confirming, dragOffset, todo) {
 		return _Utils_Tuple2(
 			$elm$core$String$fromInt(todo.id),
-			A4($elm$html$Html$Lazy$lazy3, $author$project$Main$viewEntry, showMark, confirming, todo));
+			A5($elm$html$Html$Lazy$lazy4, $author$project$Main$viewEntry, showMark, confirming, dragOffset, todo));
+	});
+var $author$project$Main$viewRows = F2(
+	function (model, visible) {
+		var row = function (t) {
+			return A4(
+				$author$project$Main$viewKeyedEntry,
+				_Utils_eq(model.typeFilter, $author$project$Main$AnyType),
+				_Utils_eq(
+					model.confirmingDelete,
+					$elm$core$Maybe$Just(t.id)),
+				function () {
+					var _v1 = model.drag;
+					if (_v1.$ === 'Just') {
+						var d = _v1.a;
+						return (_Utils_eq(d.id, t.id) && d.active) ? $elm$core$Maybe$Just(d.pageY - d.startPageY) : $elm$core$Maybe$Nothing;
+					} else {
+						return $elm$core$Maybe$Nothing;
+					}
+				}(),
+				t);
+		};
+		var indicator = _Utils_Tuple2(
+			'drop-indicator',
+			A2(
+				$elm$html$Html$li,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('drop-indicator'),
+						A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
+					]),
+				_List_Nil));
+		var _v0 = model.drag;
+		if (_v0.$ === 'Just') {
+			var d = _v0.a;
+			return (d.active && (!$elm$core$List$isEmpty(d.rects))) ? A7($author$project$Main$interleave, d.id, d.slot, indicator, row, false, 0, visible) : A2($elm$core$List$map, row, visible);
+		} else {
+			return A2($elm$core$List$map, row, visible);
+		}
 	});
 var $author$project$Main$viewMain = function (model) {
+	var visible = $author$project$Main$visibleList(model);
 	var scoped = A2(
 		$elm$core$List$filter,
 		function (e) {
 			return $author$project$Main$isLive(e) && A2($author$project$Main$inScope, model.typeFilter, e);
 		},
 		model.entries);
-	var visible = A2(
-		$elm$core$List$filter,
-		$author$project$Main$isVisible(model.visibility),
-		scoped);
 	var live = A2($elm$core$List$filter, $author$project$Main$isLive, model.entries);
 	var cssVisibility = function (empty) {
 		return empty ? 'hidden' : 'visible';
@@ -8828,20 +9715,38 @@ var $author$project$Main$viewMain = function (model) {
 				$elm$html$Html$Keyed$ul,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('todo-list')
+						$elm$html$Html$Attributes$classList(
+						_List_fromArray(
+							[
+								_Utils_Tuple2('todo-list', true),
+								_Utils_Tuple2(
+								'drag-armed',
+								!_Utils_eq(model.drag, $elm$core$Maybe$Nothing)),
+								_Utils_Tuple2(
+								'drag-active',
+								_Utils_eq(
+									A2(
+										$elm$core$Maybe$map,
+										function ($) {
+											return $.active;
+										},
+										model.drag),
+									$elm$core$Maybe$Just(true)))
+							]))
 					]),
+				A2($author$project$Main$viewRows, model, visible)),
 				A2(
-					$elm$core$List$map,
-					function (t) {
-						return A3(
-							$author$project$Main$viewKeyedEntry,
-							_Utils_eq(model.typeFilter, $author$project$Main$AnyType),
-							_Utils_eq(
-								model.confirmingDelete,
-								$elm$core$Maybe$Just(t.id)),
-							t);
-					},
-					visible))
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('drag-live'),
+						A2($elm$html$Html$Attributes$attribute, 'role', 'status'),
+						A2($elm$html$Html$Attributes$attribute, 'aria-live', 'polite')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text(model.announce)
+					]))
 			]));
 };
 var $author$project$Main$view = function (model) {

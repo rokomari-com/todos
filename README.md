@@ -27,6 +27,12 @@ TodoMVC (Elm 0.19.1) plus Personal/Work todo types. Original TodoMVC styling is 
 - Archived todos are excluded from the lists, counts, toggle-all and hidden hint.
 - Saved entries carry `completedAt` and `archivedAt` (epoch ms or null). Old data without them loads fine; completed entries lacking `completedAt` are stamped with the load time so nothing archives right after upgrading. Time comes from `Time.now` / `Time.here` tasks (init, each toggle/archive) and an hourly `Time.every`.
 
+## Reorder
+
+- Main list only. Desktop: press and drag a row (not its checkbox, buttons or text field) past 6px; a red line shows the drop slot, Esc cancels. The page autoscrolls when the pointer nears the top or bottom edge (mouse and touch). Touch: drag the left-edge handle; long-press on the text still opens the delete overlay.
+- Keyboard: Alt+↑ / Alt+↓ on a focused row moves it one visible slot; the move is announced ("Moved to position N of M").
+- Saved entries carry `order` (integer). Entries saved without it take their stored position. New todos append at the bottom. After a drop, all non-archived entries are renumbered 0..n-1; with a filter on, the row lands after its visible neighbour and hidden rows keep their relative positions.
+
 ## Adding a type
 
 1. Add a constructor to `EntryType` in `src/Main.elm`.

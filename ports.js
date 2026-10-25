@@ -52,6 +52,29 @@
 	}).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['value'] });
 	window.addEventListener('resize', function () { document.querySelectorAll(SEL).forEach(fit); syncNew(); });
 	var app = Elm.Main.init({ flags: flags });
+	// Row drag: forward document-level pointer events while a press that began on a list row is live.
+	// Elm subscribes only while a drag exists. Focus loss or a buttonless move cancels a stuck drag.
+	var live = false;
+	var send = function (kind, e) {
+		app.ports.dragEvents.send({ kind: kind, x: e ? e.clientX : 0, y: e ? e.clientY : 0, pageY: e ? e.pageY : 0 });
+	};
+	var end = function (kind, e) {
+		if (!live) return;
+		live = false;
+		send(kind, e);
+	};
+	document.addEventListener('pointerdown', function (e) {
+		live = !!(e.target.closest && e.target.closest('.todo-list li'));
+	}, { passive: true, capture: true });
+	document.addEventListener('pointermove', function (e) {
+		if (!live) return;
+		if (e.buttons === 0) return end('cancel', e);
+		send('move', e);
+	}, { passive: true });
+	document.addEventListener('pointerup', function (e) { end('up', e); }, { passive: true });
+	document.addEventListener('pointercancel', function (e) { end('cancel', e); }, { passive: true });
+	window.addEventListener('blur', function () { end('cancel'); });
+	document.addEventListener('visibilitychange', function () { if (document.hidden) end('cancel'); });
 	app.ports.setStorage.subscribe(function (state) {
 		try {
 			localStorage.setItem(KEY, JSON.stringify(state));

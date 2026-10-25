@@ -444,3 +444,73 @@ textarea.new-todo::placeholder { line-height: 33px; }
 .todo-list li .destroy:focus {
 	box-shadow: 0 0 2px 2px rgba(207, 125, 125, 0.55);
 }
+
+/* Drag to reorder */
+.drag-live {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+.drag-handle { display: none; }
+.todo-list.drag-armed,
+.todo-list.drag-armed * {
+	-webkit-user-select: none;
+	user-select: none;
+}
+.todo-list.drag-active,
+.todo-list.drag-active * { cursor: grabbing !important; }
+.todo-list li.dragging {
+	z-index: 15;
+	opacity: 0.7;
+	background: #fff;
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+}
+.todo-list li.drop-indicator {
+	height: 0;
+	min-height: 0;
+	padding: 0;
+	border: 0;
+	z-index: 20;
+	pointer-events: none;
+}
+.todo-list li.drop-indicator::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: -1px;
+	height: 2px;
+	background: #ce4646;
+	border-radius: 1px;
+}
+@media (prefers-reduced-motion: no-preference) {
+	.todo-list li.dragging { transition: box-shadow 120ms ease-out, opacity 120ms ease-out; }
+}
+@media (hover: none) {
+	.todo-list li .drag-handle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: 44px;
+		min-height: 44px;
+		touch-action: none;
+		color: #b3b3b3;
+		font-size: 22px;
+		letter-spacing: -6px;
+		line-height: 1;
+		cursor: grab;
+		z-index: 2;
+	}
+	.todo-list li .toggle { left: 44px; }
+	.todo-list li:not(.archive-row) label { padding-left: 92px; }
+	.todo-list li.editing .edit { margin-left: 76px; width: calc(100% - 76px); }
+	.todo-list li .toggle + label { background-position: 44px center; }
+	.todo-list li.confirming .drag-handle { opacity: 0.15; }
+}
