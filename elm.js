@@ -4370,6 +4370,52 @@ function _Browser_load(url)
 		}
 	}));
 }
+
+
+
+function _Time_now(millisToPosix)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(millisToPosix(Date.now())));
+	});
+}
+
+var _Time_setInterval = F2(function(interval, task)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		var id = setInterval(function() { _Scheduler_rawSpawn(task); }, interval);
+		return function() { clearInterval(id); };
+	});
+});
+
+function _Time_here()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(
+			A2($elm$time$Time$customZone, -(new Date().getTimezoneOffset()), _List_Nil)
+		));
+	});
+}
+
+
+function _Time_getZoneName()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		try
+		{
+			var name = $elm$time$Time$Name(Intl.DateTimeFormat().resolvedOptions().timeZone);
+		}
+		catch (e)
+		{
+			var name = $elm$time$Time$Offset(new Date().getTimezoneOffset());
+		}
+		callback(_Scheduler_succeed(name));
+	});
+}
 var $author$project$Main$UrlChanged = function (a) {
 	return {$: 'UrlChanged', a: a};
 };
@@ -5165,10 +5211,26 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$application = _Browser_application;
+var $author$project$Main$GotTime = F2(
+	function (a, b) {
+		return {$: 'GotTime', a: a, b: b};
+	});
 var $elm$json$Json$Decode$decodeValue = _Json_run;
 var $author$project$Main$AnyType = {$: 'AnyType'};
 var $author$project$Main$Personal = {$: 'Personal'};
 var $author$project$Main$emptySaved = {entries: _List_Nil, field: '', newType: $author$project$Main$Personal, typeFilter: $author$project$Main$AnyType, uid: 0};
+var $elm$time$Time$Name = function (a) {
+	return {$: 'Name', a: a};
+};
+var $elm$time$Time$Offset = function (a) {
+	return {$: 'Offset', a: a};
+};
+var $elm$time$Time$Zone = F2(
+	function (a, b) {
+		return {$: 'Zone', a: a, b: b};
+	});
+var $elm$time$Time$customZone = $elm$time$Time$Zone;
+var $elm$time$Time$here = _Time_here(_Utils_Tuple0);
 var $elm$core$List$maximum = function (list) {
 	if (list.b) {
 		var x = list.a;
@@ -5203,22 +5265,44 @@ var $author$project$Main$maxId = function (entries) {
 				},
 				entries)));
 };
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $elm$time$Time$Posix = function (a) {
+	return {$: 'Posix', a: a};
+};
+var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
+var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
 var $author$project$Main$Saved = F5(
 	function (entries, field, uid, newType, typeFilter) {
 		return {entries: entries, field: field, newType: newType, typeFilter: typeFilter, uid: uid};
 	});
 var $elm$json$Json$Decode$field = _Json_decodeField;
 var $elm$json$Json$Decode$int = _Json_decodeInt;
-var $author$project$Main$Entry = F5(
-	function (description, completed, editing, id, entryType) {
-		return {completed: completed, description: description, editing: editing, entryType: entryType, id: id};
+var $author$project$Main$Entry = F7(
+	function (description, completed, editing, id, entryType, completedAt, archivedAt) {
+		return {archivedAt: archivedAt, completed: completed, completedAt: completedAt, description: description, editing: editing, entryType: entryType, id: id};
 	});
+var $author$project$Main$andMap = $elm$json$Json$Decode$map2($elm$core$Basics$apR);
 var $elm$json$Json$Decode$bool = _Json_decodeBool;
-var $elm$json$Json$Decode$map5 = _Json_map5;
-var $elm$json$Json$Decode$string = _Json_decodeString;
+var $elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
 var $elm$json$Json$Decode$oneOf = _Json_oneOf;
+var $author$project$Main$optionalTime = function (name) {
+	return $elm$json$Json$Decode$oneOf(
+		_List_fromArray(
+			[
+				A2(
+				$elm$json$Json$Decode$field,
+				name,
+				A2(
+					$elm$json$Json$Decode$map,
+					A2($elm$core$Basics$composeL, $elm$core$Maybe$Just, $elm$time$Time$millisToPosix),
+					$elm$json$Json$Decode$int)),
+				$elm$json$Json$Decode$succeed($elm$core$Maybe$Nothing)
+			]));
+};
+var $elm$json$Json$Decode$string = _Json_decodeString;
 var $elm$json$Json$Decode$andThen = _Json_andThen;
 var $elm$json$Json$Decode$fail = _Json_fail;
 var $author$project$Main$Work = {$: 'Work'};
@@ -5292,14 +5376,28 @@ var $author$project$Main$typeOrPersonal = function (name) {
 				$elm$json$Json$Decode$succeed($author$project$Main$Personal)
 			]));
 };
-var $author$project$Main$entryDecoder = A6(
-	$elm$json$Json$Decode$map5,
-	$author$project$Main$Entry,
-	A2($elm$json$Json$Decode$field, 'description', $elm$json$Json$Decode$string),
-	A2($elm$json$Json$Decode$field, 'completed', $elm$json$Json$Decode$bool),
-	$elm$json$Json$Decode$succeed(false),
-	A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$int),
-	$author$project$Main$typeOrPersonal('type'));
+var $author$project$Main$entryDecoder = A2(
+	$author$project$Main$andMap,
+	$author$project$Main$optionalTime('archivedAt'),
+	A2(
+		$author$project$Main$andMap,
+		$author$project$Main$optionalTime('completedAt'),
+		A2(
+			$author$project$Main$andMap,
+			$author$project$Main$typeOrPersonal('type'),
+			A2(
+				$author$project$Main$andMap,
+				A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$int),
+				A2(
+					$author$project$Main$andMap,
+					$elm$json$Json$Decode$succeed(false),
+					A2(
+						$author$project$Main$andMap,
+						A2($elm$json$Json$Decode$field, 'completed', $elm$json$Json$Decode$bool),
+						A2(
+							$author$project$Main$andMap,
+							A2($elm$json$Json$Decode$field, 'description', $elm$json$Json$Decode$string),
+							$elm$json$Json$Decode$succeed($author$project$Main$Entry))))))));
 var $elm$core$List$maybeCons = F3(
 	function (f, mx, xs) {
 		var _v0 = f(mx);
@@ -5329,6 +5427,7 @@ var $author$project$Main$lenientEntries = A2(
 					A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, $author$project$Main$entryDecoder),
 					$elm$json$Json$Decode$succeed($elm$core$Maybe$Nothing)
 				]))));
+var $elm$json$Json$Decode$map5 = _Json_map5;
 var $author$project$Main$OnlyType = function (a) {
 	return {$: 'OnlyType', a: a};
 };
@@ -5373,12 +5472,14 @@ var $author$project$Main$savedDecoder = A6(
 			])),
 	$author$project$Main$typeOrPersonal('newType'),
 	$author$project$Main$typeFilterDecoder);
+var $elm$time$Time$utc = A2($elm$time$Time$Zone, 0, _List_Nil);
 var $author$project$Main$Active = {$: 'Active'};
 var $author$project$Main$All = {$: 'All'};
+var $author$project$Main$ArchiveView = {$: 'ArchiveView'};
 var $author$project$Main$Completed = {$: 'Completed'};
 var $author$project$Main$visibilityFromUrl = function (url) {
 	var _v0 = url.fragment;
-	_v0$2:
+	_v0$3:
 	while (true) {
 		if (_v0.$ === 'Just') {
 			switch (_v0.a) {
@@ -5386,11 +5487,13 @@ var $author$project$Main$visibilityFromUrl = function (url) {
 					return $author$project$Main$Active;
 				case '/completed':
 					return $author$project$Main$Completed;
+				case '/archive':
+					return $author$project$Main$ArchiveView;
 				default:
-					break _v0$2;
+					break _v0$3;
 			}
 		} else {
-			break _v0$2;
+			break _v0$3;
 		}
 	}
 	return $author$project$Main$All;
@@ -5426,12 +5529,19 @@ var $author$project$Main$init = F3(
 					$elm$core$Basics$max,
 					saved.uid,
 					1 + $author$project$Main$maxId(saved.entries)),
-				visibility: $author$project$Main$visibilityFromUrl(url)
+				visibility: $author$project$Main$visibilityFromUrl(url),
+				zone: $elm$time$Time$utc
 			},
-			$elm$core$Platform$Cmd$none);
+			A2(
+				$elm$core$Task$perform,
+				$elm$core$Basics$identity,
+				A3($elm$core$Task$map2, $author$project$Main$GotTime, $elm$time$Time$here, $elm$time$Time$now)));
 	});
-var $author$project$Main$DismissConfirm = {$: 'DismissConfirm'};
+var $author$project$Main$Tick = function (a) {
+	return {$: 'Tick', a: a};
+};
 var $elm$core$Platform$Sub$batch = _Platform_batch;
+var $author$project$Main$DismissConfirm = {$: 'DismissConfirm'};
 var $elm$json$Json$Decode$lazy = function (thunk) {
 	return A2(
 		$elm$json$Json$Decode$andThen,
@@ -5885,7 +5995,7 @@ var $elm$browser$Browser$Events$on = F3(
 	});
 var $elm$browser$Browser$Events$onClick = A2($elm$browser$Browser$Events$on, $elm$browser$Browser$Events$Document, 'click');
 var $elm$browser$Browser$Events$onKeyDown = A2($elm$browser$Browser$Events$on, $elm$browser$Browser$Events$Document, 'keydown');
-var $author$project$Main$subscriptions = function (model) {
+var $author$project$Main$confirmSubs = function (model) {
 	var _v0 = model.confirmingDelete;
 	if (_v0.$ === 'Nothing') {
 		return $elm$core$Platform$Sub$none;
@@ -5910,8 +6020,226 @@ var $author$project$Main$subscriptions = function (model) {
 				]));
 	}
 };
+var $elm$time$Time$Every = F2(
+	function (a, b) {
+		return {$: 'Every', a: a, b: b};
+	});
+var $elm$time$Time$State = F2(
+	function (taggers, processes) {
+		return {processes: processes, taggers: taggers};
+	});
+var $elm$time$Time$init = $elm$core$Task$succeed(
+	A2($elm$time$Time$State, $elm$core$Dict$empty, $elm$core$Dict$empty));
+var $elm$core$Dict$get = F2(
+	function (targetKey, dict) {
+		get:
+		while (true) {
+			if (dict.$ === 'RBEmpty_elm_builtin') {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var key = dict.b;
+				var value = dict.c;
+				var left = dict.d;
+				var right = dict.e;
+				var _v1 = A2($elm$core$Basics$compare, targetKey, key);
+				switch (_v1.$) {
+					case 'LT':
+						var $temp$targetKey = targetKey,
+							$temp$dict = left;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+					case 'EQ':
+						return $elm$core$Maybe$Just(value);
+					default:
+						var $temp$targetKey = targetKey,
+							$temp$dict = right;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+				}
+			}
+		}
+	});
+var $elm$time$Time$addMySub = F2(
+	function (_v0, state) {
+		var interval = _v0.a;
+		var tagger = _v0.b;
+		var _v1 = A2($elm$core$Dict$get, interval, state);
+		if (_v1.$ === 'Nothing') {
+			return A3(
+				$elm$core$Dict$insert,
+				interval,
+				_List_fromArray(
+					[tagger]),
+				state);
+		} else {
+			var taggers = _v1.a;
+			return A3(
+				$elm$core$Dict$insert,
+				interval,
+				A2($elm$core$List$cons, tagger, taggers),
+				state);
+		}
+	});
+var $elm$time$Time$setInterval = _Time_setInterval;
+var $elm$core$Process$spawn = _Scheduler_spawn;
+var $elm$time$Time$spawnHelp = F3(
+	function (router, intervals, processes) {
+		if (!intervals.b) {
+			return $elm$core$Task$succeed(processes);
+		} else {
+			var interval = intervals.a;
+			var rest = intervals.b;
+			var spawnTimer = $elm$core$Process$spawn(
+				A2(
+					$elm$time$Time$setInterval,
+					interval,
+					A2($elm$core$Platform$sendToSelf, router, interval)));
+			var spawnRest = function (id) {
+				return A3(
+					$elm$time$Time$spawnHelp,
+					router,
+					rest,
+					A3($elm$core$Dict$insert, interval, id, processes));
+			};
+			return A2($elm$core$Task$andThen, spawnRest, spawnTimer);
+		}
+	});
+var $elm$time$Time$onEffects = F3(
+	function (router, subs, _v0) {
+		var processes = _v0.processes;
+		var rightStep = F3(
+			function (_v6, id, _v7) {
+				var spawns = _v7.a;
+				var existing = _v7.b;
+				var kills = _v7.c;
+				return _Utils_Tuple3(
+					spawns,
+					existing,
+					A2(
+						$elm$core$Task$andThen,
+						function (_v5) {
+							return kills;
+						},
+						$elm$core$Process$kill(id)));
+			});
+		var newTaggers = A3($elm$core$List$foldl, $elm$time$Time$addMySub, $elm$core$Dict$empty, subs);
+		var leftStep = F3(
+			function (interval, taggers, _v4) {
+				var spawns = _v4.a;
+				var existing = _v4.b;
+				var kills = _v4.c;
+				return _Utils_Tuple3(
+					A2($elm$core$List$cons, interval, spawns),
+					existing,
+					kills);
+			});
+		var bothStep = F4(
+			function (interval, taggers, id, _v3) {
+				var spawns = _v3.a;
+				var existing = _v3.b;
+				var kills = _v3.c;
+				return _Utils_Tuple3(
+					spawns,
+					A3($elm$core$Dict$insert, interval, id, existing),
+					kills);
+			});
+		var _v1 = A6(
+			$elm$core$Dict$merge,
+			leftStep,
+			bothStep,
+			rightStep,
+			newTaggers,
+			processes,
+			_Utils_Tuple3(
+				_List_Nil,
+				$elm$core$Dict$empty,
+				$elm$core$Task$succeed(_Utils_Tuple0)));
+		var spawnList = _v1.a;
+		var existingDict = _v1.b;
+		var killTask = _v1.c;
+		return A2(
+			$elm$core$Task$andThen,
+			function (newProcesses) {
+				return $elm$core$Task$succeed(
+					A2($elm$time$Time$State, newTaggers, newProcesses));
+			},
+			A2(
+				$elm$core$Task$andThen,
+				function (_v2) {
+					return A3($elm$time$Time$spawnHelp, router, spawnList, existingDict);
+				},
+				killTask));
+	});
+var $elm$time$Time$onSelfMsg = F3(
+	function (router, interval, state) {
+		var _v0 = A2($elm$core$Dict$get, interval, state.taggers);
+		if (_v0.$ === 'Nothing') {
+			return $elm$core$Task$succeed(state);
+		} else {
+			var taggers = _v0.a;
+			var tellTaggers = function (time) {
+				return $elm$core$Task$sequence(
+					A2(
+						$elm$core$List$map,
+						function (tagger) {
+							return A2(
+								$elm$core$Platform$sendToApp,
+								router,
+								tagger(time));
+						},
+						taggers));
+			};
+			return A2(
+				$elm$core$Task$andThen,
+				function (_v1) {
+					return $elm$core$Task$succeed(state);
+				},
+				A2($elm$core$Task$andThen, tellTaggers, $elm$time$Time$now));
+		}
+	});
+var $elm$time$Time$subMap = F2(
+	function (f, _v0) {
+		var interval = _v0.a;
+		var tagger = _v0.b;
+		return A2(
+			$elm$time$Time$Every,
+			interval,
+			A2($elm$core$Basics$composeL, f, tagger));
+	});
+_Platform_effectManagers['Time'] = _Platform_createManager($elm$time$Time$init, $elm$time$Time$onEffects, $elm$time$Time$onSelfMsg, 0, $elm$time$Time$subMap);
+var $elm$time$Time$subscription = _Platform_leaf('Time');
+var $elm$time$Time$every = F2(
+	function (interval, tagger) {
+		return $elm$time$Time$subscription(
+			A2($elm$time$Time$Every, interval, tagger));
+	});
+var $author$project$Main$subscriptions = function (model) {
+	return $elm$core$Platform$Sub$batch(
+		_List_fromArray(
+			[
+				A2($elm$time$Time$every, (60 * 60) * 1000, $author$project$Main$Tick),
+				$author$project$Main$confirmSubs(model)
+			]));
+};
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$json$Json$Encode$bool = _Json_wrap;
 var $elm$json$Json$Encode$int = _Json_wrap;
+var $elm$json$Json$Encode$null = _Json_encodeNull;
+var $elm$time$Time$posixToMillis = function (_v0) {
+	var millis = _v0.a;
+	return millis;
+};
+var $author$project$Main$encodeTime = function (t) {
+	if (t.$ === 'Just') {
+		var p = t.a;
+		return $elm$json$Json$Encode$int(
+			$elm$time$Time$posixToMillis(p));
+	} else {
+		return $elm$json$Json$Encode$null;
+	}
+};
 var $elm$json$Json$Encode$object = function (pairs) {
 	return _Json_wrap(
 		A3(
@@ -5942,7 +6270,13 @@ var $author$project$Main$encodeEntry = function (e) {
 				_Utils_Tuple2(
 				'type',
 				$elm$json$Json$Encode$string(
-					$author$project$Main$typeKey(e.entryType)))
+					$author$project$Main$typeKey(e.entryType))),
+				_Utils_Tuple2(
+				'completedAt',
+				$author$project$Main$encodeTime(e.completedAt)),
+				_Utils_Tuple2(
+				'archivedAt',
+				$author$project$Main$encodeTime(e.archivedAt))
 			]));
 };
 var $elm$json$Json$Encode$list = F2(
@@ -5986,6 +6320,21 @@ var $author$project$Main$encodeModel = function (m) {
 			]));
 };
 var $author$project$Main$setStorage = _Platform_outgoingPort('setStorage', $elm$core$Basics$identity);
+var $author$project$Main$ArchiveCompletedAt = function (a) {
+	return {$: 'ArchiveCompletedAt', a: a};
+};
+var $author$project$Main$ArchiveItemAt = F2(
+	function (a, b) {
+		return {$: 'ArchiveItemAt', a: a, b: b};
+	});
+var $author$project$Main$CheckAllAt = F2(
+	function (a, b) {
+		return {$: 'CheckAllAt', a: a, b: b};
+	});
+var $author$project$Main$CheckAt = F3(
+	function (a, b, c) {
+		return {$: 'CheckAt', a: a, b: b, c: c};
+	});
 var $author$project$Main$EditingEntry = F2(
 	function (a, b) {
 		return {$: 'EditingEntry', a: a, b: b};
@@ -5995,14 +6344,13 @@ var $author$project$Main$LongPress = F2(
 		return {$: 'LongPress', a: a, b: b};
 	});
 var $author$project$Main$NoOp = {$: 'NoOp'};
+var $author$project$Main$Touched = F2(
+	function (a, b) {
+		return {$: 'Touched', a: a, b: b};
+	});
 var $elm$core$Basics$abs = function (n) {
 	return (n < 0) ? (-n) : n;
 };
-var $elm$core$Basics$composeL = F3(
-	function (g, f, x) {
-		return g(
-			f(x));
-	});
 var $elm$core$Task$onError = _Scheduler_onError;
 var $elm$core$Task$attempt = F2(
 	function (resultToMessage, task) {
@@ -6040,6 +6388,9 @@ var $author$project$Main$inScope = F2(
 			return _Utils_eq(e.entryType, t);
 		}
 	});
+var $author$project$Main$isLive = function (e) {
+	return _Utils_eq(e.archivedAt, $elm$core$Maybe$Nothing);
+};
 var $elm$browser$Browser$Navigation$load = _Browser_load;
 var $elm$core$Maybe$map = F2(
 	function (f, maybe) {
@@ -6082,10 +6433,41 @@ var $author$project$Main$menuIndex = function (f) {
 					},
 					A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, $author$project$Main$menuFilters)))));
 };
+var $elm$core$Maybe$andThen = F2(
+	function (callback, maybeValue) {
+		if (maybeValue.$ === 'Just') {
+			var value = maybeValue.a;
+			return callback(value);
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $author$project$Main$migrate = function (now) {
+	var nowMs = $elm$time$Time$posixToMillis(now);
+	var valid = function (t) {
+		return (($elm$time$Time$posixToMillis(t) < 0) || (_Utils_cmp(
+			$elm$time$Time$posixToMillis(t),
+			nowMs) > 0)) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(t);
+	};
+	return $elm$core$List$map(
+		function (e) {
+			var completedAt = A2($elm$core$Maybe$andThen, valid, e.completedAt);
+			var archivedAt = A2($elm$core$Maybe$andThen, valid, e.archivedAt);
+			return (e.completed && _Utils_eq(completedAt, $elm$core$Maybe$Nothing)) ? _Utils_update(
+				e,
+				{
+					archivedAt: archivedAt,
+					completedAt: $elm$core$Maybe$Just(
+						A2($elm$core$Maybe$withDefault, now, archivedAt))
+				}) : _Utils_update(
+				e,
+				{archivedAt: archivedAt, completedAt: completedAt});
+		});
+};
 var $elm$core$Basics$neq = _Utils_notEqual;
 var $author$project$Main$newEntry = F3(
 	function (desc, id, t) {
-		return {completed: false, description: desc, editing: false, entryType: t, id: id};
+		return {archivedAt: $elm$core$Maybe$Nothing, completed: false, completedAt: $elm$core$Maybe$Nothing, description: desc, editing: false, entryType: t, id: id};
 	});
 var $author$project$Main$nextType = function (t) {
 	if (t.$ === 'Personal') {
@@ -6094,9 +6476,44 @@ var $author$project$Main$nextType = function (t) {
 		return $author$project$Main$Personal;
 	}
 };
-var $elm$core$Basics$not = _Basics_not;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $elm$browser$Browser$Navigation$pushUrl = _Browser_pushUrl;
+var $elm$core$Tuple$second = function (_v0) {
+	var y = _v0.b;
+	return y;
+};
+var $author$project$Main$setCompleted = F3(
+	function (isCompleted, now, t) {
+		return _Utils_eq(t.completed, isCompleted) ? t : (isCompleted ? _Utils_update(
+			t,
+			{
+				completed: true,
+				completedAt: $elm$core$Maybe$Just(now)
+			}) : _Utils_update(
+			t,
+			{completed: false, completedAt: $elm$core$Maybe$Nothing}));
+	});
 var $elm$core$Process$sleep = _Process_sleep;
+var $author$project$Main$thirtyDaysMs = (((30 * 24) * 60) * 60) * 1000;
+var $author$project$Main$sweep = function (now) {
+	return $elm$core$List$map(
+		function (e) {
+			var _v0 = _Utils_Tuple3(e.completed, e.archivedAt, e.completedAt);
+			if ((_v0.a && (_v0.b.$ === 'Nothing')) && (_v0.c.$ === 'Just')) {
+				var _v1 = _v0.b;
+				var c = _v0.c.a;
+				return (_Utils_cmp(
+					$elm$time$Time$posixToMillis(now) - $elm$time$Time$posixToMillis(c),
+					$author$project$Main$thirtyDaysMs) > 0) ? _Utils_update(
+					e,
+					{
+						archivedAt: $elm$core$Maybe$Just(now)
+					}) : e;
+			} else {
+				return e;
+			}
+		});
+};
 var $elm$url$Url$addPort = F2(
 	function (maybePort, starter) {
 		if (maybePort.$ === 'Nothing') {
@@ -6142,6 +6559,9 @@ var $elm$url$Url$toString = function (url) {
 				url.path)));
 };
 var $elm$core$String$trim = _String_trim;
+var $author$project$Main$withNow = function (toMsg) {
+	return A2($elm$core$Task$perform, toMsg, $elm$time$Time$now);
+};
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		update:
@@ -6223,6 +6643,11 @@ var $author$project$Main$update = F2(
 								return _Utils_eq(t.id, id) && t.editing;
 							},
 							model.entries)) {
+							var edited = function (t) {
+								return _Utils_eq(t.id, id) && (t.completed && ((t.description !== '') && (!_Utils_eq(
+									$elm$core$Maybe$Just(t.description),
+									A2($elm$core$Maybe$map, $elm$core$Tuple$second, model.editBackup)))));
+							};
 							var commit = function (t) {
 								return _Utils_update(
 									t,
@@ -6244,7 +6669,8 @@ var $author$project$Main$update = F2(
 											},
 											committed)
 									}),
-								$elm$core$Platform$Cmd$none);
+								A2($elm$core$List$any, edited, committed) ? $author$project$Main$withNow(
+									$author$project$Main$Touched(id)) : $elm$core$Platform$Cmd$none);
 						} else {
 							return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 						}
@@ -6395,22 +6821,78 @@ var $author$project$Main$update = F2(
 							model,
 							{confirmingDelete: $elm$core$Maybe$Nothing, pressing: $elm$core$Maybe$Nothing}),
 						$elm$core$Platform$Cmd$none);
-				case 'DeleteComplete':
+				case 'ArchiveCompleted':
+					return _Utils_Tuple2(
+						model,
+						$author$project$Main$withNow($author$project$Main$ArchiveCompletedAt));
+				case 'ArchiveCompletedAt':
+					var now = msg.a;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
 							{
 								entries: A2(
-									$elm$core$List$filter,
+									$elm$core$List$map,
 									function (t) {
-										return !(t.completed && A2($author$project$Main$inScope, model.typeFilter, t));
+										return (t.completed && ($author$project$Main$isLive(t) && A2($author$project$Main$inScope, model.typeFilter, t))) ? _Utils_update(
+											t,
+											{
+												archivedAt: $elm$core$Maybe$Just(now)
+											}) : t;
 									},
 									model.entries)
 							}),
 						$author$project$Main$focusId('new-todo'));
-				case 'Check':
+				case 'ArchiveItem':
 					var id = msg.a;
-					var isCompleted = msg.b;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{confirmingDelete: $elm$core$Maybe$Nothing, pressing: $elm$core$Maybe$Nothing}),
+						$author$project$Main$withNow(
+							$author$project$Main$ArchiveItemAt(id)));
+				case 'ArchiveItemAt':
+					var id = msg.a;
+					var now = msg.b;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								entries: A3(
+									$author$project$Main$mapEntry,
+									id,
+									function (t) {
+										return (t.completed && $author$project$Main$isLive(t)) ? _Utils_update(
+											t,
+											{
+												archivedAt: $elm$core$Maybe$Just(now)
+											}) : t;
+									},
+									model.entries)
+							}),
+						$elm$core$Platform$Cmd$none);
+				case 'Restore':
+					var id = msg.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								confirmingDelete: $elm$core$Maybe$Nothing,
+								entries: A3(
+									$author$project$Main$mapEntry,
+									id,
+									function (t) {
+										return _Utils_update(
+											t,
+											{archivedAt: $elm$core$Maybe$Nothing, completed: false, completedAt: $elm$core$Maybe$Nothing});
+									},
+									model.entries),
+								pressing: $elm$core$Maybe$Nothing
+							}),
+						$elm$core$Platform$Cmd$none);
+				case 'Touched':
+					var id = msg.a;
+					var now = msg.b;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
@@ -6421,23 +6903,75 @@ var $author$project$Main$update = F2(
 									function (t) {
 										return _Utils_update(
 											t,
-											{completed: isCompleted});
+											{
+												completedAt: $elm$core$Maybe$Just(now)
+											});
 									},
+									model.entries)
+							}),
+						$elm$core$Platform$Cmd$none);
+				case 'Check':
+					var id = msg.a;
+					var isCompleted = msg.b;
+					return _Utils_Tuple2(
+						model,
+						$author$project$Main$withNow(
+							A2($author$project$Main$CheckAt, id, isCompleted)));
+				case 'CheckAt':
+					var id = msg.a;
+					var isCompleted = msg.b;
+					var now = msg.c;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								entries: A3(
+									$author$project$Main$mapEntry,
+									id,
+									A2($author$project$Main$setCompleted, isCompleted, now),
 									model.entries)
 							}),
 						$elm$core$Platform$Cmd$none);
 				case 'CheckAll':
 					var isCompleted = msg.a;
+					return _Utils_Tuple2(
+						model,
+						$author$project$Main$withNow(
+							$author$project$Main$CheckAllAt(isCompleted)));
+				case 'CheckAllAt':
+					var isCompleted = msg.a;
+					var now = msg.b;
 					var setAll = function (t) {
-						return A2($author$project$Main$inScope, model.typeFilter, t) ? _Utils_update(
-							t,
-							{completed: isCompleted}) : t;
+						return ($author$project$Main$isLive(t) && A2($author$project$Main$inScope, model.typeFilter, t)) ? A3($author$project$Main$setCompleted, isCompleted, now, t) : t;
 					};
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
 							{
 								entries: A2($elm$core$List$map, setAll, model.entries)
+							}),
+						$elm$core$Platform$Cmd$none);
+				case 'GotTime':
+					var zone = msg.a;
+					var now = msg.b;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								entries: A2(
+									$author$project$Main$sweep,
+									now,
+									A2($author$project$Main$migrate, now, model.entries)),
+								zone: zone
+							}),
+						$elm$core$Platform$Cmd$none);
+				case 'Tick':
+					var now = msg.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								entries: A2($author$project$Main$sweep, now, model.entries)
 							}),
 						$elm$core$Platform$Cmd$none);
 				case 'SetNewType':
@@ -6552,6 +7086,8 @@ var $author$project$Main$update = F2(
 						_Utils_update(
 							model,
 							{
+								confirmingDelete: $elm$core$Maybe$Nothing,
+								pressing: $elm$core$Maybe$Nothing,
 								visibility: $author$project$Main$visibilityFromUrl(url)
 							}),
 						$elm$core$Platform$Cmd$none);
@@ -6582,10 +7118,6 @@ var $elm$html$Html$Attributes$stringProperty = F2(
 			$elm$json$Json$Encode$string(string));
 	});
 var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
-var $elm$core$Tuple$second = function (_v0) {
-	var y = _v0.b;
-	return y;
-};
 var $elm$html$Html$Attributes$classList = function (classes) {
 	return $elm$html$Html$Attributes$class(
 		A2(
@@ -6640,21 +7172,258 @@ var $elm$core$List$isEmpty = function (xs) {
 var $elm$virtual_dom$VirtualDom$lazy2 = _VirtualDom_lazy2;
 var $elm$html$Html$Lazy$lazy2 = $elm$virtual_dom$VirtualDom$lazy2;
 var $elm$html$Html$section = _VirtualDom_node('section');
-var $author$project$Main$DeleteComplete = {$: 'DeleteComplete'};
-var $elm$html$Html$button = _VirtualDom_node('button');
-var $author$project$Main$isVisible = F2(
-	function (visibility, todo) {
-		switch (visibility.$) {
-			case 'Completed':
-				return todo.completed;
-			case 'Active':
-				return !todo.completed;
-			default:
-				return true;
+var $elm$html$Html$a = _VirtualDom_node('a');
+var $author$project$Main$doneMs = function (e) {
+	var _v0 = _Utils_Tuple2(e.completedAt, e.archivedAt);
+	if (_v0.a.$ === 'Just') {
+		var t = _v0.a.a;
+		return $elm$time$Time$posixToMillis(t);
+	} else {
+		if (_v0.b.$ === 'Just') {
+			var _v1 = _v0.a;
+			var t = _v0.b.a;
+			return $elm$time$Time$posixToMillis(t);
+		} else {
+			return 0;
+		}
+	}
+};
+var $author$project$Main$monthNames = function (m) {
+	switch (m.$) {
+		case 'Jan':
+			return _Utils_Tuple2('Jan', 'January');
+		case 'Feb':
+			return _Utils_Tuple2('Feb', 'February');
+		case 'Mar':
+			return _Utils_Tuple2('Mar', 'March');
+		case 'Apr':
+			return _Utils_Tuple2('Apr', 'April');
+		case 'May':
+			return _Utils_Tuple2('May', 'May');
+		case 'Jun':
+			return _Utils_Tuple2('Jun', 'June');
+		case 'Jul':
+			return _Utils_Tuple2('Jul', 'July');
+		case 'Aug':
+			return _Utils_Tuple2('Aug', 'August');
+		case 'Sep':
+			return _Utils_Tuple2('Sep', 'September');
+		case 'Oct':
+			return _Utils_Tuple2('Oct', 'October');
+		case 'Nov':
+			return _Utils_Tuple2('Nov', 'November');
+		default:
+			return _Utils_Tuple2('Dec', 'December');
+	}
+};
+var $elm$time$Time$Apr = {$: 'Apr'};
+var $elm$time$Time$Aug = {$: 'Aug'};
+var $elm$time$Time$Dec = {$: 'Dec'};
+var $elm$time$Time$Feb = {$: 'Feb'};
+var $elm$time$Time$Jan = {$: 'Jan'};
+var $elm$time$Time$Jul = {$: 'Jul'};
+var $elm$time$Time$Jun = {$: 'Jun'};
+var $elm$time$Time$Mar = {$: 'Mar'};
+var $elm$time$Time$May = {$: 'May'};
+var $elm$time$Time$Nov = {$: 'Nov'};
+var $elm$time$Time$Oct = {$: 'Oct'};
+var $elm$time$Time$Sep = {$: 'Sep'};
+var $elm$time$Time$flooredDiv = F2(
+	function (numerator, denominator) {
+		return $elm$core$Basics$floor(numerator / denominator);
+	});
+var $elm$time$Time$toAdjustedMinutesHelp = F3(
+	function (defaultOffset, posixMinutes, eras) {
+		toAdjustedMinutesHelp:
+		while (true) {
+			if (!eras.b) {
+				return posixMinutes + defaultOffset;
+			} else {
+				var era = eras.a;
+				var olderEras = eras.b;
+				if (_Utils_cmp(era.start, posixMinutes) < 0) {
+					return posixMinutes + era.offset;
+				} else {
+					var $temp$defaultOffset = defaultOffset,
+						$temp$posixMinutes = posixMinutes,
+						$temp$eras = olderEras;
+					defaultOffset = $temp$defaultOffset;
+					posixMinutes = $temp$posixMinutes;
+					eras = $temp$eras;
+					continue toAdjustedMinutesHelp;
+				}
+			}
 		}
 	});
-var $elm$virtual_dom$VirtualDom$lazy3 = _VirtualDom_lazy3;
-var $elm$html$Html$Lazy$lazy3 = $elm$virtual_dom$VirtualDom$lazy3;
+var $elm$time$Time$toAdjustedMinutes = F2(
+	function (_v0, time) {
+		var defaultOffset = _v0.a;
+		var eras = _v0.b;
+		return A3(
+			$elm$time$Time$toAdjustedMinutesHelp,
+			defaultOffset,
+			A2(
+				$elm$time$Time$flooredDiv,
+				$elm$time$Time$posixToMillis(time),
+				60000),
+			eras);
+	});
+var $elm$core$Basics$ge = _Utils_ge;
+var $elm$time$Time$toCivil = function (minutes) {
+	var rawDay = A2($elm$time$Time$flooredDiv, minutes, 60 * 24) + 719468;
+	var era = (((rawDay >= 0) ? rawDay : (rawDay - 146096)) / 146097) | 0;
+	var dayOfEra = rawDay - (era * 146097);
+	var yearOfEra = ((((dayOfEra - ((dayOfEra / 1460) | 0)) + ((dayOfEra / 36524) | 0)) - ((dayOfEra / 146096) | 0)) / 365) | 0;
+	var dayOfYear = dayOfEra - (((365 * yearOfEra) + ((yearOfEra / 4) | 0)) - ((yearOfEra / 100) | 0));
+	var mp = (((5 * dayOfYear) + 2) / 153) | 0;
+	var month = mp + ((mp < 10) ? 3 : (-9));
+	var year = yearOfEra + (era * 400);
+	return {
+		day: (dayOfYear - ((((153 * mp) + 2) / 5) | 0)) + 1,
+		month: month,
+		year: year + ((month <= 2) ? 1 : 0)
+	};
+};
+var $elm$time$Time$toMonth = F2(
+	function (zone, time) {
+		var _v0 = $elm$time$Time$toCivil(
+			A2($elm$time$Time$toAdjustedMinutes, zone, time)).month;
+		switch (_v0) {
+			case 1:
+				return $elm$time$Time$Jan;
+			case 2:
+				return $elm$time$Time$Feb;
+			case 3:
+				return $elm$time$Time$Mar;
+			case 4:
+				return $elm$time$Time$Apr;
+			case 5:
+				return $elm$time$Time$May;
+			case 6:
+				return $elm$time$Time$Jun;
+			case 7:
+				return $elm$time$Time$Jul;
+			case 8:
+				return $elm$time$Time$Aug;
+			case 9:
+				return $elm$time$Time$Sep;
+			case 10:
+				return $elm$time$Time$Oct;
+			case 11:
+				return $elm$time$Time$Nov;
+			default:
+				return $elm$time$Time$Dec;
+		}
+	});
+var $elm$time$Time$toYear = F2(
+	function (zone, time) {
+		return $elm$time$Time$toCivil(
+			A2($elm$time$Time$toAdjustedMinutes, zone, time)).year;
+	});
+var $author$project$Main$monthLabel = F2(
+	function (zone, e) {
+		var t = $elm$time$Time$millisToPosix(
+			$author$project$Main$doneMs(e));
+		return $author$project$Main$monthNames(
+			A2($elm$time$Time$toMonth, zone, t)).b + (' ' + $elm$core$String$fromInt(
+			A2($elm$time$Time$toYear, zone, t)));
+	});
+var $elm$core$List$partition = F2(
+	function (pred, list) {
+		var step = F2(
+			function (x, _v0) {
+				var trues = _v0.a;
+				var falses = _v0.b;
+				return pred(x) ? _Utils_Tuple2(
+					A2($elm$core$List$cons, x, trues),
+					falses) : _Utils_Tuple2(
+					trues,
+					A2($elm$core$List$cons, x, falses));
+			});
+		return A3(
+			$elm$core$List$foldr,
+			step,
+			_Utils_Tuple2(_List_Nil, _List_Nil),
+			list);
+	});
+var $author$project$Main$groupSorted = F2(
+	function (zone, sorted) {
+		if (!sorted.b) {
+			return _List_Nil;
+		} else {
+			var e = sorted.a;
+			var label = A2($author$project$Main$monthLabel, zone, e);
+			var _v1 = A2(
+				$elm$core$List$partition,
+				function (x) {
+					return _Utils_eq(
+						A2($author$project$Main$monthLabel, zone, x),
+						label);
+				},
+				sorted);
+			var same = _v1.a;
+			var others = _v1.b;
+			return A2(
+				$elm$core$List$cons,
+				_Utils_Tuple2(label, same),
+				A2($author$project$Main$groupSorted, zone, others));
+		}
+	});
+var $elm$core$List$sortBy = _List_sortBy;
+var $author$project$Main$archiveGroups = F2(
+	function (zone, entries) {
+		return A2(
+			$author$project$Main$groupSorted,
+			zone,
+			A2(
+				$elm$core$List$sortBy,
+				A2($elm$core$Basics$composeL, $elm$core$Basics$negate, $author$project$Main$doneMs),
+				entries));
+	});
+var $elm$virtual_dom$VirtualDom$attribute = F2(
+	function (key, value) {
+		return A2(
+			_VirtualDom_attribute,
+			_VirtualDom_noOnOrFormAction(key),
+			_VirtualDom_noJavaScriptOrHtmlUri(value));
+	});
+var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
+var $elm$html$Html$Attributes$href = function (url) {
+	return A2(
+		$elm$html$Html$Attributes$stringProperty,
+		'href',
+		_VirtualDom_noJavaScriptUri(url));
+};
+var $author$project$Main$isArchived = function (e) {
+	return !_Utils_eq(e.archivedAt, $elm$core$Maybe$Nothing);
+};
+var $elm$html$Html$span = _VirtualDom_node('span');
+var $author$project$Main$typeLabel = function (t) {
+	if (t.$ === 'Personal') {
+		return 'Personal';
+	} else {
+		return 'Work';
+	}
+};
+var $elm$html$Html$h2 = _VirtualDom_node('h2');
+var $elm$virtual_dom$VirtualDom$lazy4 = _VirtualDom_lazy4;
+var $elm$html$Html$Lazy$lazy4 = $elm$virtual_dom$VirtualDom$lazy4;
+var $elm$virtual_dom$VirtualDom$keyedNode = function (tag) {
+	return _VirtualDom_keyedNode(
+		_VirtualDom_noScript(tag));
+};
+var $elm$html$Html$Keyed$node = $elm$virtual_dom$VirtualDom$keyedNode;
+var $elm$html$Html$Keyed$ul = $elm$html$Html$Keyed$node('ul');
+var $author$project$Main$Delete = function (a) {
+	return {$: 'Delete', a: a};
+};
+var $author$project$Main$PressCancel = {$: 'PressCancel'};
+var $author$project$Main$Restore = function (a) {
+	return {$: 'Restore', a: a};
+};
+var $elm$html$Html$button = _VirtualDom_node('button');
+var $elm$html$Html$label = _VirtualDom_node('label');
+var $elm$html$Html$li = _VirtualDom_node('li');
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
@@ -6672,104 +7441,298 @@ var $elm$html$Html$Events$onClick = function (msg) {
 		'click',
 		$elm$json$Json$Decode$succeed(msg));
 };
-var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
-var $author$project$Main$ShowAll = {$: 'ShowAll'};
-var $elm$virtual_dom$VirtualDom$attribute = F2(
-	function (key, value) {
-		return A2(
-			_VirtualDom_attribute,
-			_VirtualDom_noOnOrFormAction(key),
-			_VirtualDom_noJavaScriptOrHtmlUri(value));
-	});
-var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
-var $elm$html$Html$span = _VirtualDom_node('span');
-var $elm$html$Html$strong = _VirtualDom_node('strong');
-var $elm$html$Html$Attributes$title = $elm$html$Html$Attributes$stringProperty('title');
-var $author$project$Main$viewCount = F3(
-	function (left, anyInScope, hidden_) {
-		return A2(
-			$elm$html$Html$span,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('todo-count'),
-					A2($elm$html$Html$Attributes$attribute, 'aria-live', 'polite')
-				]),
-			_Utils_ap(
-				((!left) && anyInScope) ? _List_fromArray(
-					[
-						$elm$html$Html$text('All done')
-					]) : _List_fromArray(
-					[
-						A2(
-						$elm$html$Html$strong,
-						_List_Nil,
-						_List_fromArray(
-							[
-								$elm$html$Html$text(
-								$elm$core$String$fromInt(left))
-							])),
-						$elm$html$Html$text(' left')
-					]),
-				(hidden_ > 0) ? _List_fromArray(
-					[
-						$elm$html$Html$text(', '),
-						A2(
-						$elm$html$Html$button,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$type_('button'),
-								$elm$html$Html$Attributes$class('hidden-hint'),
-								$elm$html$Html$Attributes$title('Show all todos'),
-								A2(
-								$elm$html$Html$Attributes$attribute,
-								'aria-label',
-								$elm$core$String$fromInt(hidden_) + ' hidden. Show all todos'),
-								$elm$html$Html$Events$onClick($author$project$Main$ShowAll)
-							]),
-						_List_fromArray(
-							[
-								$elm$html$Html$text(
-								$elm$core$String$fromInt(hidden_) + ' hidden')
-							]))
-					]) : _List_Nil));
-	});
-var $elm$html$Html$li = _VirtualDom_node('li');
-var $elm$html$Html$a = _VirtualDom_node('a');
-var $elm$html$Html$Attributes$href = function (url) {
+var $author$project$Main$touchOnly = function (dec) {
 	return A2(
-		$elm$html$Html$Attributes$stringProperty,
-		'href',
-		_VirtualDom_noJavaScriptUri(url));
+		$elm$json$Json$Decode$andThen,
+		function (t) {
+			return (t === 'touch') ? dec : $elm$json$Json$Decode$fail('not touch');
+		},
+		A2($elm$json$Json$Decode$field, 'pointerType', $elm$json$Json$Decode$string));
 };
-var $author$project$Main$statusLink = F3(
-	function (uri, name_, isSelected) {
+var $author$project$Main$onPressCancel = A2(
+	$elm$html$Html$Events$on,
+	'pointercancel',
+	$author$project$Main$touchOnly(
+		$elm$json$Json$Decode$succeed($author$project$Main$PressCancel)));
+var $author$project$Main$PressMove = F2(
+	function (a, b) {
+		return {$: 'PressMove', a: a, b: b};
+	});
+var $elm$json$Json$Decode$float = _Json_decodeFloat;
+var $author$project$Main$onPressMove = A2(
+	$elm$html$Html$Events$on,
+	'pointermove',
+	$author$project$Main$touchOnly(
+		A3(
+			$elm$json$Json$Decode$map2,
+			$author$project$Main$PressMove,
+			A2($elm$json$Json$Decode$field, 'clientX', $elm$json$Json$Decode$float),
+			A2($elm$json$Json$Decode$field, 'clientY', $elm$json$Json$Decode$float))));
+var $author$project$Main$PressStart = F3(
+	function (a, b, c) {
+		return {$: 'PressStart', a: a, b: b, c: c};
+	});
+var $author$project$Main$onPressStart = function (id) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'pointerdown',
+		$author$project$Main$touchOnly(
+			A3(
+				$elm$json$Json$Decode$map2,
+				$author$project$Main$PressStart(id),
+				A2($elm$json$Json$Decode$field, 'clientX', $elm$json$Json$Decode$float),
+				A2($elm$json$Json$Decode$field, 'clientY', $elm$json$Json$Decode$float))));
+};
+var $elm$virtual_dom$VirtualDom$MayPreventDefault = function (a) {
+	return {$: 'MayPreventDefault', a: a};
+};
+var $elm$html$Html$Events$preventDefaultOn = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayPreventDefault(decoder));
+	});
+var $author$project$Main$onTouchContextMenu = A2(
+	$elm$html$Html$Events$preventDefaultOn,
+	'contextmenu',
+	$author$project$Main$touchOnly(
+		$elm$json$Json$Decode$succeed(
+			_Utils_Tuple2($author$project$Main$NoOp, true))));
+var $elm$time$Time$toDay = F2(
+	function (zone, time) {
+		return $elm$time$Time$toCivil(
+			A2($elm$time$Time$toAdjustedMinutes, zone, time)).day;
+	});
+var $author$project$Main$shortDate = F2(
+	function (zone, e) {
+		var t = $elm$time$Time$millisToPosix(
+			$author$project$Main$doneMs(e));
+		return $elm$core$String$fromInt(
+			A2($elm$time$Time$toDay, zone, t)) + (' ' + $author$project$Main$monthNames(
+			A2($elm$time$Time$toMonth, zone, t)).a);
+	});
+var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
+var $author$project$Main$Circle = {$: 'Circle'};
+var $author$project$Main$Square = {$: 'Square'};
+var $author$project$Main$typeShape = function (t) {
+	if (t.$ === 'Personal') {
+		return $author$project$Main$Circle;
+	} else {
+		return $author$project$Main$Square;
+	}
+};
+var $author$project$Main$viewMark = function (t) {
+	return A2(
+		$elm$html$Html$span,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class(
+				'mark mark-' + ($author$project$Main$typeKey(t) + function () {
+					var _v0 = $author$project$Main$typeShape(t);
+					if (_v0.$ === 'Circle') {
+						return ' shape-circle';
+					} else {
+						return ' shape-square';
+					}
+				}())),
+				A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
+			]),
+		_List_Nil);
+};
+var $author$project$Main$viewArchiveEntry = F4(
+	function (zone, showMark, confirming, e) {
 		return A2(
 			$elm$html$Html$li,
-			_List_Nil,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$classList(
+					_List_fromArray(
+						[
+							_Utils_Tuple2('archive-row', true),
+							_Utils_Tuple2('confirming', confirming)
+						])),
+					$author$project$Main$onTouchContextMenu
+				]),
 			_List_fromArray(
 				[
 					A2(
-					$elm$html$Html$a,
+					$elm$html$Html$div,
 					_List_fromArray(
 						[
-							$elm$html$Html$Attributes$href(uri),
-							$elm$html$Html$Attributes$classList(
-							_List_fromArray(
-								[
-									_Utils_Tuple2('selected', isSelected)
-								])),
+							$elm$html$Html$Attributes$class('view'),
+							$author$project$Main$onPressStart(e.id),
+							$author$project$Main$onPressMove,
 							A2(
-							$elm$html$Html$Attributes$attribute,
-							'aria-current',
-							isSelected ? 'page' : 'false')
+							$elm$html$Html$Events$on,
+							'pointerup',
+							$author$project$Main$touchOnly(
+								$elm$json$Json$Decode$succeed($author$project$Main$PressCancel))),
+							$author$project$Main$onPressCancel
 						]),
 					_List_fromArray(
 						[
-							$elm$html$Html$text(name_)
-						]))
+							A2(
+							$elm$html$Html$label,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$elm$html$Html$text(e.description)
+								])),
+							showMark ? A2(
+							$elm$html$Html$span,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('archive-mark')
+								]),
+							_List_fromArray(
+								[
+									$author$project$Main$viewMark(e.entryType)
+								])) : $elm$html$Html$text(''),
+							A2(
+							$elm$html$Html$div,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('archive-actions')
+								]),
+							_List_fromArray(
+								[
+									A2(
+									$elm$html$Html$button,
+									_List_fromArray(
+										[
+											$elm$html$Html$Attributes$class('archive-restore'),
+											$elm$html$Html$Attributes$type_('button'),
+											$elm$html$Html$Events$onClick(
+											$author$project$Main$Restore(e.id))
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Restore')
+										])),
+									A2(
+									$elm$html$Html$button,
+									_List_fromArray(
+										[
+											$elm$html$Html$Attributes$class('archive-delete'),
+											$elm$html$Html$Attributes$type_('button'),
+											$elm$html$Html$Events$onClick(
+											$author$project$Main$Delete(e.id))
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Delete')
+										]))
+								])),
+							A2(
+							$elm$html$Html$span,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('archive-date')
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text(
+									A2($author$project$Main$shortDate, zone, e))
+								]))
+						])),
+					confirming ? A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('confirm-delete'),
+							A2($elm$html$Html$Attributes$attribute, 'role', 'group'),
+							A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Archived todo actions')
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$button,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('confirm-alt'),
+									$elm$html$Html$Attributes$type_('button'),
+									$elm$html$Html$Events$onClick(
+									$author$project$Main$Restore(e.id))
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Restore')
+								])),
+							A2(
+							$elm$html$Html$button,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('confirm-yes'),
+									$elm$html$Html$Attributes$type_('button'),
+									$elm$html$Html$Events$onClick(
+									$author$project$Main$Delete(e.id))
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Delete')
+								])),
+							A2(
+							$elm$html$Html$button,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('confirm-no'),
+									$elm$html$Html$Attributes$type_('button'),
+									$elm$html$Html$Events$onClick($author$project$Main$DismissConfirm)
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Cancel')
+								]))
+						])) : $elm$html$Html$text('')
 				]));
 	});
-var $elm$html$Html$ul = _VirtualDom_node('ul');
+var $author$project$Main$viewArchiveGroup = F4(
+	function (zone, showMark, confirmingId, _v0) {
+		var label = _v0.a;
+		var entries = _v0.b;
+		return A2(
+			$elm$html$Html$section,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('todoapp archive-card')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$h2,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('archive-month')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(label)
+						])),
+					A2(
+					$elm$html$Html$Keyed$ul,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('todo-list')
+						]),
+					A2(
+						$elm$core$List$map,
+						function (e) {
+							return _Utils_Tuple2(
+								$elm$core$String$fromInt(e.id),
+								A5(
+									$elm$html$Html$Lazy$lazy4,
+									$author$project$Main$viewArchiveEntry,
+									zone,
+									showMark,
+									_Utils_eq(
+										confirmingId,
+										$elm$core$Maybe$Just(e.id)),
+									e));
+						},
+						entries))
+				]));
+	});
 var $author$project$Main$CloseTypeMenu = {$: 'CloseTypeMenu'};
 var $author$project$Main$CloseTypeMenuRefocus = {$: 'CloseTypeMenuRefocus'};
 var $author$project$Main$FocusMenuItem = function (a) {
@@ -6784,13 +7747,6 @@ var $elm$json$Json$Decode$at = F2(
 	function (fields, decoder) {
 		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
 	});
-var $author$project$Main$typeLabel = function (t) {
-	if (t.$ === 'Personal') {
-		return 'Personal';
-	} else {
-		return 'Work';
-	}
-};
 var $author$project$Main$filterLabel = function (f) {
 	if (f.$ === 'AnyType') {
 		return 'All types';
@@ -6810,16 +7766,6 @@ var $elm$json$Json$Decode$nullable = function (decoder) {
 				A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, decoder)
 			]));
 };
-var $elm$virtual_dom$VirtualDom$MayPreventDefault = function (a) {
-	return {$: 'MayPreventDefault', a: a};
-};
-var $elm$html$Html$Events$preventDefaultOn = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$MayPreventDefault(decoder));
-	});
 var $author$project$Main$onKeyPrevent = function (table) {
 	var pick = function (key) {
 		var _v0 = $elm$core$List$head(
@@ -6852,33 +7798,6 @@ var $elm$html$Html$Attributes$tabindex = function (n) {
 		_VirtualDom_attribute,
 		'tabIndex',
 		$elm$core$String$fromInt(n));
-};
-var $author$project$Main$Circle = {$: 'Circle'};
-var $author$project$Main$Square = {$: 'Square'};
-var $author$project$Main$typeShape = function (t) {
-	if (t.$ === 'Personal') {
-		return $author$project$Main$Circle;
-	} else {
-		return $author$project$Main$Square;
-	}
-};
-var $author$project$Main$viewMark = function (t) {
-	return A2(
-		$elm$html$Html$span,
-		_List_fromArray(
-			[
-				$elm$html$Html$Attributes$class(
-				'mark mark-' + ($author$project$Main$typeKey(t) + function () {
-					var _v0 = $author$project$Main$typeShape(t);
-					if (_v0.$ === 'Circle') {
-						return ' shape-circle';
-					} else {
-						return ' shape-square';
-					}
-				}())),
-				A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
-			]),
-		_List_Nil);
 };
 var $author$project$Main$viewTypeMenu = F2(
 	function (current, open) {
@@ -7054,6 +7973,191 @@ var $author$project$Main$viewTypeMenu = F2(
 					A2($elm$core$List$indexedMap, item, $author$project$Main$menuFilters)) : $elm$html$Html$text('')
 				]));
 	});
+var $author$project$Main$viewArchive = function (model) {
+	var showMark = _Utils_eq(model.typeFilter, $author$project$Main$AnyType);
+	var archived = A2(
+		$elm$core$List$filter,
+		function (e) {
+			return $author$project$Main$isArchived(e) && A2($author$project$Main$inScope, model.typeFilter, e);
+		},
+		model.entries);
+	return A2(
+		$elm$core$List$cons,
+		A2(
+			$elm$html$Html$div,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('archive-bar')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$a,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('archive-back'),
+							$elm$html$Html$Attributes$href('#/')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text('\u2190 Back')
+						])),
+					A2(
+					$elm$html$Html$span,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('archive-count'),
+							A2($elm$html$Html$Attributes$attribute, 'aria-live', 'polite')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							$elm$core$String$fromInt(
+								$elm$core$List$length(archived)) + ' archived')
+						])),
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('archive-bar-menu')
+						]),
+					_List_fromArray(
+						[
+							A2($author$project$Main$viewTypeMenu, model.typeFilter, model.typeMenuOpen)
+						]))
+				])),
+		$elm$core$List$isEmpty(archived) ? _List_fromArray(
+			[
+				A2(
+				$elm$html$Html$section,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('todoapp archive-card')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$p,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('archive-empty')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								function () {
+									var _v0 = model.typeFilter;
+									if (_v0.$ === 'OnlyType') {
+										var t = _v0.a;
+										return A2($elm$core$List$any, $author$project$Main$isArchived, model.entries) ? ('No archived ' + ($author$project$Main$typeLabel(t) + ' todos.')) : 'Nothing archived yet.';
+									} else {
+										return 'Nothing archived yet.';
+									}
+								}())
+							]))
+					]))
+			]) : A2(
+			$elm$core$List$map,
+			A3($author$project$Main$viewArchiveGroup, model.zone, showMark, model.confirmingDelete),
+			A2($author$project$Main$archiveGroups, model.zone, archived)));
+};
+var $author$project$Main$ArchiveCompleted = {$: 'ArchiveCompleted'};
+var $elm$core$Basics$not = _Basics_not;
+var $author$project$Main$isVisible = F2(
+	function (visibility, todo) {
+		switch (visibility.$) {
+			case 'Completed':
+				return todo.completed;
+			case 'Active':
+				return !todo.completed;
+			case 'All':
+				return true;
+			default:
+				return false;
+		}
+	});
+var $elm$virtual_dom$VirtualDom$lazy3 = _VirtualDom_lazy3;
+var $elm$html$Html$Lazy$lazy3 = $elm$virtual_dom$VirtualDom$lazy3;
+var $author$project$Main$ShowAll = {$: 'ShowAll'};
+var $elm$html$Html$strong = _VirtualDom_node('strong');
+var $elm$html$Html$Attributes$title = $elm$html$Html$Attributes$stringProperty('title');
+var $author$project$Main$viewCount = F3(
+	function (left, anyInScope, hidden_) {
+		return A2(
+			$elm$html$Html$span,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('todo-count'),
+					A2($elm$html$Html$Attributes$attribute, 'aria-live', 'polite')
+				]),
+			_Utils_ap(
+				((!left) && anyInScope) ? _List_fromArray(
+					[
+						$elm$html$Html$text('All done')
+					]) : _List_fromArray(
+					[
+						A2(
+						$elm$html$Html$strong,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								$elm$core$String$fromInt(left))
+							])),
+						$elm$html$Html$text(' left')
+					]),
+				(hidden_ > 0) ? _List_fromArray(
+					[
+						$elm$html$Html$text(', '),
+						A2(
+						$elm$html$Html$button,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$type_('button'),
+								$elm$html$Html$Attributes$class('hidden-hint'),
+								$elm$html$Html$Attributes$title('Show all todos'),
+								A2(
+								$elm$html$Html$Attributes$attribute,
+								'aria-label',
+								$elm$core$String$fromInt(hidden_) + ' hidden. Show all todos'),
+								$elm$html$Html$Events$onClick($author$project$Main$ShowAll)
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								$elm$core$String$fromInt(hidden_) + ' hidden')
+							]))
+					]) : _List_Nil));
+	});
+var $author$project$Main$statusLink = F3(
+	function (uri, name_, isSelected) {
+		return A2(
+			$elm$html$Html$li,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$a,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$href(uri),
+							$elm$html$Html$Attributes$classList(
+							_List_fromArray(
+								[
+									_Utils_Tuple2('selected', isSelected)
+								])),
+							A2(
+							$elm$html$Html$Attributes$attribute,
+							'aria-current',
+							isSelected ? 'page' : 'false')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(name_)
+						]))
+				]));
+	});
+var $elm$html$Html$ul = _VirtualDom_node('ul');
 var $author$project$Main$viewFilters = function (model) {
 	return A2(
 		$elm$html$Html$ul,
@@ -7096,9 +8200,12 @@ var $author$project$Main$viewFilters = function (model) {
 var $author$project$Main$viewControls = function (model) {
 	var scoped = A2(
 		$elm$core$List$filter,
-		$author$project$Main$inScope(model.typeFilter),
+		function (e) {
+			return $author$project$Main$isLive(e) && A2($author$project$Main$inScope, model.typeFilter, e);
+		},
 		model.entries);
-	var hidden_ = $elm$core$List$length(model.entries) - $elm$core$List$length(
+	var hidden_ = $elm$core$List$length(
+		A2($elm$core$List$filter, $author$project$Main$isLive, model.entries)) - $elm$core$List$length(
 		A2(
 			$elm$core$List$filter,
 			$author$project$Main$isVisible(model.visibility),
@@ -7111,6 +8218,13 @@ var $author$project$Main$viewControls = function (model) {
 			},
 			scoped));
 	var left = $elm$core$List$length(scoped) - completed;
+	var archivedCount = $elm$core$List$length(
+		A2(
+			$elm$core$List$filter,
+			function (e) {
+				return $author$project$Main$isArchived(e) && A2($author$project$Main$inScope, model.typeFilter, e);
+			},
+			model.entries));
 	return A2(
 		$elm$html$Html$footer,
 		_List_fromArray(
@@ -7132,11 +8246,23 @@ var $author$project$Main$viewControls = function (model) {
 					[
 						$elm$html$Html$Attributes$type_('button'),
 						$elm$html$Html$Attributes$class('clear-completed'),
-						$elm$html$Html$Events$onClick($author$project$Main$DeleteComplete)
+						$elm$html$Html$Events$onClick($author$project$Main$ArchiveCompleted)
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Clear completed')
+						$elm$html$Html$text('Archive completed')
+					])) : $elm$html$Html$text(''),
+				(archivedCount > 0) ? A2(
+				$elm$html$Html$a,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('archive-link'),
+						$elm$html$Html$Attributes$href('#/archive')
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text(
+						'Archive \u00B7 ' + $elm$core$String$fromInt(archivedCount))
 					])) : $elm$html$Html$text('')
 			]));
 };
@@ -7323,23 +8449,18 @@ var $elm$core$List$all = F2(
 var $elm$html$Html$Attributes$checked = $elm$html$Html$Attributes$boolProperty('checked');
 var $elm$html$Html$Attributes$for = $elm$html$Html$Attributes$stringProperty('htmlFor');
 var $elm$html$Html$input = _VirtualDom_node('input');
-var $elm$html$Html$label = _VirtualDom_node('label');
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
-var $elm$virtual_dom$VirtualDom$keyedNode = function (tag) {
-	return _VirtualDom_keyedNode(
-		_VirtualDom_noScript(tag));
-};
-var $elm$html$Html$Keyed$node = $elm$virtual_dom$VirtualDom$keyedNode;
-var $elm$html$Html$Keyed$ul = $elm$html$Html$Keyed$node('ul');
 var $author$project$Main$statusWord = function (v) {
 	switch (v.$) {
 		case 'All':
 			return '';
 		case 'Active':
 			return 'active';
-		default:
+		case 'Completed':
 			return 'completed';
+		default:
+			return '';
 	}
 };
 var $author$project$Main$viewEmptyFiltered = F3(
@@ -7395,15 +8516,15 @@ var $author$project$Main$viewEmptyFiltered = F3(
 						]))
 				]));
 	});
+var $author$project$Main$ArchiveItem = function (a) {
+	return {$: 'ArchiveItem', a: a};
+};
 var $author$project$Main$Check = F2(
 	function (a, b) {
 		return {$: 'Check', a: a, b: b};
 	});
 var $author$project$Main$CycleEntryType = function (a) {
 	return {$: 'CycleEntryType', a: a};
-};
-var $author$project$Main$Delete = function (a) {
-	return {$: 'Delete', a: a};
 };
 var $author$project$Main$UpdateEntry = F2(
 	function (a, b) {
@@ -7447,20 +8568,6 @@ var $author$project$Main$onEditKeydown = function (id) {
 				A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string),
 				A2($elm$json$Json$Decode$field, 'shiftKey', $elm$json$Json$Decode$bool))));
 };
-var $author$project$Main$PressCancel = {$: 'PressCancel'};
-var $author$project$Main$touchOnly = function (dec) {
-	return A2(
-		$elm$json$Json$Decode$andThen,
-		function (t) {
-			return (t === 'touch') ? dec : $elm$json$Json$Decode$fail('not touch');
-		},
-		A2($elm$json$Json$Decode$field, 'pointerType', $elm$json$Json$Decode$string));
-};
-var $author$project$Main$onPressCancel = A2(
-	$elm$html$Html$Events$on,
-	'pointercancel',
-	$author$project$Main$touchOnly(
-		$elm$json$Json$Decode$succeed($author$project$Main$PressCancel)));
 var $author$project$Main$PressEnd = function (a) {
 	return {$: 'PressEnd', a: a};
 };
@@ -7472,41 +8579,6 @@ var $author$project$Main$onPressEnd = function (id) {
 			$elm$json$Json$Decode$succeed(
 				$author$project$Main$PressEnd(id))));
 };
-var $author$project$Main$PressMove = F2(
-	function (a, b) {
-		return {$: 'PressMove', a: a, b: b};
-	});
-var $elm$json$Json$Decode$float = _Json_decodeFloat;
-var $author$project$Main$onPressMove = A2(
-	$elm$html$Html$Events$on,
-	'pointermove',
-	$author$project$Main$touchOnly(
-		A3(
-			$elm$json$Json$Decode$map2,
-			$author$project$Main$PressMove,
-			A2($elm$json$Json$Decode$field, 'clientX', $elm$json$Json$Decode$float),
-			A2($elm$json$Json$Decode$field, 'clientY', $elm$json$Json$Decode$float))));
-var $author$project$Main$PressStart = F3(
-	function (a, b, c) {
-		return {$: 'PressStart', a: a, b: b, c: c};
-	});
-var $author$project$Main$onPressStart = function (id) {
-	return A2(
-		$elm$html$Html$Events$on,
-		'pointerdown',
-		$author$project$Main$touchOnly(
-			A3(
-				$elm$json$Json$Decode$map2,
-				$author$project$Main$PressStart(id),
-				A2($elm$json$Json$Decode$field, 'clientX', $elm$json$Json$Decode$float),
-				A2($elm$json$Json$Decode$field, 'clientY', $elm$json$Json$Decode$float))));
-};
-var $author$project$Main$onTouchContextMenu = A2(
-	$elm$html$Html$Events$preventDefaultOn,
-	'contextmenu',
-	$author$project$Main$touchOnly(
-		$elm$json$Json$Decode$succeed(
-			_Utils_Tuple2($author$project$Main$NoOp, true))));
 var $author$project$Main$viewEntry = F3(
 	function (showMark, confirming, todo) {
 		return A2(
@@ -7587,6 +8659,18 @@ var $author$project$Main$viewEntry = F3(
 										])),
 									$author$project$Main$viewMark(todo.entryType)
 								])) : $elm$html$Html$text(''),
+							todo.completed ? A2(
+							$elm$html$Html$button,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('archive-item'),
+									$elm$html$Html$Attributes$type_('button'),
+									A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Archive'),
+									$elm$html$Html$Attributes$title('Archive'),
+									$elm$html$Html$Events$onClick(
+									$author$project$Main$ArchiveItem(todo.id))
+								]),
+							_List_Nil) : $elm$html$Html$text(''),
 							A2(
 							$elm$html$Html$button,
 							_List_fromArray(
@@ -7627,6 +8711,19 @@ var $author$project$Main$viewEntry = F3(
 						]),
 					_List_fromArray(
 						[
+							todo.completed ? A2(
+							$elm$html$Html$button,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('confirm-alt'),
+									$elm$html$Html$Attributes$type_('button'),
+									$elm$html$Html$Events$onClick(
+									$author$project$Main$ArchiveItem(todo.id))
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Archive')
+								])) : $elm$html$Html$text(''),
 							A2(
 							$elm$html$Html$button,
 							_List_fromArray(
@@ -7664,12 +8761,15 @@ var $author$project$Main$viewKeyedEntry = F3(
 var $author$project$Main$viewMain = function (model) {
 	var scoped = A2(
 		$elm$core$List$filter,
-		$author$project$Main$inScope(model.typeFilter),
+		function (e) {
+			return $author$project$Main$isLive(e) && A2($author$project$Main$inScope, model.typeFilter, e);
+		},
 		model.entries);
 	var visible = A2(
 		$elm$core$List$filter,
 		$author$project$Main$isVisible(model.visibility),
 		scoped);
+	var live = A2($elm$core$List$filter, $author$project$Main$isLive, model.entries);
 	var cssVisibility = function (empty) {
 		return empty ? 'hidden' : 'visible';
 	};
@@ -7720,11 +8820,11 @@ var $author$project$Main$viewMain = function (model) {
 					[
 						$elm$html$Html$text('Mark all as complete')
 					])),
-				($elm$core$List$isEmpty(visible) && (!$elm$core$List$isEmpty(model.entries))) ? A3(
+				($elm$core$List$isEmpty(visible) && (!$elm$core$List$isEmpty(live))) ? A3(
 				$author$project$Main$viewEmptyFiltered,
 				model.visibility,
 				model.typeFilter,
-				$elm$core$List$length(model.entries)) : A2(
+				$elm$core$List$length(live)) : A2(
 				$elm$html$Html$Keyed$ul,
 				_List_fromArray(
 					[
@@ -7758,12 +8858,18 @@ var $author$project$Main$view = function (model) {
 								_Utils_Tuple2('todomvc-wrapper', true),
 								_Utils_Tuple2(
 								'is-empty',
-								$elm$core$List$isEmpty(model.entries))
+								$elm$core$List$isEmpty(model.entries) && (!_Utils_eq(model.visibility, $author$project$Main$ArchiveView)))
 							]))
 					]),
 				_List_fromArray(
 					[
-						A2(
+						_Utils_eq(model.visibility, $author$project$Main$ArchiveView) ? A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('archive-page')
+							]),
+						$author$project$Main$viewArchive(model)) : A2(
 						$elm$html$Html$section,
 						_List_fromArray(
 							[
@@ -7775,7 +8881,7 @@ var $author$project$Main$view = function (model) {
 								$author$project$Main$viewMain(model),
 								$elm$core$List$isEmpty(model.entries) ? $elm$html$Html$text('') : $author$project$Main$viewControls(model)
 							])),
-						$author$project$Main$infoFooter
+						_Utils_eq(model.visibility, $author$project$Main$ArchiveView) ? $elm$html$Html$text('') : $author$project$Main$infoFooter
 					]))
 			]),
 		title: 'Elm • TodoMVC'

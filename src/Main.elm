@@ -17,11 +17,12 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
-import Html.Lazy exposing (lazy, lazy2, lazy3)
+import Html.Lazy exposing (lazy2, lazy3, lazy4)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Process
 import Task
+import Time
 import Url exposing (Url)
 
 
@@ -140,6 +141,7 @@ type Visibility
     = All
     | Active
     | Completed
+    | ArchiveView
 
 
 type TypeFilter
@@ -160,6 +162,7 @@ type alias Model =
     , pressSeq : Int
     , confirmingDelete : Maybe Int
     , key : Nav.Key
+    , zone : Time.Zone
     }
 
 
@@ -178,6 +181,8 @@ type alias Entry =
     , editing : Bool
     , id : Int
     , entryType : EntryType
+    , completedAt : Maybe Time.Posix
+    , archivedAt : Maybe Time.Posix
     }
 
 
@@ -188,6 +193,8 @@ newEntry desc id t =
     , editing = False
     , id = id
     , entryType = t
+    , completedAt = Nothing
+    , archivedAt = Nothing
     }
 
 
@@ -199,6 +206,9 @@ visibilityFromUrl url =
 
         Just "/completed" ->
             Completed
+
+        Just "/archive" ->
+            ArchiveView
 
         _ ->
             All
@@ -223,8 +233,9 @@ init flags url key =
       , pressSeq = 0
       , confirmingDelete = Nothing
       , key = key
+      , zone = Time.utc
       }
-    , Cmd.none
+    , Task.perform identity (Task.map2 GotTime Time.here Time.now)
     )
 
 
@@ -275,12 +286,29 @@ typeOrPersonal name =
 
 entryDecoder : Decoder Entry
 entryDecoder =
-    Decode.map5 Entry
-        (Decode.field "description" Decode.string)
-        (Decode.field "completed" Decode.bool)
-        (Decode.succeed False)
-        (Decode.field "id" Decode.int)
-        (typeOrPersonal "type")
+    Decode.succeed Entry
+        |> andMap (Decode.field "description" Decode.string)
+        |> andMap (Decode.field "completed" Decode.bool)
+        |> andMap (Decode.succeed False)
+        |> andMap (Decode.field "id" Decode.int)
+        |> andMap (typeOrPersonal "type")
+        |> andMap (optionalTime "completedAt")
+        |> andMap (optionalTime "archivedAt")
+
+
+andMap : Decoder a -> Decoder (a -> b) -> Decoder b
+andMap =
+    Decode.map2 (|>)
+
+
+{-| Epoch ms; missing or malformed decodes as Nothing (old saved data).
+-}
+optionalTime : String -> Decoder (Maybe Time.Posix)
+optionalTime name =
+    Decode.oneOf
+        [ Decode.field name (Decode.map (Just << Time.millisToPosix) Decode.int)
+        , Decode.succeed Nothing
+        ]
 
 
 lenientEntries : Decoder (List Entry)
@@ -323,7 +351,19 @@ encodeEntry e =
         , ( "completed", Encode.bool e.completed )
         , ( "id", Encode.int e.id )
         , ( "type", Encode.string (typeKey e.entryType) )
+        , ( "completedAt", encodeTime e.completedAt )
+        , ( "archivedAt", encodeTime e.archivedAt )
         ]
+
+
+encodeTime : Maybe Time.Posix -> Encode.Value
+encodeTime t =
+    case t of
+        Just p ->
+            Encode.int (Time.posixToMillis p)
+
+        Nothing ->
+            Encode.null
 
 
 encodeModel : Model -> Encode.Value
@@ -364,9 +404,18 @@ type Msg
     | UpdateEntry Int String
     | Add
     | Delete Int
-    | DeleteComplete
+    | ArchiveCompleted
+    | ArchiveCompletedAt Time.Posix
+    | ArchiveItem Int
+    | ArchiveItemAt Int Time.Posix
+    | Restore Int
+    | Touched Int Time.Posix
     | Check Int Bool
+    | CheckAt Int Bool Time.Posix
     | CheckAll Bool
+    | CheckAllAt Bool Time.Posix
+    | GotTime Time.Zone Time.Posix
+    | Tick Time.Posix
     | SetNewType EntryType
     | CycleNewType
     | CycleEntryType Int
@@ -381,6 +430,78 @@ type Msg
     | UrlChanged Url
 
 
+isLive : Entry -> Bool
+isLive e =
+    e.archivedAt == Nothing
+
+
+isArchived : Entry -> Bool
+isArchived e =
+    e.archivedAt /= Nothing
+
+
+withNow : (Time.Posix -> Msg) -> Cmd Msg
+withNow toMsg =
+    Task.perform toMsg Time.now
+
+
+thirtyDaysMs : Int
+thirtyDaysMs =
+    30 * 24 * 60 * 60 * 1000
+
+
+{-| Stamp completedAt on completed entries that lack one (data from before archiving), so nothing
+auto-archives right after an upgrade.
+-}
+migrate : Time.Posix -> List Entry -> List Entry
+migrate now =
+    let
+        nowMs =
+            Time.posixToMillis now
+
+        valid t =
+            if Time.posixToMillis t < 0 || Time.posixToMillis t > nowMs then
+                Nothing
+
+            else
+                Just t
+    in
+    List.map
+        (\e ->
+            let
+                archivedAt =
+                    e.archivedAt |> Maybe.andThen valid
+
+                completedAt =
+                    e.completedAt |> Maybe.andThen valid
+            in
+            if e.completed && completedAt == Nothing then
+                { e | archivedAt = archivedAt, completedAt = Just (Maybe.withDefault now archivedAt) }
+
+            else
+                { e | archivedAt = archivedAt, completedAt = completedAt }
+        )
+
+
+{-| Archive completed entries untouched for more than 30 days.
+-}
+sweep : Time.Posix -> List Entry -> List Entry
+sweep now =
+    List.map
+        (\e ->
+            case ( e.completed, e.archivedAt, e.completedAt ) of
+                ( True, Nothing, Just c ) ->
+                    if Time.posixToMillis now - Time.posixToMillis c > thirtyDaysMs then
+                        { e | archivedAt = Just now }
+
+                    else
+                        e
+
+                _ ->
+                    e
+        )
+
+
 inScope : TypeFilter -> Entry -> Bool
 inScope filter e =
     case filter of
@@ -393,6 +514,11 @@ inScope filter e =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
+    Sub.batch [ Time.every (60 * 60 * 1000) Tick, confirmSubs model ]
+
+
+confirmSubs : Model -> Sub Msg
+confirmSubs model =
     case model.confirmingDelete of
         Nothing ->
             Sub.none
@@ -494,12 +620,19 @@ update msg model =
 
                     committed =
                         mapEntry id commit model.entries
+
+                    edited t =
+                        t.id == id && t.completed && t.description /= "" && Just t.description /= Maybe.map Tuple.second model.editBackup
                 in
                 ( { model
                     | entries = List.filter (\t -> t.id /= id || t.description /= "") committed
                     , editBackup = Nothing
                   }
-                , Cmd.none
+                , if List.any edited committed then
+                    withNow (Touched id)
+
+                  else
+                    Cmd.none
                 )
 
             else
@@ -589,29 +722,86 @@ update msg model =
         DismissConfirm ->
             ( { model | confirmingDelete = Nothing, pressing = Nothing }, Cmd.none )
 
-        DeleteComplete ->
+        ArchiveCompleted ->
+            ( model, withNow ArchiveCompletedAt )
+
+        ArchiveCompletedAt now ->
             ( { model
                 | entries =
-                    List.filter (\t -> not (t.completed && inScope model.typeFilter t)) model.entries
+                    List.map
+                        (\t ->
+                            if t.completed && isLive t && inScope model.typeFilter t then
+                                { t | archivedAt = Just now }
+
+                            else
+                                t
+                        )
+                        model.entries
               }
             , focusId "new-todo"
             )
 
+        ArchiveItem id ->
+            ( { model | confirmingDelete = Nothing, pressing = Nothing }, withNow (ArchiveItemAt id) )
+
+        ArchiveItemAt id now ->
+            ( { model
+                | entries =
+                    mapEntry id
+                        (\t ->
+                            if t.completed && isLive t then
+                                { t | archivedAt = Just now }
+
+                            else
+                                t
+                        )
+                        model.entries
+              }
+            , Cmd.none
+            )
+
+        Restore id ->
+            ( { model
+                | entries =
+                    mapEntry id (\t -> { t | archivedAt = Nothing, completed = False, completedAt = Nothing }) model.entries
+                , confirmingDelete = Nothing
+                , pressing = Nothing
+              }
+            , Cmd.none
+            )
+
+        Touched id now ->
+            ( { model | entries = mapEntry id (\t -> { t | completedAt = Just now }) model.entries }
+            , Cmd.none
+            )
+
         Check id isCompleted ->
-            ( { model | entries = mapEntry id (\t -> { t | completed = isCompleted }) model.entries }
+            ( model, withNow (CheckAt id isCompleted) )
+
+        CheckAt id isCompleted now ->
+            ( { model | entries = mapEntry id (setCompleted isCompleted now) model.entries }
             , Cmd.none
             )
 
         CheckAll isCompleted ->
+            ( model, withNow (CheckAllAt isCompleted) )
+
+        CheckAllAt isCompleted now ->
             let
                 setAll t =
-                    if inScope model.typeFilter t then
-                        { t | completed = isCompleted }
+                    if isLive t && inScope model.typeFilter t then
+                        setCompleted isCompleted now t
 
                     else
                         t
             in
             ( { model | entries = List.map setAll model.entries }, Cmd.none )
+
+        GotTime zone now ->
+            ( { model | zone = zone, entries = model.entries |> migrate now |> sweep now }, Cmd.none )
+
+        Tick now ->
+            ( { model | entries = sweep now model.entries }, Cmd.none )
 
         SetNewType t ->
             ( { model | newType = t }
@@ -668,7 +858,21 @@ update msg model =
                     ( model, Nav.load href )
 
         UrlChanged url ->
-            ( { model | visibility = visibilityFromUrl url }, Cmd.none )
+            ( { model | visibility = visibilityFromUrl url, confirmingDelete = Nothing, pressing = Nothing }, Cmd.none )
+
+
+{-| Unchanged when the state already matches, so a completedAt stamp is never refreshed by a no-op.
+-}
+setCompleted : Bool -> Time.Posix -> Entry -> Entry
+setCompleted isCompleted now t =
+    if t.completed == isCompleted then
+        t
+
+    else if isCompleted then
+        { t | completed = True, completedAt = Just now }
+
+    else
+        { t | completed = False, completedAt = Nothing }
 
 
 focusId : String -> Cmd Msg
@@ -711,17 +915,25 @@ view : Model -> Browser.Document Msg
 view model =
     { title = "Elm • TodoMVC"
     , body =
-        [ div [ classList [ ( "todomvc-wrapper", True ), ( "is-empty", List.isEmpty model.entries ) ] ]
-            [ section [ class "todoapp" ]
-                [ lazy2 viewInput model.field model.newType
-                , viewMain model
-                , if List.isEmpty model.entries then
-                    text ""
+        [ div [ classList [ ( "todomvc-wrapper", True ), ( "is-empty", List.isEmpty model.entries && model.visibility /= ArchiveView ) ] ]
+            [ if model.visibility == ArchiveView then
+                div [ class "archive-page" ] (viewArchive model)
 
-                  else
-                    viewControls model
-                ]
-            , infoFooter
+              else
+                section [ class "todoapp" ]
+                    [ lazy2 viewInput model.field model.newType
+                    , viewMain model
+                    , if List.isEmpty model.entries then
+                        text ""
+
+                      else
+                        viewControls model
+                    ]
+            , if model.visibility == ArchiveView then
+                text ""
+
+              else
+                infoFooter
             ]
         ]
     }
@@ -731,7 +943,10 @@ viewMain : Model -> Html Msg
 viewMain model =
     let
         scoped =
-            List.filter (inScope model.typeFilter) model.entries
+            List.filter (\e -> isLive e && inScope model.typeFilter e) model.entries
+
+        live =
+            List.filter isLive model.entries
 
         visible =
             List.filter (isVisible model.visibility) scoped
@@ -764,8 +979,8 @@ viewMain model =
             , style "visibility" (cssVisibility (List.isEmpty scoped))
             ]
             [ text "Mark all as complete" ]
-        , if List.isEmpty visible && not (List.isEmpty model.entries) then
-            viewEmptyFiltered model.visibility model.typeFilter (List.length model.entries)
+        , if List.isEmpty visible && not (List.isEmpty live) then
+            viewEmptyFiltered model.visibility model.typeFilter (List.length live)
 
           else
             Keyed.ul [ class "todo-list" ]
@@ -972,6 +1187,9 @@ statusWord v =
         Completed ->
             "completed"
 
+        ArchiveView ->
+            ""
+
 
 viewEmptyFiltered : Visibility -> TypeFilter -> Int -> Html Msg
 viewEmptyFiltered visibility typeFilter total =
@@ -1020,6 +1238,9 @@ isVisible visibility todo =
         All ->
             True
 
+        ArchiveView ->
+            False
+
 
 viewKeyedEntry : Bool -> Bool -> Entry -> ( String, Html Msg )
 viewKeyedEntry showMark confirming todo =
@@ -1060,6 +1281,18 @@ viewEntry showMark confirming todo =
 
               else
                 text ""
+            , if todo.completed then
+                button
+                    [ class "archive-item"
+                    , type_ "button"
+                    , attribute "aria-label" "Archive"
+                    , title "Archive"
+                    , onClick (ArchiveItem todo.id)
+                    ]
+                    []
+
+              else
+                text ""
             , button
                 [ class "destroy"
                 , type_ "button"
@@ -1082,7 +1315,199 @@ viewEntry showMark confirming todo =
             []
         , if confirming then
             div [ class "confirm-delete", attribute "role" "group", attribute "aria-label" "Delete this todo?" ]
-                [ button [ class "confirm-yes", type_ "button", onClick (Delete todo.id) ] [ text "Delete" ]
+                [ if todo.completed then
+                    button [ class "confirm-alt", type_ "button", onClick (ArchiveItem todo.id) ] [ text "Archive" ]
+
+                  else
+                    text ""
+                , button [ class "confirm-yes", type_ "button", onClick (Delete todo.id) ] [ text "Delete" ]
+                , button [ class "confirm-no", type_ "button", onClick DismissConfirm ] [ text "Cancel" ]
+                ]
+
+          else
+            text ""
+        ]
+
+
+
+-- ARCHIVE VIEW
+
+
+viewArchive : Model -> List (Html Msg)
+viewArchive model =
+    let
+        archived =
+            List.filter (\e -> isArchived e && inScope model.typeFilter e) model.entries
+
+        showMark =
+            model.typeFilter == AnyType
+    in
+    div [ class "archive-bar" ]
+        [ a [ class "archive-back", href "#/" ] [ text "\u{2190} Back" ]
+        , span [ class "archive-count", attribute "aria-live" "polite" ]
+            [ text (String.fromInt (List.length archived) ++ " archived") ]
+        , div [ class "archive-bar-menu" ] [ viewTypeMenu model.typeFilter model.typeMenuOpen ]
+        ]
+        :: (if List.isEmpty archived then
+                [ section [ class "todoapp archive-card" ]
+                    [ p [ class "archive-empty" ]
+                        [ text
+                            (case model.typeFilter of
+                                OnlyType t ->
+                                    if List.any isArchived model.entries then
+                                        "No archived " ++ typeLabel t ++ " todos."
+
+                                    else
+                                        "Nothing archived yet."
+
+                                AnyType ->
+                                    "Nothing archived yet."
+                            )
+                        ]
+                    ]
+                ]
+
+            else
+                List.map (viewArchiveGroup model.zone showMark model.confirmingDelete) (archiveGroups model.zone archived)
+           )
+
+
+doneMs : Entry -> Int
+doneMs e =
+    case ( e.completedAt, e.archivedAt ) of
+        ( Just t, _ ) ->
+            Time.posixToMillis t
+
+        ( Nothing, Just t ) ->
+            Time.posixToMillis t
+
+        _ ->
+            0
+
+
+monthNames : Time.Month -> ( String, String )
+monthNames m =
+    case m of
+        Time.Jan ->
+            ( "Jan", "January" )
+
+        Time.Feb ->
+            ( "Feb", "February" )
+
+        Time.Mar ->
+            ( "Mar", "March" )
+
+        Time.Apr ->
+            ( "Apr", "April" )
+
+        Time.May ->
+            ( "May", "May" )
+
+        Time.Jun ->
+            ( "Jun", "June" )
+
+        Time.Jul ->
+            ( "Jul", "July" )
+
+        Time.Aug ->
+            ( "Aug", "August" )
+
+        Time.Sep ->
+            ( "Sep", "September" )
+
+        Time.Oct ->
+            ( "Oct", "October" )
+
+        Time.Nov ->
+            ( "Nov", "November" )
+
+        Time.Dec ->
+            ( "Dec", "December" )
+
+
+monthLabel : Time.Zone -> Entry -> String
+monthLabel zone e =
+    let
+        t =
+            Time.millisToPosix (doneMs e)
+    in
+    Tuple.second (monthNames (Time.toMonth zone t)) ++ " " ++ String.fromInt (Time.toYear zone t)
+
+
+shortDate : Time.Zone -> Entry -> String
+shortDate zone e =
+    let
+        t =
+            Time.millisToPosix (doneMs e)
+    in
+    String.fromInt (Time.toDay zone t) ++ " " ++ Tuple.first (monthNames (Time.toMonth zone t))
+
+
+{-| Grouped by month of completion, newest month first, newest first within a month.
+-}
+archiveGroups : Time.Zone -> List Entry -> List ( String, List Entry )
+archiveGroups zone entries =
+    groupSorted zone (List.sortBy (negate << doneMs) entries)
+
+
+groupSorted : Time.Zone -> List Entry -> List ( String, List Entry )
+groupSorted zone sorted =
+    case sorted of
+        [] ->
+            []
+
+        e :: _ ->
+            let
+                label =
+                    monthLabel zone e
+
+                ( same, others ) =
+                    List.partition (\x -> monthLabel zone x == label) sorted
+            in
+            ( label, same ) :: groupSorted zone others
+
+
+viewArchiveGroup : Time.Zone -> Bool -> Maybe Int -> ( String, List Entry ) -> Html Msg
+viewArchiveGroup zone showMark confirmingId ( label, entries ) =
+    section [ class "todoapp archive-card" ]
+        [ h2 [ class "archive-month" ] [ text label ]
+        , Keyed.ul [ class "todo-list" ]
+            (List.map
+                (\e -> ( String.fromInt e.id, lazy4 viewArchiveEntry zone showMark (confirmingId == Just e.id) e ))
+                entries
+            )
+        ]
+
+
+viewArchiveEntry : Time.Zone -> Bool -> Bool -> Entry -> Html Msg
+viewArchiveEntry zone showMark confirming e =
+    li
+        [ classList [ ( "archive-row", True ), ( "confirming", confirming ) ]
+        , onTouchContextMenu
+        ]
+        [ div
+            [ class "view"
+            , onPressStart e.id
+            , onPressMove
+            , on "pointerup" (touchOnly (Decode.succeed PressCancel))
+            , onPressCancel
+            ]
+            [ label [] [ text e.description ]
+            , if showMark then
+                span [ class "archive-mark" ] [ viewMark e.entryType ]
+
+              else
+                text ""
+            , div [ class "archive-actions" ]
+                [ button [ class "archive-restore", type_ "button", onClick (Restore e.id) ] [ text "Restore" ]
+                , button [ class "archive-delete", type_ "button", onClick (Delete e.id) ] [ text "Delete" ]
+                ]
+            , span [ class "archive-date" ] [ text (shortDate zone e) ]
+            ]
+        , if confirming then
+            div [ class "confirm-delete", attribute "role" "group", attribute "aria-label" "Archived todo actions" ]
+                [ button [ class "confirm-alt", type_ "button", onClick (Restore e.id) ] [ text "Restore" ]
+                , button [ class "confirm-yes", type_ "button", onClick (Delete e.id) ] [ text "Delete" ]
                 , button [ class "confirm-no", type_ "button", onClick DismissConfirm ] [ text "Cancel" ]
                 ]
 
@@ -1099,7 +1524,10 @@ viewControls : Model -> Html Msg
 viewControls model =
     let
         scoped =
-            List.filter (inScope model.typeFilter) model.entries
+            List.filter (\e -> isLive e && inScope model.typeFilter e) model.entries
+
+        archivedCount =
+            List.length (List.filter (\e -> isArchived e && inScope model.typeFilter e) model.entries)
 
         completed =
             List.length (List.filter .completed scoped)
@@ -1108,13 +1536,18 @@ viewControls model =
             List.length scoped - completed
 
         hidden_ =
-            List.length model.entries - List.length (List.filter (isVisible model.visibility) scoped)
+            List.length (List.filter isLive model.entries) - List.length (List.filter (isVisible model.visibility) scoped)
     in
     footer [ class "footer" ]
         [ lazy3 viewCount left (not (List.isEmpty scoped)) hidden_
         , viewFilters model
         , if completed > 0 then
-            button [ type_ "button", class "clear-completed", onClick DeleteComplete ] [ text "Clear completed" ]
+            button [ type_ "button", class "clear-completed", onClick ArchiveCompleted ] [ text "Archive completed" ]
+
+          else
+            text ""
+        , if archivedCount > 0 then
+            a [ class "archive-link", href "#/archive" ] [ text ("Archive \u{00B7} " ++ String.fromInt archivedCount) ]
 
           else
             text ""
