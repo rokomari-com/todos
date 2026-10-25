@@ -7153,25 +7153,25 @@ var $elm$html$Html$Attributes$boolProperty = F2(
 var $elm$html$Html$Attributes$autofocus = $elm$html$Html$Attributes$boolProperty('autofocus');
 var $elm$html$Html$h1 = _VirtualDom_node('h1');
 var $elm$html$Html$header = _VirtualDom_node('header');
-var $elm$html$Html$input = _VirtualDom_node('input');
 var $elm$html$Html$Attributes$name = $elm$html$Html$Attributes$stringProperty('name');
 var $author$project$Main$Add = {$: 'Add'};
 var $author$project$Main$CycleNewType = {$: 'CycleNewType'};
-var $elm$json$Json$Decode$map3 = _Json_map3;
+var $elm$json$Json$Decode$map4 = _Json_map4;
 var $author$project$Main$newTodoKeydown = A2(
 	$elm$json$Json$Decode$andThen,
 	$elm$core$Basics$identity,
-	A4(
-		$elm$json$Json$Decode$map3,
-		F3(
-			function (key, alt, code) {
-				return (key === 'Enter') ? $elm$json$Json$Decode$succeed(
-					_Utils_Tuple2($author$project$Main$Add, false)) : ((alt && ((code === 'KeyT') || (key === '†'))) ? $elm$json$Json$Decode$succeed(
+	A5(
+		$elm$json$Json$Decode$map4,
+		F4(
+			function (key, alt, code, shift) {
+				return ((key === 'Enter') && (!shift)) ? $elm$json$Json$Decode$succeed(
+					_Utils_Tuple2($author$project$Main$Add, true)) : ((alt && ((code === 'KeyT') || (key === '†'))) ? $elm$json$Json$Decode$succeed(
 					_Utils_Tuple2($author$project$Main$CycleNewType, true)) : $elm$json$Json$Decode$fail('ignored key'));
 			}),
 		A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string),
 		A2($elm$json$Json$Decode$field, 'altKey', $elm$json$Json$Decode$bool),
-		A2($elm$json$Json$Decode$field, 'code', $elm$json$Json$Decode$string)));
+		A2($elm$json$Json$Decode$field, 'code', $elm$json$Json$Decode$string),
+		A2($elm$json$Json$Decode$field, 'shiftKey', $elm$json$Json$Decode$bool)));
 var $elm$html$Html$Events$alwaysStop = function (x) {
 	return _Utils_Tuple2(x, true);
 };
@@ -7200,6 +7200,13 @@ var $elm$html$Html$Events$onInput = function (tagger) {
 			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
 };
 var $elm$html$Html$Attributes$placeholder = $elm$html$Html$Attributes$stringProperty('placeholder');
+var $elm$html$Html$Attributes$rows = function (n) {
+	return A2(
+		_VirtualDom_attribute,
+		'rows',
+		$elm$core$String$fromInt(n));
+};
+var $elm$html$Html$textarea = _VirtualDom_node('textarea');
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
 var $author$project$Main$SetNewType = function (a) {
 	return {$: 'SetNewType', a: a};
@@ -7264,10 +7271,11 @@ var $author$project$Main$viewInput = F2(
 							$elm$html$Html$text('todos')
 						])),
 					A2(
-					$elm$html$Html$input,
+					$elm$html$Html$textarea,
 					_List_fromArray(
 						[
 							$elm$html$Html$Attributes$class('new-todo'),
+							$elm$html$Html$Attributes$rows(1),
 							$elm$html$Html$Attributes$placeholder('What needs to be done?'),
 							$elm$html$Html$Attributes$autofocus(true),
 							$elm$html$Html$Attributes$value(task),
@@ -7314,6 +7322,7 @@ var $elm$core$List$all = F2(
 	});
 var $elm$html$Html$Attributes$checked = $elm$html$Html$Attributes$boolProperty('checked');
 var $elm$html$Html$Attributes$for = $elm$html$Html$Attributes$stringProperty('htmlFor');
+var $elm$html$Html$input = _VirtualDom_node('input');
 var $elm$html$Html$label = _VirtualDom_node('label');
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
@@ -7386,9 +7395,6 @@ var $author$project$Main$viewEmptyFiltered = F3(
 						]))
 				]));
 	});
-var $author$project$Main$CancelEdit = function (a) {
-	return {$: 'CancelEdit', a: a};
-};
 var $author$project$Main$Check = F2(
 	function (a, b) {
 		return {$: 'Check', a: a, b: b};
@@ -7415,31 +7421,31 @@ var $elm$html$Html$Events$onDoubleClick = function (msg) {
 		'dblclick',
 		$elm$json$Json$Decode$succeed(msg));
 };
-var $author$project$Main$onKey = function (table) {
-	var pick = function (key) {
-		var _v0 = $elm$core$List$head(
-			A2(
-				$elm$core$List$filter,
-				function (_v1) {
-					var k = _v1.a;
-					return _Utils_eq(k, key);
-				},
-				table));
-		if (_v0.$ === 'Just') {
-			var _v2 = _v0.a;
-			var msg = _v2.b;
-			return $elm$json$Json$Decode$succeed(msg);
-		} else {
-			return $elm$json$Json$Decode$fail('ignored key');
-		}
-	};
+var $author$project$Main$CancelEdit = function (a) {
+	return {$: 'CancelEdit', a: a};
+};
+var $author$project$Main$onEditKeydown = function (id) {
 	return A2(
-		$elm$html$Html$Events$on,
+		$elm$html$Html$Events$preventDefaultOn,
 		'keydown',
 		A2(
 			$elm$json$Json$Decode$andThen,
-			pick,
-			A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string)));
+			function (_v0) {
+				var key = _v0.a;
+				var shift = _v0.b;
+				return ((key === 'Enter') && (!shift)) ? $elm$json$Json$Decode$succeed(
+					_Utils_Tuple2(
+						A2($author$project$Main$EditingEntry, id, false),
+						true)) : ((key === 'Escape') ? $elm$json$Json$Decode$succeed(
+					_Utils_Tuple2(
+						$author$project$Main$CancelEdit(id),
+						false)) : $elm$json$Json$Decode$fail('ignored key'));
+			},
+			A3(
+				$elm$json$Json$Decode$map2,
+				$elm$core$Tuple$pair,
+				A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string),
+				A2($elm$json$Json$Decode$field, 'shiftKey', $elm$json$Json$Decode$bool))));
 };
 var $author$project$Main$PressCancel = {$: 'PressCancel'};
 var $author$project$Main$touchOnly = function (dec) {
@@ -7594,10 +7600,11 @@ var $author$project$Main$viewEntry = F3(
 							_List_Nil)
 						])),
 					A2(
-					$elm$html$Html$input,
+					$elm$html$Html$textarea,
 					_List_fromArray(
 						[
 							$elm$html$Html$Attributes$class('edit'),
+							$elm$html$Html$Attributes$rows(1),
 							$elm$html$Html$Attributes$value(todo.description),
 							$elm$html$Html$Attributes$name('title'),
 							$elm$html$Html$Attributes$id(
@@ -7607,16 +7614,7 @@ var $author$project$Main$viewEntry = F3(
 							$author$project$Main$UpdateEntry(todo.id)),
 							$elm$html$Html$Events$onBlur(
 							A2($author$project$Main$EditingEntry, todo.id, false)),
-							$author$project$Main$onKey(
-							_List_fromArray(
-								[
-									_Utils_Tuple2(
-									'Enter',
-									A2($author$project$Main$EditingEntry, todo.id, false)),
-									_Utils_Tuple2(
-									'Escape',
-									$author$project$Main$CancelEdit(todo.id))
-								]))
+							$author$project$Main$onEditKeydown(todo.id)
 						]),
 					_List_Nil),
 					confirming ? A2(

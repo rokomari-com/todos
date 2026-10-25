@@ -843,29 +843,15 @@ onKeyPrevent table =
     preventDefaultOn "keydown" (Decode.field "key" Decode.string |> Decode.andThen pick)
 
 
-onKey : List ( String, Msg ) -> Attribute Msg
-onKey table =
-    let
-        pick key =
-            case List.filter (\( k, _ ) -> k == key) table |> List.head of
-                Just ( _, msg ) ->
-                    Decode.succeed msg
-
-                Nothing ->
-                    Decode.fail "ignored key"
-    in
-    on "keydown" (Decode.field "key" Decode.string |> Decode.andThen pick)
-
-
 {-| Enter adds; Alt+T cycles type (and is swallowed so "†" is not typed).
 Every other key fails the decoder: no message, no storage write.
 -}
 newTodoKeydown : Decoder ( Msg, Bool )
 newTodoKeydown =
-    Decode.map3
-        (\key alt code ->
-            if key == "Enter" then
-                Decode.succeed ( Add, False )
+    Decode.map4
+        (\key alt code shift ->
+            if key == "Enter" && not shift then
+                Decode.succeed ( Add, True )
 
             else if alt && (code == "KeyT" || key == "†") then
                 Decode.succeed ( CycleNewType, True )
@@ -876,7 +862,28 @@ newTodoKeydown =
         (Decode.field "key" Decode.string)
         (Decode.field "altKey" Decode.bool)
         (Decode.field "code" Decode.string)
+        (Decode.field "shiftKey" Decode.bool)
         |> Decode.andThen identity
+
+
+{-| Enter saves (no newline typed), Shift+Enter inserts a newline, Escape cancels.
+-}
+onEditKeydown : Int -> Attribute Msg
+onEditKeydown id =
+    preventDefaultOn "keydown"
+        (Decode.map2 Tuple.pair (Decode.field "key" Decode.string) (Decode.field "shiftKey" Decode.bool)
+            |> Decode.andThen
+                (\( key, shift ) ->
+                    if key == "Enter" && not shift then
+                        Decode.succeed ( EditingEntry id False, True )
+
+                    else if key == "Escape" then
+                        Decode.succeed ( CancelEdit id, False )
+
+                    else
+                        Decode.fail "ignored key"
+                )
+        )
 
 
 viewMark : EntryType -> Html msg
@@ -906,8 +913,9 @@ viewInput : String -> EntryType -> Html Msg
 viewInput task newType =
     header [ class "header" ]
         [ h1 [] [ text "todos" ]
-        , input
+        , textarea
             [ class "new-todo"
+            , rows 1
             , placeholder "What needs to be done?"
             , autofocus True
             , value task
@@ -1060,18 +1068,16 @@ viewEntry showMark confirming todo =
                 ]
                 []
             ]
-        , input
+        , textarea
             [ class "edit"
+            , rows 1
             , value todo.description
             , name "title"
             , id ("todo-" ++ String.fromInt todo.id)
             , attribute "aria-label" "Edit todo"
             , onInput (UpdateEntry todo.id)
             , onBlur (EditingEntry todo.id False)
-            , onKey
-                [ ( "Enter", EditingEntry todo.id False )
-                , ( "Escape", CancelEdit todo.id )
-                ]
+            , onEditKeydown todo.id
             ]
             []
         , if confirming then
