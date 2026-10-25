@@ -465,6 +465,7 @@ textarea.new-todo::placeholder { line-height: 33px; }
 /* Hand cursor on draggable rows (hover devices); controls keep their own cursor */
 @media (hover: hover) {
 	.todo-list li:not(.editing):not(.archive-row):not(.confirming) { cursor: grab; }
+	.todo-list li label { cursor: inherit; } /* UA stylesheet gives <label> cursor:default */
 	.todo-list li .toggle + label::before,
 	.todo-list li .toggle,
 	.todo-list li .destroy,
