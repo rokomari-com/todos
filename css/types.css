@@ -462,18 +462,33 @@ textarea.new-todo::placeholder { line-height: 33px; }
 }
 .todo-list.drag-active,
 .todo-list.drag-active * { cursor: grabbing !important; }
+/* Hand cursor on draggable rows (hover devices); controls keep their own cursor */
+@media (hover: hover) {
+	.todo-list li:not(.editing):not(.archive-row):not(.confirming) { cursor: grab; }
+	.todo-list li .toggle + label::before,
+	.todo-list li .toggle,
+	.todo-list li .destroy,
+	.todo-list li .row-type,
+	.todo-list li .archive-item { cursor: pointer; }
+}
+/* Lifted card while dragging */
 .todo-list li.dragging {
 	z-index: 15;
-	opacity: 0.7;
+	opacity: 0.96;
 	background: #fff;
-	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+	border-radius: 4px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 14px 28px rgba(0, 0, 0, 0.22);
 }
+.todo-list li.dragging .view { transform: scale(1.025) rotate(-0.6deg); }
+.todo-list li.dragging .destroy,
+.todo-list li.dragging .archive-item,
+.todo-list li.dragging .row-type .label { display: none !important; }
 .todo-list li.drop-indicator {
 	height: 0;
 	min-height: 0;
 	padding: 0;
 	border: 0;
-	z-index: 20;
+	z-index: 14;
 	pointer-events: none;
 }
 .todo-list li.drop-indicator::before {
@@ -487,7 +502,8 @@ textarea.new-todo::placeholder { line-height: 33px; }
 	border-radius: 1px;
 }
 @media (prefers-reduced-motion: no-preference) {
-	.todo-list li.dragging { transition: box-shadow 120ms ease-out, opacity 120ms ease-out; }
+	.todo-list li.dragging { transition: box-shadow 160ms ease-out, opacity 160ms ease-out, border-radius 160ms ease-out; }
+	.todo-list li .view { transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 }
 @media (hover: none) {
 	.todo-list li .drag-handle {
