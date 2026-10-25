@@ -481,7 +481,7 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 .todo-list li.dragging .view {
 	background: #fff;
 	border-radius: 4px;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 10px 24px rgba(0, 0, 0, 0.16);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.14), 0 14px 32px rgba(0, 0, 0, 0.30);
 }
 .todo-list li.dragging .destroy,
 .todo-list li.dragging .archive-item,

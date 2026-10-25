@@ -1932,7 +1932,7 @@ viewEntry showMark confirming rd todo =
             (class "view"
                 :: (case rd of
                         Floating dy slotOff ->
-                            [ style "transform" ("translateY(" ++ String.fromFloat (dy - slotOff) ++ "px) scale(1.02) rotate(-1deg)") ]
+                            [ style "transform" ("translateY(" ++ String.fromFloat (dy - slotOff) ++ "px) scale(1.04)") ]
 
                         _ ->
                             []

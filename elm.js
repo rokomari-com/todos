@@ -9547,7 +9547,7 @@ var $author$project$Main$viewEntry = F4(
 										A2(
 										$elm$html$Html$Attributes$style,
 										'transform',
-										'translateY(' + ($elm$core$String$fromFloat(dy - slotOff) + 'px) scale(1.02) rotate(-1deg)'))
+										'translateY(' + ($elm$core$String$fromFloat(dy - slotOff) + 'px) scale(1.04)'))
 									]);
 							} else {
 								return _List_Nil;
