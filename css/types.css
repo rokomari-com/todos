@@ -471,41 +471,24 @@ textarea.new-todo::placeholder { line-height: 33px; }
 	.todo-list li .row-type,
 	.todo-list li .archive-item { cursor: pointer; }
 }
-/* Lifted card while dragging: the .view is the card (tilted, shadowed); the li is just its slot */
+/* Lifted card while dragging: the .view floats with the pointer (transform set inline); the li stays as an
+empty grey slot while the other rows shift (inline translateY) to open a gap at the drop target. */
 .todo-list li.dragging {
 	z-index: 15;
-	background: transparent;
+	background: #f7f7f7;
 	border-bottom-color: transparent;
 }
 .todo-list li.dragging .view {
 	background: #fff;
-	border-radius: 6px;
-	transform: scale(1.03) rotate(-1.5deg);
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.10), 0 22px 44px rgba(0, 0, 0, 0.30);
+	border-radius: 4px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 10px 24px rgba(0, 0, 0, 0.16);
 }
 .todo-list li.dragging .destroy,
 .todo-list li.dragging .archive-item,
 .todo-list li.dragging .row-type .label { display: none !important; }
-.todo-list li.drop-indicator {
-	height: 0;
-	min-height: 0;
-	padding: 0;
-	border: 0;
-	z-index: 20;
-	pointer-events: none;
-}
-.todo-list li.drop-indicator::before {
-	content: "";
-	position: absolute;
-	left: 0;
-	right: 0;
-	top: -1px;
-	height: 2px;
-	background: #ce4646;
-	border-radius: 1px;
-}
 @media (prefers-reduced-motion: no-preference) {
-	.todo-list li .view { transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms ease-out, border-radius 160ms ease-out; }
+	/* Only while a drag is live, so the drop (class and transforms cleared together) does not animate. */
+	.todo-list.drag-active li:not(.dragging) { transition: transform 150ms ease; }
 }
 @media (hover: none) {
 	.todo-list li .drag-handle {

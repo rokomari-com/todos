@@ -9172,27 +9172,109 @@ var $author$project$Main$viewEmptyFiltered = F3(
 						]))
 				]));
 	});
-var $author$project$Main$interleave = F7(
-	function (dragId, slot, ind, rowFn, done, seen, entries) {
-		if (!entries.b) {
-			return done ? _List_Nil : _List_fromArray(
-				[ind]);
+var $author$project$Main$Floating = F2(
+	function (a, b) {
+		return {$: 'Floating', a: a, b: b};
+	});
+var $author$project$Main$Shifted = function (a) {
+	return {$: 'Shifted', a: a};
+};
+var $author$project$Main$Still = {$: 'Still'};
+var $author$project$Main$gapShift = F2(
+	function (d, id) {
+		var ids = A2(
+			$elm$core$List$map,
+			function ($) {
+				return $.id;
+			},
+			d.rects);
+		var h = A2(
+			$elm$core$Maybe$withDefault,
+			0,
+			A2(
+				$elm$core$Maybe$map,
+				function ($) {
+					return $.height;
+				},
+				$elm$core$List$head(
+					A2(
+						$elm$core$List$filter,
+						function (r) {
+							return _Utils_eq(r.id, d.id);
+						},
+						d.rects))));
+		var _v0 = _Utils_Tuple2(
+			A2($author$project$Main$indexOf, d.id, ids),
+			A2($author$project$Main$indexOf, id, ids));
+		if ((_v0.a.$ === 'Just') && (_v0.b.$ === 'Just')) {
+			var o = _v0.a.a;
+			var i = _v0.b.a;
+			return ((_Utils_cmp(o, d.slot) < 0) && ((_Utils_cmp(i, o) > 0) && (_Utils_cmp(i, d.slot) < 1))) ? (-h) : (((_Utils_cmp(o, d.slot) > 0) && ((_Utils_cmp(i, d.slot) > -1) && (_Utils_cmp(i, o) < 0))) ? h : 0);
 		} else {
-			var e = entries.a;
-			var rest = entries.b;
-			return _Utils_eq(e.id, dragId) ? A2(
-				$elm$core$List$cons,
-				rowFn(e),
-				A7($author$project$Main$interleave, dragId, slot, ind, rowFn, done, seen, rest)) : (((!done) && _Utils_eq(seen, slot)) ? A2(
-				$elm$core$List$cons,
-				ind,
+			return 0;
+		}
+	});
+var $elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
+	});
+var $elm$core$List$sum = function (numbers) {
+	return A3($elm$core$List$foldl, $elm$core$Basics$add, 0, numbers);
+};
+var $author$project$Main$slotOffset = function (d) {
+	var ids = A2(
+		$elm$core$List$map,
+		function ($) {
+			return $.id;
+		},
+		d.rects);
+	var between = F2(
+		function (lo, hi) {
+			return $elm$core$List$sum(
 				A2(
-					$elm$core$List$cons,
-					rowFn(e),
-					A7($author$project$Main$interleave, dragId, slot, ind, rowFn, true, seen + 1, rest))) : A2(
-				$elm$core$List$cons,
-				rowFn(e),
-				A7($author$project$Main$interleave, dragId, slot, ind, rowFn, done, seen + 1, rest)));
+					$elm$core$List$map,
+					A2(
+						$elm$core$Basics$composeR,
+						$elm$core$Tuple$second,
+						function ($) {
+							return $.height;
+						}),
+					A2(
+						$elm$core$List$filter,
+						function (_v1) {
+							var i = _v1.a;
+							return (_Utils_cmp(i, lo) > -1) && (_Utils_cmp(i, hi) < 1);
+						},
+						A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, d.rects))));
+		});
+	var _v0 = A2($author$project$Main$indexOf, d.id, ids);
+	if (_v0.$ === 'Just') {
+		var o = _v0.a;
+		return (_Utils_cmp(o, d.slot) < 0) ? A2(between, o + 1, d.slot) : ((_Utils_cmp(o, d.slot) > 0) ? (-A2(between, d.slot, o - 1)) : 0);
+	} else {
+		return 0;
+	}
+};
+var $author$project$Main$rowDrag = F2(
+	function (drag, id) {
+		if (drag.$ === 'Just') {
+			var d = drag.a;
+			if (!d.active) {
+				return $author$project$Main$Still;
+			} else {
+				if (_Utils_eq(d.id, id)) {
+					return A2(
+						$author$project$Main$Floating,
+						d.pageY - d.startPageY,
+						$author$project$Main$slotOffset(d));
+				} else {
+					var dy = A2($author$project$Main$gapShift, d, id);
+					return (!dy) ? $author$project$Main$Still : $author$project$Main$Shifted(dy);
+				}
+			}
+		} else {
+			return $author$project$Main$Still;
 		}
 	});
 var $author$project$Main$ArchiveItem = function (a) {
@@ -9210,6 +9292,13 @@ var $author$project$Main$UpdateEntry = F2(
 		return {$: 'UpdateEntry', a: a, b: b};
 	});
 var $elm$core$String$fromFloat = _String_fromNumber;
+var $author$project$Main$isFloating = function (rd) {
+	if (rd.$ === 'Floating') {
+		return true;
+	} else {
+		return false;
+	}
+};
 var $elm$html$Html$Events$onBlur = function (msg) {
 	return A2(
 		$elm$html$Html$Events$on,
@@ -9396,7 +9485,7 @@ var $author$project$Main$onRowKeydown = function (id) {
 					$elm$json$Json$Decode$string))));
 };
 var $author$project$Main$viewEntry = F4(
-	function (showMark, confirming, dragOffset, todo) {
+	function (showMark, confirming, rd, todo) {
 		return A2(
 			$elm$html$Html$li,
 			_Utils_ap(
@@ -9410,7 +9499,7 @@ var $author$project$Main$viewEntry = F4(
 								_Utils_Tuple2('confirming', confirming),
 								_Utils_Tuple2(
 								'dragging',
-								!_Utils_eq(dragOffset, $elm$core$Maybe$Nothing))
+								$author$project$Main$isFloating(rd))
 							])),
 						$elm$html$Html$Attributes$id(
 						'row-' + $elm$core$String$fromInt(todo.id)),
@@ -9419,27 +9508,51 @@ var $author$project$Main$viewEntry = F4(
 						$author$project$Main$onRowKeydown(todo.id)
 					]),
 				function () {
-					if (dragOffset.$ === 'Just') {
-						var dy = dragOffset.a;
-						return _List_fromArray(
-							[
-								A2(
-								$elm$html$Html$Attributes$style,
-								'transform',
-								'translateY(' + ($elm$core$String$fromFloat(dy) + 'px)'))
-							]);
-					} else {
-						return _List_Nil;
+					switch (rd.$) {
+						case 'Shifted':
+							var dy = rd.a;
+							return _List_fromArray(
+								[
+									A2(
+									$elm$html$Html$Attributes$style,
+									'transform',
+									'translateY(' + ($elm$core$String$fromFloat(dy) + 'px)'))
+								]);
+						case 'Floating':
+							var slotOff = rd.b;
+							return _List_fromArray(
+								[
+									A2(
+									$elm$html$Html$Attributes$style,
+									'transform',
+									'translateY(' + ($elm$core$String$fromFloat(slotOff) + 'px)'))
+								]);
+						default:
+							return _List_Nil;
 					}
 				}()),
 			_List_fromArray(
 				[
 					A2(
 					$elm$html$Html$div,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$class('view')
-						]),
+					A2(
+						$elm$core$List$cons,
+						$elm$html$Html$Attributes$class('view'),
+						function () {
+							if (rd.$ === 'Floating') {
+								var dy = rd.a;
+								var slotOff = rd.b;
+								return _List_fromArray(
+									[
+										A2(
+										$elm$html$Html$Attributes$style,
+										'transform',
+										'translateY(' + ($elm$core$String$fromFloat(dy - slotOff) + 'px) scale(1.02) rotate(-1deg)'))
+									]);
+							} else {
+								return _List_Nil;
+							}
+						}()),
 					_List_fromArray(
 						[
 							A2(
@@ -9605,10 +9718,10 @@ var $author$project$Main$viewEntry = F4(
 				]));
 	});
 var $author$project$Main$viewKeyedEntry = F4(
-	function (showMark, confirming, dragOffset, todo) {
+	function (showMark, confirming, rd, todo) {
 		return _Utils_Tuple2(
 			$elm$core$String$fromInt(todo.id),
-			A5($elm$html$Html$Lazy$lazy4, $author$project$Main$viewEntry, showMark, confirming, dragOffset, todo));
+			A5($elm$html$Html$Lazy$lazy4, $author$project$Main$viewEntry, showMark, confirming, rd, todo));
 	});
 var $author$project$Main$viewRows = F2(
 	function (model, visible) {
@@ -9619,34 +9732,10 @@ var $author$project$Main$viewRows = F2(
 				_Utils_eq(
 					model.confirmingDelete,
 					$elm$core$Maybe$Just(t.id)),
-				function () {
-					var _v1 = model.drag;
-					if (_v1.$ === 'Just') {
-						var d = _v1.a;
-						return (_Utils_eq(d.id, t.id) && d.active) ? $elm$core$Maybe$Just(d.pageY - d.startPageY) : $elm$core$Maybe$Nothing;
-					} else {
-						return $elm$core$Maybe$Nothing;
-					}
-				}(),
+				A2($author$project$Main$rowDrag, model.drag, t.id),
 				t);
 		};
-		var indicator = _Utils_Tuple2(
-			'drop-indicator',
-			A2(
-				$elm$html$Html$li,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('drop-indicator'),
-						A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
-					]),
-				_List_Nil));
-		var _v0 = model.drag;
-		if (_v0.$ === 'Just') {
-			var d = _v0.a;
-			return (d.active && (!$elm$core$List$isEmpty(d.rects))) ? A7($author$project$Main$interleave, d.id, d.slot, indicator, row, false, 0, visible) : A2($elm$core$List$map, row, visible);
-		} else {
-			return A2($elm$core$List$map, row, visible);
-		}
+		return A2($elm$core$List$map, row, visible);
 	});
 var $author$project$Main$viewMain = function (model) {
 	var visible = $author$project$Main$visibleList(model);

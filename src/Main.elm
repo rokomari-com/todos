@@ -1422,6 +1422,15 @@ viewMain model =
         ]
 
 
+{-| How a row is displaced during a drag: not at all, floating with the pointer (the dragged row's card),
+or shifted vertically to open the gap.
+-}
+type RowDrag
+    = Still
+    | Floating Float Float
+    | Shifted Float
+
+
 viewRows : Model -> List Entry -> List ( String, Html Msg )
 viewRows model visible =
     let
@@ -1429,53 +1438,91 @@ viewRows model visible =
             viewKeyedEntry
                 (model.typeFilter == AnyType)
                 (model.confirmingDelete == Just t.id)
-                (case model.drag of
-                    Just d ->
-                        if d.id == t.id && d.active then
-                            Just (d.pageY - d.startPageY)
-
-                        else
-                            Nothing
-
-                    Nothing ->
-                        Nothing
-                )
+                (rowDrag model.drag t.id)
                 t
-
-        indicator =
-            ( "drop-indicator", li [ class "drop-indicator", attribute "aria-hidden" "true" ] [] )
     in
-    case model.drag of
+    List.map row visible
+
+
+rowDrag : Maybe Drag -> Int -> RowDrag
+rowDrag drag id =
+    case drag of
         Just d ->
-            if d.active && not (List.isEmpty d.rects) then
-                interleave d.id d.slot indicator row False 0 visible
+            if not d.active then
+                Still
+
+            else if d.id == id then
+                Floating (d.pageY - d.startPageY) (slotOffset d)
 
             else
-                List.map row visible
+                let
+                    dy =
+                        gapShift d id
+                in
+                if dy == 0 then
+                    Still
+
+                else
+                    Shifted dy
 
         Nothing ->
-            List.map row visible
+            Still
 
 
-interleave : Int -> Int -> a -> (Entry -> a) -> Bool -> Int -> List Entry -> List a
-interleave dragId slot ind rowFn done seen entries =
-    case entries of
-        [] ->
-            if done then
-                []
+{-| How far the dragged row's slot sits from its origin: the summed heights of the rows it passed. -}
+slotOffset : Drag -> Float
+slotOffset d =
+    let
+        ids =
+            List.map .id d.rects
+
+        between lo hi =
+            d.rects
+                |> List.indexedMap Tuple.pair
+                |> List.filter (\( i, _ ) -> i >= lo && i <= hi)
+                |> List.map (Tuple.second >> .height)
+                |> List.sum
+    in
+    case indexOf d.id ids of
+        Just o ->
+            if o < d.slot then
+                between (o + 1) d.slot
+
+            else if o > d.slot then
+                -(between d.slot (o - 1))
 
             else
-                [ ind ]
+                0
 
-        e :: rest ->
-            if e.id == dragId then
-                rowFn e :: interleave dragId slot ind rowFn done seen rest
+        Nothing ->
+            0
 
-            else if not done && seen == slot then
-                ind :: rowFn e :: interleave dragId slot ind rowFn True (seen + 1) rest
+
+{-| Rows between the origin and the target slot move by the dragged row's height to open the gap:
+up when the card goes down the list, down when it goes up. Uses the cached, untransformed boxes.
+-}
+gapShift : Drag -> Int -> Float
+gapShift d id =
+    let
+        ids =
+            List.map .id d.rects
+
+        h =
+            d.rects |> List.filter (\r -> r.id == d.id) |> List.head |> Maybe.map .height |> Maybe.withDefault 0
+    in
+    case ( indexOf d.id ids, indexOf id ids ) of
+        ( Just o, Just i ) ->
+            if o < d.slot && i > o && i <= d.slot then
+                -h
+
+            else if o > d.slot && i >= d.slot && i < o then
+                h
 
             else
-                rowFn e :: interleave dragId slot ind rowFn done (seen + 1) rest
+                0
+
+        _ ->
+            0
 
 
 {-| Mouse/pen row drag: pointerdown anywhere on the row except checkbox, textarea, buttons and the handle.
@@ -1841,34 +1888,56 @@ isVisible visibility todo =
             False
 
 
-viewKeyedEntry : Bool -> Bool -> Maybe Float -> Entry -> ( String, Html Msg )
-viewKeyedEntry showMark confirming dragOffset todo =
-    ( String.fromInt todo.id, lazy4 viewEntry showMark confirming dragOffset todo )
+viewKeyedEntry : Bool -> Bool -> RowDrag -> Entry -> ( String, Html Msg )
+viewKeyedEntry showMark confirming rd todo =
+    ( String.fromInt todo.id, lazy4 viewEntry showMark confirming rd todo )
 
 
-viewEntry : Bool -> Bool -> Maybe Float -> Entry -> Html Msg
-viewEntry showMark confirming dragOffset todo =
+isFloating : RowDrag -> Bool
+isFloating rd =
+    case rd of
+        Floating _ _ ->
+            True
+
+        _ ->
+            False
+
+
+viewEntry : Bool -> Bool -> RowDrag -> Entry -> Html Msg
+viewEntry showMark confirming rd todo =
     li
         ([ classList
             [ ( "completed", todo.completed )
             , ( "editing", todo.editing )
             , ( "confirming", confirming )
-            , ( "dragging", dragOffset /= Nothing )
+            , ( "dragging", isFloating rd )
             ]
          , id ("row-" ++ String.fromInt todo.id)
          , onTouchContextMenu
          , onRowDown todo.id todo.editing
          , onRowKeydown todo.id
          ]
-            ++ (case dragOffset of
-                    Just dy ->
+            ++ (case rd of
+                    Shifted dy ->
                         [ style "transform" ("translateY(" ++ String.fromFloat dy ++ "px)") ]
 
-                    Nothing ->
+                    Floating _ slotOff ->
+                        [ style "transform" ("translateY(" ++ String.fromFloat slotOff ++ "px)") ]
+
+                    _ ->
                         []
                )
         )
-        [ div [ class "view" ]
+        [ div
+            (class "view"
+                :: (case rd of
+                        Floating dy slotOff ->
+                            [ style "transform" ("translateY(" ++ String.fromFloat (dy - slotOff) ++ "px) scale(1.02) rotate(-1deg)") ]
+
+                        _ ->
+                            []
+                   )
+            )
             [ div [ class "drag-handle", attribute "aria-hidden" "true", onHandleDown todo.id ] [ text "\u{22EE}\u{22EE}" ]
             , input
                 [ class "toggle"
