@@ -1,0 +1,268 @@
+/* Todo types layered on TodoMVC: marks, new-todo picker, footer type menu.
+   Add a .mark-<key> color per type; new shapes need a .shape-* rule. */
+
+body { width: auto; }
+
+.mark { display: inline-block; flex: none; background: #999; }
+.shape-circle { width: 9px; height: 9px; border-radius: 50%; }
+.shape-square { width: 8px; height: 8px; border-radius: 1px; }
+.mark-personal { background: #2f6bd6; }
+.mark-work { background: #d97a1e; }
+
+.type-choice:focus-visible,
+.row-type:focus-visible,
+.hidden-hint:focus-visible,
+.type-filter-button:focus-visible {
+	outline: 0;
+	box-shadow: 0 0 2px 2px #cf7d7d;
+}
+
+.menu-item:focus-visible {
+	outline: 0;
+	box-shadow: inset 0 0 2px 2px #cf7d7d;
+}
+
+/* New-todo picker: collapsed to the current type, expands on hover / focus-within */
+.header { position: relative; }
+
+.new-todo { padding-right: 124px; }
+
+.type-picker-wrap {
+	position: absolute;
+	right: 8px;
+	top: 0;
+	width: 112px;
+	height: 65px;
+}
+
+.type-picker {
+	position: absolute;
+	right: 0;
+	top: 10px;
+	display: flex;
+	background: transparent;
+	border-radius: 3px;
+	z-index: 3;
+}
+
+.type-picker-wrap:hover .type-picker,
+.type-picker-wrap:focus-within .type-picker {
+	background: #fff;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.type-choice {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-width: 44px;
+	height: 44px;
+	padding: 0 10px;
+	border: 1px solid transparent;
+	border-radius: 3px;
+	font-size: 14px;
+	color: #777;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.type-choice.selected { order: 1; color: #111; }
+.type-picker-wrap:not(:hover):not(:focus-within) .type-choice:not(.selected) { display: none; }
+.type-picker-wrap:hover .type-choice.selected,
+.type-picker-wrap:focus-within .type-choice.selected { border-color: #ce4646; }
+
+/* Rows */
+.todo-list li label { padding-right: 100px; }
+
+.row-type {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: 50px;
+	width: 44px;
+	margin: auto 0;
+	max-height: 44px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+.row-type .label {
+	display: none;
+	position: absolute;
+	right: 100%;
+	margin-right: -6px;
+	padding: 2px 4px;
+	background: #fff;
+	font-size: 13px;
+	color: #777;
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+.todo-list li:hover .row-type .label,
+.todo-list li:focus-within .row-type .label { display: block; }
+.todo-list li.completed .mark { opacity: 0.4; }
+.todo-list li.editing .row-type { display: none; }
+
+/* Touch: no hover, so the mark sits at the row's edge, the delete x is always (faintly) visible, and a tap on the text edits */
+@media (hover: none) {
+	.todo-list li:hover .row-type .label,
+	.todo-list li:focus-within .row-type .label { display: none; }
+	.row-type { right: 4px; }
+	.todo-list li .destroy { display: none; }
+	.todo-list li label { padding-right: 52px; }
+	.todo-list li {
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		user-select: none;
+	}
+	.info .hint-pointer { display: none; }
+}
+/* Long-press delete confirmation: overlay in the row, row content stays behind it */
+.todo-list li { position: relative; }
+.todo-list li.confirming .view > * { opacity: 0.15; }
+.confirm-delete {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 0 8px;
+}
+.confirm-delete button {
+	min-height: 44px;
+	padding: 0 18px;
+	border: 1px solid #b83f45;
+	border-radius: 3px;
+	font: inherit;
+	font-size: 16px;
+	cursor: pointer;
+}
+.confirm-delete .confirm-yes { background: #b83f45; color: #fff; }
+.confirm-delete .confirm-no { background: #fff; color: #b83f45; }
+
+.info .hint-touch { display: none; }
+@media (hover: none) { .info .hint-touch { display: block; } }
+
+/* Empty filtered state, quiet */
+.empty-filtered { padding: 15px 15px 15px 60px; border-top: 1px solid #e6e6e6; }
+.empty-title { margin: 0; font-size: 16px; font-weight: 300; color: #757575; }
+.empty-sub { margin: 4px 0 0; font-size: 13px; color: #757575; }
+
+/* Footer: count hint and type menu (4th entry in .filters) */
+/* Above the absolute .filters list so the hidden hint stays clickable */
+.todo-count { position: relative; z-index: 1; white-space: nowrap; text-align: left; }
+
+.hidden-hint {
+	font: inherit;
+	font-size: 12px;
+	line-height: inherit;
+	vertical-align: baseline;
+	color: #757575;
+	padding: 11px 4px;
+	margin: -11px -4px;
+	white-space: nowrap;
+	cursor: pointer;
+}
+.hidden-hint:hover, .hidden-hint:focus-visible { text-decoration: underline; }
+
+.filters li a { margin: 3px; padding: 3px 7px; }
+.filters li { vertical-align: baseline; }
+.filters li.type-filter-item { position: relative; z-index: 5; }
+
+.type-menu-wrap { position: relative; display: inline; }
+
+.type-filter-button {
+	/* Same box as .filters li a (content + 6px padding + 2px border). Negative vertical margin keeps the
+	   atomic inline box from growing the line and shifting the baseline. */
+	display: inline-block;
+	margin: -3px 3px;
+	padding: 3px 7px;
+	border: 1px solid transparent;
+	border-radius: 3px;
+	font: inherit;
+	line-height: normal;
+	vertical-align: baseline;
+	cursor: pointer;
+}
+.type-filter-button:hover { border-color: #db7676; }
+.type-filter-button.active { border-color: #ce4646; }
+.type-filter-button .mark { margin-right: 6px; vertical-align: middle; }
+
+.caret {
+	display: inline-block;
+	width: 5px;
+	height: 5px;
+	margin: 0 0 0 6px;
+	vertical-align: 2px;
+	border-right: 1.5px solid currentColor;
+	border-bottom: 1.5px solid currentColor;
+	transform: rotate(45deg);
+}
+
+.type-menu {
+	position: absolute;
+	bottom: calc(100% + 6px);
+	left: 0;
+	min-width: 150px;
+	padding: 4px;
+	background: #fff;
+	border-radius: 3px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), 0 0 0 1px #e6e6e6;
+	text-align: left;
+}
+
+.menu-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	height: 40px;
+	padding: 0 12px;
+	border: 1px solid transparent;
+	border-radius: 3px;
+	font-size: 15px;
+	color: #777;
+	text-align: left;
+	white-space: nowrap;
+	cursor: pointer;
+}
+.menu-item:hover { border-color: #db7676; }
+.menu-item.selected { color: #111; border-color: #ce4646; }
+
+/* Narrow: stack the footer like TodoMVC's own mobile layout */
+@media (max-width: 620px) {
+	.footer { height: 50px; }
+	.filters { bottom: 10px; }
+	.type-menu { left: auto; right: 0; }
+}
+
+@media (max-width: 430px) {
+	.new-todo { font-size: 20px; padding-right: 56px; }
+	.type-picker-wrap { right: 4px; width: 44px; }
+	.type-picker-wrap:not(:hover):not(:focus-within) .label { display: none; }
+	.type-choice { padding: 0 12px; }
+}
+
+/* Wide desktop: original card (550px) +15% → 632px */
+@media (min-width: 800px) {
+	body { max-width: 632px; }
+}
+
+/* No todos: center the card vertically; the move animates when the first todo is added / last removed */
+.todomvc-wrapper {
+	padding-top: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+	.todomvc-wrapper { transition: padding-top 400ms cubic-bezier(0.4, 0, 0.2, 1); }
+}
+.todomvc-wrapper.is-empty {
+	padding-top: calc(50vh - 200px);
+}
+.new-todo:focus { box-shadow: 0 0 2px 2px rgba(207, 125, 125, 0.55); }

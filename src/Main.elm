@@ -1,0 +1,1289 @@
+port module Main exposing (..)
+
+{-| TodoMVC in Elm with todo types (Personal / Work).
+
+To add a type: add a constructor to `EntryType`, then extend `nextType`,
+`typeKey`, `typeLabel`, `typeShape` and `requireListed` (compiler-enforced,
+exhaustive cases) and add it to `allTypes`. `nextType` must cycle back to
+Personal. Add `.mark-<key>` (color) and, for a new shape, `.shape-*` in
+css/app.css.
+-}
+
+import Browser
+import Browser.Dom as Dom
+import Browser.Events
+import Browser.Navigation as Nav
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (..)
+import Html.Keyed as Keyed
+import Html.Lazy exposing (lazy, lazy2, lazy3)
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
+import Process
+import Task
+import Url exposing (Url)
+
+
+main : Program Decode.Value Model Msg
+main =
+    Browser.application
+        { init = init
+        , view = view
+        , update = updateWithStorage
+        , subscriptions = subscriptions
+        , onUrlRequest = UrlRequested
+        , onUrlChange = UrlChanged
+        }
+
+
+port setStorage : Encode.Value -> Cmd msg
+
+
+updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
+updateWithStorage msg model =
+    let
+        ( newModel, cmds ) =
+            update msg model
+    in
+    ( newModel
+    , Cmd.batch [ setStorage (encodeModel newModel), cmds ]
+    )
+
+
+
+-- TYPES
+
+
+type EntryType
+    = Personal
+    | Work
+
+
+allTypes : List EntryType
+allTypes =
+    List.map requireListed [ Personal, Work ]
+
+
+{-| Compiler guard: adding a constructor breaks this case. Add new type to
+`allTypes` above when you extend it.
+-}
+requireListed : EntryType -> EntryType
+requireListed t =
+    case t of
+        Personal ->
+            t
+
+        Work ->
+            t
+
+
+typeKey : EntryType -> String
+typeKey t =
+    case t of
+        Personal ->
+            "personal"
+
+        Work ->
+            "work"
+
+
+type Shape
+    = Circle
+    | Square
+
+
+{-| Second visual channel besides color, for color-blind users.
+-}
+typeShape : EntryType -> Shape
+typeShape t =
+    case t of
+        Personal ->
+            Circle
+
+        Work ->
+            Square
+
+
+typeLabel : EntryType -> String
+typeLabel t =
+    case t of
+        Personal ->
+            "Personal"
+
+        Work ->
+            "Work"
+
+
+typeFromKey : String -> Maybe EntryType
+typeFromKey key =
+    List.filter (\t -> typeKey t == key) allTypes |> List.head
+
+
+{-| Next type in the cycle; the last one wraps to Personal.
+-}
+nextType : EntryType -> EntryType
+nextType t =
+    case t of
+        Personal ->
+            Work
+
+        Work ->
+            Personal
+
+
+
+-- MODEL
+
+
+type Visibility
+    = All
+    | Active
+    | Completed
+
+
+type TypeFilter
+    = AnyType
+    | OnlyType EntryType
+
+
+type alias Model =
+    { entries : List Entry
+    , field : String
+    , uid : Int
+    , newType : EntryType
+    , visibility : Visibility
+    , typeFilter : TypeFilter
+    , editBackup : Maybe ( Int, String )
+    , typeMenuOpen : Bool
+    , pressing : Maybe Press
+    , pressSeq : Int
+    , confirmingDelete : Maybe Int
+    , key : Nav.Key
+    }
+
+
+{-| A touch press on a row that may still become a long-press. -}
+type alias Press =
+    { id : Int
+    , seq : Int
+    , x : Float
+    , y : Float
+    }
+
+
+type alias Entry =
+    { description : String
+    , completed : Bool
+    , editing : Bool
+    , id : Int
+    , entryType : EntryType
+    }
+
+
+newEntry : String -> Int -> EntryType -> Entry
+newEntry desc id t =
+    { description = desc
+    , completed = False
+    , editing = False
+    , id = id
+    , entryType = t
+    }
+
+
+visibilityFromUrl : Url -> Visibility
+visibilityFromUrl url =
+    case url.fragment of
+        Just "/active" ->
+            Active
+
+        Just "/completed" ->
+            Completed
+
+        _ ->
+            All
+
+
+init : Decode.Value -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
+    let
+        saved =
+            Decode.decodeValue savedDecoder flags
+                |> Result.withDefault emptySaved
+    in
+    ( { entries = saved.entries
+      , field = saved.field
+      , uid = Basics.max saved.uid (1 + maxId saved.entries)
+      , newType = saved.newType
+      , visibility = visibilityFromUrl url
+      , typeFilter = saved.typeFilter
+      , editBackup = Nothing
+      , typeMenuOpen = False
+      , pressing = Nothing
+      , pressSeq = 0
+      , confirmingDelete = Nothing
+      , key = key
+      }
+    , Cmd.none
+    )
+
+
+
+maxId : List Entry -> Int
+maxId entries =
+    List.map .id entries |> List.maximum |> Maybe.withDefault -1
+
+
+
+-- PERSISTENCE
+
+
+type alias Saved =
+    { entries : List Entry
+    , field : String
+    , uid : Int
+    , newType : EntryType
+    , typeFilter : TypeFilter
+    }
+
+
+emptySaved : Saved
+emptySaved =
+    { entries = [], field = "", uid = 0, newType = Personal, typeFilter = AnyType }
+
+
+typeDecoder : Decoder EntryType
+typeDecoder =
+    Decode.string
+        |> Decode.andThen
+            (\s ->
+                case typeFromKey s of
+                    Just t ->
+                        Decode.succeed t
+
+                    Nothing ->
+                        Decode.fail ("unknown type " ++ s)
+            )
+
+
+{-| Missing or unknown type decodes as Personal (old saved data).
+-}
+typeOrPersonal : String -> Decoder EntryType
+typeOrPersonal name =
+    Decode.oneOf [ Decode.field name typeDecoder, Decode.succeed Personal ]
+
+
+entryDecoder : Decoder Entry
+entryDecoder =
+    Decode.map5 Entry
+        (Decode.field "description" Decode.string)
+        (Decode.field "completed" Decode.bool)
+        (Decode.succeed False)
+        (Decode.field "id" Decode.int)
+        (typeOrPersonal "type")
+
+
+lenientEntries : Decoder (List Entry)
+lenientEntries =
+    Decode.list (Decode.oneOf [ Decode.map Just entryDecoder, Decode.succeed Nothing ])
+        |> Decode.map (List.filterMap identity)
+
+
+typeFilterDecoder : Decoder TypeFilter
+typeFilterDecoder =
+    Decode.oneOf
+        [ Decode.field "typeFilter" Decode.string
+            |> Decode.andThen
+                (\k ->
+                    case typeFromKey k of
+                        Just t ->
+                            Decode.succeed (OnlyType t)
+
+                        Nothing ->
+                            Decode.succeed AnyType
+                )
+        , Decode.succeed AnyType
+        ]
+
+
+savedDecoder : Decoder Saved
+savedDecoder =
+    Decode.map5 Saved
+        (Decode.oneOf [ Decode.field "entries" lenientEntries, Decode.succeed [] ])
+        (Decode.oneOf [ Decode.field "field" Decode.string, Decode.succeed "" ])
+        (Decode.oneOf [ Decode.field "uid" Decode.int, Decode.succeed 0 ])
+        (typeOrPersonal "newType")
+        typeFilterDecoder
+
+
+encodeEntry : Entry -> Encode.Value
+encodeEntry e =
+    Encode.object
+        [ ( "description", Encode.string e.description )
+        , ( "completed", Encode.bool e.completed )
+        , ( "id", Encode.int e.id )
+        , ( "type", Encode.string (typeKey e.entryType) )
+        ]
+
+
+encodeModel : Model -> Encode.Value
+encodeModel m =
+    Encode.object
+        [ ( "entries", Encode.list encodeEntry m.entries )
+        , ( "field", Encode.string m.field )
+        , ( "uid", Encode.int m.uid )
+        , ( "newType", Encode.string (typeKey m.newType) )
+        , ( "typeFilter"
+          , Encode.string
+                (case m.typeFilter of
+                    AnyType ->
+                        "all"
+
+                    OnlyType t ->
+                        typeKey t
+                )
+          )
+        ]
+
+
+
+-- UPDATE
+
+
+type Msg
+    = NoOp
+    | UpdateField String
+    | EditingEntry Int Bool
+    | CancelEdit Int
+    | PressStart Int Float Float
+    | PressMove Float Float
+    | PressEnd Int
+    | PressCancel
+    | LongPress Int Int
+    | DismissConfirm
+    | UpdateEntry Int String
+    | Add
+    | Delete Int
+    | DeleteComplete
+    | Check Int Bool
+    | CheckAll Bool
+    | SetNewType EntryType
+    | CycleNewType
+    | CycleEntryType Int
+    | SetTypeFilter TypeFilter
+    | ToggleTypeMenu
+    | OpenTypeMenu
+    | CloseTypeMenu
+    | CloseTypeMenuRefocus
+    | FocusMenuItem Int
+    | ShowAll
+    | UrlRequested Browser.UrlRequest
+    | UrlChanged Url
+
+
+inScope : TypeFilter -> Entry -> Bool
+inScope filter e =
+    case filter of
+        AnyType ->
+            True
+
+        OnlyType t ->
+            e.entryType == t
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model.confirmingDelete of
+        Nothing ->
+            Sub.none
+
+        Just _ ->
+            Sub.batch
+                [ Browser.Events.onKeyDown
+                    (Decode.field "key" Decode.string
+                        |> Decode.andThen
+                            (\k ->
+                                if k == "Escape" then
+                                    Decode.succeed DismissConfirm
+
+                                else
+                                    Decode.fail "not escape"
+                            )
+                    )
+                , Browser.Events.onClick
+                    (insideConfirm
+                        |> Decode.andThen
+                            (\inside ->
+                                if inside then
+                                    Decode.fail "inside"
+
+                                else
+                                    Decode.succeed DismissConfirm
+                            )
+                    )
+                ]
+
+
+{-| True when the event target sits inside a delete-confirm overlay. -}
+insideConfirm : Decoder Bool
+insideConfirm =
+    Decode.field "target" (climbToConfirm ())
+
+
+climbToConfirm : () -> Decoder Bool
+climbToConfirm _ =
+    Decode.field "className" (Decode.oneOf [ Decode.string, Decode.succeed "" ])
+        |> Decode.andThen
+            (\cls ->
+                if List.member "confirm-delete" (String.words cls) then
+                    Decode.succeed True
+
+                else
+                    Decode.oneOf
+                        [ Decode.field "parentElement" (Decode.lazy climbToConfirm)
+                        , Decode.succeed False
+                        ]
+            )
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
+        Add ->
+            ( { model
+                | uid = model.uid + 1
+                , field = ""
+                , entries =
+                    if String.isEmpty (String.trim model.field) then
+                        model.entries
+
+                    else
+                        model.entries ++ [ newEntry (String.trim model.field) model.uid model.newType ]
+              }
+            , Cmd.none
+            )
+
+        UpdateField str ->
+            ( { model | field = str }, Cmd.none )
+
+        EditingEntry id True ->
+            let
+                backup =
+                    List.filter (\t -> t.id == id) model.entries
+                        |> List.head
+                        |> Maybe.map (\t -> ( id, t.description ))
+            in
+            ( { model
+                | entries = mapEntry id (\t -> { t | editing = True }) model.entries
+                , editBackup = backup
+                , confirmingDelete = Nothing
+                , pressing = Nothing
+              }
+            , Task.attempt (\_ -> NoOp) (Dom.focus ("todo-" ++ String.fromInt id))
+            )
+
+        EditingEntry id False ->
+            -- Commit; ignored unless the entry is still being edited (blur after Enter/Esc).
+            if List.any (\t -> t.id == id && t.editing) model.entries then
+                let
+                    commit t =
+                        { t | editing = False, description = String.trim t.description }
+
+                    committed =
+                        mapEntry id commit model.entries
+                in
+                ( { model
+                    | entries = List.filter (\t -> t.id /= id || t.description /= "") committed
+                    , editBackup = Nothing
+                  }
+                , Cmd.none
+                )
+
+            else
+                ( model, Cmd.none )
+
+        CancelEdit id ->
+            let
+                restore t =
+                    case model.editBackup of
+                        Just ( bid, original ) ->
+                            if bid == id then
+                                { t | editing = False, description = original }
+
+                            else
+                                { t | editing = False }
+
+                        Nothing ->
+                            { t | editing = False }
+            in
+            ( { model | entries = mapEntry id restore model.entries, editBackup = Nothing }
+            , Cmd.none
+            )
+
+        UpdateEntry id desc ->
+            ( { model | entries = mapEntry id (\t -> { t | description = desc }) model.entries }
+            , Cmd.none
+            )
+
+        Delete id ->
+            ( { model
+                | entries = List.filter (\t -> t.id /= id) model.entries
+                , confirmingDelete = Nothing
+                , pressing = Nothing
+              }
+            , Cmd.none
+            )
+
+        PressStart id x y ->
+            ( { model
+                | pressing = Just { id = id, seq = model.pressSeq, x = x, y = y }
+                , pressSeq = model.pressSeq + 1
+                , confirmingDelete = Nothing
+              }
+            , Process.sleep 500 |> Task.perform (\_ -> LongPress id model.pressSeq)
+            )
+
+        PressMove x y ->
+            case model.pressing of
+                Just p ->
+                    if abs (x - p.x) > 10 || abs (y - p.y) > 10 then
+                        ( { model | pressing = Nothing }, Cmd.none )
+
+                    else
+                        ( model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        PressEnd id ->
+            -- A tap only edits while its press is still live; a fired long-press or cancelled press is ignored.
+            case model.pressing of
+                Just p ->
+                    if p.id == id then
+                        update (EditingEntry id True) { model | pressing = Nothing }
+
+                    else
+                        ( { model | pressing = Nothing }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        PressCancel ->
+            ( { model | pressing = Nothing }, Cmd.none )
+
+        LongPress id seq ->
+            case model.pressing of
+                Just p ->
+                    if p.id == id && p.seq == seq then
+                        ( { model | pressing = Nothing, confirmingDelete = Just id }, Cmd.none )
+
+                    else
+                        ( model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        DismissConfirm ->
+            ( { model | confirmingDelete = Nothing, pressing = Nothing }, Cmd.none )
+
+        DeleteComplete ->
+            ( { model
+                | entries =
+                    List.filter (\t -> not (t.completed && inScope model.typeFilter t)) model.entries
+              }
+            , focusId "new-todo"
+            )
+
+        Check id isCompleted ->
+            ( { model | entries = mapEntry id (\t -> { t | completed = isCompleted }) model.entries }
+            , Cmd.none
+            )
+
+        CheckAll isCompleted ->
+            let
+                setAll t =
+                    if inScope model.typeFilter t then
+                        { t | completed = isCompleted }
+
+                    else
+                        t
+            in
+            ( { model | entries = List.map setAll model.entries }, Cmd.none )
+
+        SetNewType t ->
+            ( { model | newType = t }
+            , focusId "new-todo"
+            )
+
+        CycleNewType ->
+            ( { model | newType = nextType model.newType }, Cmd.none )
+
+        CycleEntryType id ->
+            ( { model | entries = mapEntry id (\t -> { t | entryType = nextType t.entryType }) model.entries }
+            , Cmd.none
+            )
+
+        SetTypeFilter f ->
+            ( { model | typeFilter = f, typeMenuOpen = False }
+            , focusId "tf-button"
+            )
+
+        ToggleTypeMenu ->
+            if model.typeMenuOpen then
+                ( { model | typeMenuOpen = False }, focusId "tf-button" )
+
+            else
+                ( { model | typeMenuOpen = True }
+                , focusId ("tf-item-" ++ String.fromInt (menuIndex model.typeFilter))
+                )
+
+        OpenTypeMenu ->
+            ( { model | typeMenuOpen = True }
+            , focusId ("tf-item-" ++ String.fromInt (menuIndex model.typeFilter))
+            )
+
+        CloseTypeMenu ->
+            ( { model | typeMenuOpen = False }, Cmd.none )
+
+        CloseTypeMenuRefocus ->
+            ( { model | typeMenuOpen = False }, focusId "tf-button" )
+
+        FocusMenuItem i ->
+            ( model, focusId ("tf-item-" ++ String.fromInt i) )
+
+        ShowAll ->
+            ( { model | typeFilter = AnyType, visibility = All, typeMenuOpen = False }
+            , Cmd.batch [ Nav.pushUrl model.key "#/", focusId "new-todo" ]
+            )
+
+        UrlRequested req ->
+            case req of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
+
+        UrlChanged url ->
+            ( { model | visibility = visibilityFromUrl url }, Cmd.none )
+
+
+focusId : String -> Cmd Msg
+focusId id =
+    Task.attempt (\_ -> NoOp) (Dom.focus id)
+
+
+menuFilters : List TypeFilter
+menuFilters =
+    AnyType :: List.map OnlyType allTypes
+
+
+menuIndex : TypeFilter -> Int
+menuIndex f =
+    menuFilters
+        |> List.indexedMap Tuple.pair
+        |> List.filter (\( _, x ) -> x == f)
+        |> List.head
+        |> Maybe.map Tuple.first
+        |> Maybe.withDefault 0
+
+
+mapEntry : Int -> (Entry -> Entry) -> List Entry -> List Entry
+mapEntry id f =
+    List.map
+        (\t ->
+            if t.id == id then
+                f t
+
+            else
+                t
+        )
+
+
+
+-- VIEW
+
+
+view : Model -> Browser.Document Msg
+view model =
+    { title = "Elm • TodoMVC"
+    , body =
+        [ div [ classList [ ( "todomvc-wrapper", True ), ( "is-empty", List.isEmpty model.entries ) ] ]
+            [ section [ class "todoapp" ]
+                [ lazy2 viewInput model.field model.newType
+                , viewMain model
+                , if List.isEmpty model.entries then
+                    text ""
+
+                  else
+                    viewControls model
+                ]
+            , infoFooter
+            ]
+        ]
+    }
+
+
+viewMain : Model -> Html Msg
+viewMain model =
+    let
+        scoped =
+            List.filter (inScope model.typeFilter) model.entries
+
+        visible =
+            List.filter (isVisible model.visibility) scoped
+
+        allCompleted =
+            not (List.isEmpty scoped) && List.all .completed scoped
+
+        cssVisibility empty =
+            if empty then
+                "hidden"
+
+            else
+                "visible"
+    in
+    section
+        [ class "main"
+        , style "visibility" (cssVisibility (List.isEmpty model.entries))
+        ]
+        [ input
+            [ class "toggle-all"
+            , type_ "checkbox"
+            , name "toggle"
+            , id "toggle-all"
+            , checked allCompleted
+            , onClick (CheckAll (not allCompleted))
+            ]
+            []
+        , label
+            [ for "toggle-all"
+            , style "visibility" (cssVisibility (List.isEmpty scoped))
+            ]
+            [ text "Mark all as complete" ]
+        , if List.isEmpty visible && not (List.isEmpty model.entries) then
+            viewEmptyFiltered model.visibility model.typeFilter (List.length model.entries)
+
+          else
+            Keyed.ul [ class "todo-list" ]
+                (List.map (\t -> viewKeyedEntry (model.typeFilter == AnyType) (model.confirmingDelete == Just t.id) t) visible)
+        ]
+
+
+{-| Touch rows: pointerdown starts a press (long-press timer), pointerup within it is a tap that edits,
+pointermove past 10px or pointercancel (scroll) cancels. Mouse and pen are ignored.
+-}
+touchOnly : Decoder a -> Decoder a
+touchOnly dec =
+    Decode.field "pointerType" Decode.string
+        |> Decode.andThen
+            (\t ->
+                if t == "touch" then
+                    dec
+
+                else
+                    Decode.fail "not touch"
+            )
+
+
+onPressStart : Int -> Attribute Msg
+onPressStart id =
+    on "pointerdown"
+        (touchOnly
+            (Decode.map2 (PressStart id)
+                (Decode.field "clientX" Decode.float)
+                (Decode.field "clientY" Decode.float)
+            )
+        )
+
+
+onPressMove : Attribute Msg
+onPressMove =
+    on "pointermove"
+        (touchOnly
+            (Decode.map2 PressMove
+                (Decode.field "clientX" Decode.float)
+                (Decode.field "clientY" Decode.float)
+            )
+        )
+
+
+onPressEnd : Int -> Attribute Msg
+onPressEnd id =
+    on "pointerup" (touchOnly (Decode.succeed (PressEnd id)))
+
+
+onPressCancel : Attribute Msg
+onPressCancel =
+    on "pointercancel" (touchOnly (Decode.succeed PressCancel))
+
+
+{-| Suppress the long-press context menu for touch pointers only. -}
+onTouchContextMenu : Attribute Msg
+onTouchContextMenu =
+    preventDefaultOn "contextmenu"
+        (touchOnly (Decode.succeed ( NoOp, True )))
+
+
+onKeyPrevent : List ( String, Msg ) -> Attribute Msg
+onKeyPrevent table =
+    let
+        pick key =
+            case List.filter (\( k, _ ) -> k == key) table |> List.head of
+                Just ( _, msg ) ->
+                    -- Tab keeps its default so focus can leave the menu.
+                    Decode.succeed ( msg, key /= "Tab" )
+
+                Nothing ->
+                    Decode.fail "ignored key"
+    in
+    preventDefaultOn "keydown" (Decode.field "key" Decode.string |> Decode.andThen pick)
+
+
+onKey : List ( String, Msg ) -> Attribute Msg
+onKey table =
+    let
+        pick key =
+            case List.filter (\( k, _ ) -> k == key) table |> List.head of
+                Just ( _, msg ) ->
+                    Decode.succeed msg
+
+                Nothing ->
+                    Decode.fail "ignored key"
+    in
+    on "keydown" (Decode.field "key" Decode.string |> Decode.andThen pick)
+
+
+{-| Enter adds; Alt+T cycles type (and is swallowed so "†" is not typed).
+Every other key fails the decoder: no message, no storage write.
+-}
+newTodoKeydown : Decoder ( Msg, Bool )
+newTodoKeydown =
+    Decode.map3
+        (\key alt code ->
+            if key == "Enter" then
+                Decode.succeed ( Add, False )
+
+            else if alt && (code == "KeyT" || key == "†") then
+                Decode.succeed ( CycleNewType, True )
+
+            else
+                Decode.fail "ignored key"
+        )
+        (Decode.field "key" Decode.string)
+        (Decode.field "altKey" Decode.bool)
+        (Decode.field "code" Decode.string)
+        |> Decode.andThen identity
+
+
+viewMark : EntryType -> Html msg
+viewMark t =
+    span
+        [ class
+            ("mark mark-"
+                ++ typeKey t
+                ++ (case typeShape t of
+                        Circle ->
+                            " shape-circle"
+
+                        Square ->
+                            " shape-square"
+                   )
+            )
+        , attribute "aria-hidden" "true"
+        ]
+        []
+
+
+
+-- INPUT ROW
+
+
+viewInput : String -> EntryType -> Html Msg
+viewInput task newType =
+    header [ class "header" ]
+        [ h1 [] [ text "todos" ]
+        , input
+            [ class "new-todo"
+            , placeholder "What needs to be done?"
+            , autofocus True
+            , value task
+            , name "newTodo"
+            , id "new-todo"
+            , attribute "aria-label" "New todo"
+            , onInput UpdateField
+            , preventDefaultOn "keydown" newTodoKeydown
+            ]
+            []
+        , div [ class "type-picker-wrap" ]
+            [ div
+                [ class "type-picker"
+                , attribute "role" "group"
+                , attribute "aria-label" "Type for new todos"
+                , title "Type for new todos (Alt+T)"
+                ]
+                (List.map (viewTypeChoice newType) allTypes)
+            ]
+        ]
+
+
+viewTypeChoice : EntryType -> EntryType -> Html Msg
+viewTypeChoice selected t =
+    button
+        [ type_ "button"
+        , classList [ ( "type-choice", True ), ( "selected", selected == t ) ]
+        , attribute "aria-label" (typeLabel t)
+        , attribute "aria-pressed"
+            (if selected == t then
+                "true"
+
+             else
+                "false"
+            )
+        , onClick (SetNewType t)
+        ]
+        [ viewMark t, span [ class "label" ] [ text (typeLabel t) ] ]
+
+
+
+-- EMPTY STATE
+
+
+statusWord : Visibility -> String
+statusWord v =
+    case v of
+        All ->
+            ""
+
+        Active ->
+            "active"
+
+        Completed ->
+            "completed"
+
+
+viewEmptyFiltered : Visibility -> TypeFilter -> Int -> Html Msg
+viewEmptyFiltered visibility typeFilter total =
+    let
+        words =
+            [ "No"
+            , statusWord visibility
+            , case typeFilter of
+                AnyType ->
+                    ""
+
+                OnlyType t ->
+                    typeLabel t
+            , "todos."
+            ]
+                |> List.filter (not << String.isEmpty)
+                |> String.join " "
+    in
+    div [ class "empty empty-filtered" ]
+        [ p [ class "empty-title" ] [ text words ]
+        , p [ class "empty-sub" ]
+            [ text
+                (if total == 1 then
+                    "1 todo is hidden by the filter."
+
+                 else
+                    String.fromInt total ++ " todos are hidden by the filter."
+                )
+            ]
+        ]
+
+
+
+-- ENTRIES
+
+
+isVisible : Visibility -> Entry -> Bool
+isVisible visibility todo =
+    case visibility of
+        Completed ->
+            todo.completed
+
+        Active ->
+            not todo.completed
+
+        All ->
+            True
+
+
+viewKeyedEntry : Bool -> Bool -> Entry -> ( String, Html Msg )
+viewKeyedEntry showMark confirming todo =
+    ( String.fromInt todo.id, lazy3 viewEntry showMark confirming todo )
+
+
+viewEntry : Bool -> Bool -> Entry -> Html Msg
+viewEntry showMark confirming todo =
+    li
+        [ classList [ ( "completed", todo.completed ), ( "editing", todo.editing ), ( "confirming", confirming ) ]
+        , onTouchContextMenu
+        ]
+        [ div [ class "view" ]
+            [ input
+                [ class "toggle"
+                , type_ "checkbox"
+                , checked todo.completed
+                , attribute "aria-label" "Completed"
+                , onClick (Check todo.id (not todo.completed))
+                ]
+                []
+            , label
+                [ onDoubleClick (EditingEntry todo.id True)
+                , onPressStart todo.id
+                , onPressMove
+                , onPressEnd todo.id
+                , onPressCancel
+                ]
+                [ text todo.description ]
+            , if showMark then
+                button
+                    [ class "row-type"
+                    , type_ "button"
+                    , attribute "aria-label" ("Type: " ++ typeLabel todo.entryType ++ ". Click to change.")
+                    , onClick (CycleEntryType todo.id)
+                    ]
+                    [ span [ class "label" ] [ text (typeLabel todo.entryType) ], viewMark todo.entryType ]
+
+              else
+                text ""
+            , button
+                [ class "destroy"
+                , type_ "button"
+                , attribute "aria-label" "Delete"
+                , onClick (Delete todo.id)
+                ]
+                []
+            ]
+        , input
+            [ class "edit"
+            , value todo.description
+            , name "title"
+            , id ("todo-" ++ String.fromInt todo.id)
+            , attribute "aria-label" "Edit todo"
+            , onInput (UpdateEntry todo.id)
+            , onBlur (EditingEntry todo.id False)
+            , onKey
+                [ ( "Enter", EditingEntry todo.id False )
+                , ( "Escape", CancelEdit todo.id )
+                ]
+            ]
+            []
+        , if confirming then
+            div [ class "confirm-delete", attribute "role" "group", attribute "aria-label" "Delete this todo?" ]
+                [ button [ class "confirm-yes", type_ "button", onClick (Delete todo.id) ] [ text "Delete" ]
+                , button [ class "confirm-no", type_ "button", onClick DismissConfirm ] [ text "Cancel" ]
+                ]
+
+          else
+            text ""
+        ]
+
+
+
+-- FOOTER
+
+
+viewControls : Model -> Html Msg
+viewControls model =
+    let
+        scoped =
+            List.filter (inScope model.typeFilter) model.entries
+
+        completed =
+            List.length (List.filter .completed scoped)
+
+        left =
+            List.length scoped - completed
+
+        hidden_ =
+            List.length model.entries - List.length (List.filter (isVisible model.visibility) scoped)
+    in
+    footer [ class "footer" ]
+        [ lazy3 viewCount left (not (List.isEmpty scoped)) hidden_
+        , viewFilters model
+        , if completed > 0 then
+            button [ type_ "button", class "clear-completed", onClick DeleteComplete ] [ text "Clear completed" ]
+
+          else
+            text ""
+        ]
+
+
+viewCount : Int -> Bool -> Int -> Html Msg
+viewCount left anyInScope hidden_ =
+    span
+        [ class "todo-count"
+        , attribute "aria-live" "polite"
+        ]
+        ((if left == 0 && anyInScope then
+            [ text "All done" ]
+
+          else
+            [ strong [] [ text (String.fromInt left) ], text " left" ]
+         )
+            ++ (if hidden_ > 0 then
+                    [ text ", "
+                    , button
+                        [ type_ "button"
+                        , class "hidden-hint"
+                        , title "Show all todos"
+                        , attribute "aria-label" (String.fromInt hidden_ ++ " hidden. Show all todos")
+                        , onClick ShowAll
+                        ]
+                        [ text (String.fromInt hidden_ ++ " hidden") ]
+                    ]
+
+                else
+                    []
+               )
+        )
+
+
+viewFilters : Model -> Html Msg
+viewFilters model =
+    ul [ class "filters" ]
+        [ statusLink "#/" "All" (model.visibility == All)
+        , text " "
+        , statusLink "#/active" "Active" (model.visibility == Active)
+        , text " "
+        , statusLink "#/completed" "Completed" (model.visibility == Completed)
+        , text " "
+        , li [ class "type-filter-item" ] [ viewTypeMenu model.typeFilter model.typeMenuOpen ]
+        ]
+
+
+statusLink : String -> String -> Bool -> Html Msg
+statusLink uri name_ isSelected =
+    li []
+        [ a
+            [ href uri
+            , classList [ ( "selected", isSelected ) ]
+            , attribute "aria-current"
+                (if isSelected then
+                    "page"
+
+                 else
+                    "false"
+                )
+            ]
+            [ text name_ ]
+        ]
+
+
+filterLabel : TypeFilter -> String
+filterLabel f =
+    case f of
+        AnyType ->
+            "All types"
+
+        OnlyType t ->
+            typeLabel t
+
+
+viewTypeMenu : TypeFilter -> Bool -> Html Msg
+viewTypeMenu current open =
+    let
+        buttonContent =
+            case current of
+                AnyType ->
+                    [ text "All types" ]
+
+                OnlyType t ->
+                    [ viewMark t, text (typeLabel t) ]
+
+        n =
+            List.length menuFilters
+
+        item i f =
+            button
+                [ type_ "button"
+                , id ("tf-item-" ++ String.fromInt i)
+                , tabindex -1
+                , classList [ ( "menu-item", True ), ( "selected", f == current ) ]
+                , attribute "role" "menuitemradio"
+                , attribute "aria-checked"
+                    (if f == current then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                , onClick (SetTypeFilter f)
+                , preventDefaultOn "mousedown" (Decode.succeed ( NoOp, True ))
+                , onKeyPrevent
+                    [ ( "ArrowDown", FocusMenuItem (modBy n (i + 1)) )
+                    , ( "ArrowUp", FocusMenuItem (modBy n (i - 1)) )
+                    , ( "Home", FocusMenuItem 0 )
+                    , ( "End", FocusMenuItem (n - 1) )
+                    , ( "Escape", CloseTypeMenuRefocus )
+                    , ( "Tab", CloseTypeMenu )
+                    ]
+                ]
+                (case f of
+                    AnyType ->
+                        [ text "All types" ]
+
+                    OnlyType t ->
+                        [ viewMark t, text (typeLabel t) ]
+                )
+
+        leavesMenu =
+            Decode.at [ "relatedTarget" ] (Decode.nullable (Decode.field "id" Decode.string))
+                |> Decode.andThen
+                    (\rel ->
+                        case rel of
+                            Just id ->
+                                if String.startsWith "tf-" id then
+                                    Decode.fail "still inside"
+
+                                else
+                                    Decode.succeed CloseTypeMenu
+
+                            Nothing ->
+                                Decode.succeed CloseTypeMenu
+                    )
+    in
+    div [ class "type-menu-wrap", on "focusout" leavesMenu ]
+        [ button
+            [ type_ "button"
+            , id "tf-button"
+            , classList [ ( "type-filter-button", True ), ( "active", current /= AnyType ) ]
+            , attribute "aria-haspopup" "menu"
+            , attribute "aria-controls" "tf-menu"
+            , attribute "aria-expanded"
+                (if open then
+                    "true"
+
+                 else
+                    "false"
+                )
+            , attribute "aria-label" ("Type filter: " ++ filterLabel current)
+            , onClick ToggleTypeMenu
+            , preventDefaultOn "mousedown" (Decode.succeed ( NoOp, True ))
+            , onKeyPrevent
+                [ ( "Escape", CloseTypeMenu )
+                , ( "ArrowDown", OpenTypeMenu )
+                , ( "ArrowUp", OpenTypeMenu )
+                ]
+            ]
+            (buttonContent ++ [ span [ class "caret", attribute "aria-hidden" "true" ] [] ])
+        , if open then
+            div [ class "type-menu", id "tf-menu", attribute "role" "menu" ] (List.indexedMap item menuFilters)
+
+          else
+            text ""
+        ]
+
+
+infoFooter : Html msg
+infoFooter =
+    footer [ class "info" ]
+        [ p [ class "hint-pointer" ] [ text "Double-click to edit a todo. Alt+T switches the type." ]
+        , p [ class "hint-touch" ] [ text "Tap a todo to edit it. Press and hold to delete." ]
+        ]
