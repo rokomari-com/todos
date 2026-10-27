@@ -901,3 +901,24 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 	.archive-row:focus-within .archive-actions { display: flex; }
 	.archive-row.confirming .archive-actions { display: none; }
 }
+
+/* Text font: Noto Sans + Noto Sans Bengali (Google Fonts, OFL 1.1; linked in index.html), Helvetica as fallback.
+   Rows / input / edit at 23px with the old px line-heights so the row rhythm and textarea growth stay as before.
+   The "todos" title keeps Helvetica Neue. */
+:root { --app-font: "Noto Sans", "Noto Sans Bengali", "Helvetica Neue", Helvetica, Arial, sans-serif; }
+body,
+.todoapp,
+.todoapp input,
+.todoapp textarea,
+.todoapp button,
+.todoapp input::placeholder,
+.todoapp textarea::placeholder,
+.type-menu,
+.footer,
+.archive-bar { font-family: var(--app-font); }
+.todoapp h1 { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.todo-list li { font-size: 23px; }
+.todo-list li label { line-height: 28.8px; }
+.new-todo { font-size: 23px; line-height: 33px; }
+.edit,
+.todo-list li .edit { font-size: 23px; line-height: 33.6px; }

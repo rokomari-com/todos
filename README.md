@@ -4,7 +4,9 @@ Live: https://rokomari-com.github.io/todos/
 
 Built on [Evan Czaplicki's Elm TodoMVC](https://github.com/evancz/elm-todomvc) (BSD-3-Clause) and the [TodoMVC](https://todomvc.com) stylesheets. MIT licensed; see `LICENSE` and `THIRD_PARTY_NOTICES.md`.
 
-TodoMVC (Elm 0.19.1) plus user-configurable categories. Original TodoMVC styling is vendored in `css/` (todomvc-common 1.0.5, todomvc-app-css 2.4.3); `css/types.css` adds the category UI. No CDN at runtime.
+TodoMVC (Elm 0.19.1) plus user-configurable categories. Original TodoMVC styling is vendored in `css/` (todomvc-common 1.0.5, todomvc-app-css 2.4.3); `css/types.css` adds the category UI. No CDN at runtime except the web fonts.
+
+Fonts: text is Noto Sans + Noto Sans Bengali 300 (23px rows/input) from Google Fonts, linked in `index.html` and falling back to Helvetica; the "todos" title stays Helvetica Neue.
 
 ## Build and run
 
