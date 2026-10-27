@@ -213,7 +213,14 @@ textarea.new-todo::placeholder { line-height: 33px; }
 
 
 /* Empty filtered state, quiet */
-.empty-filtered { padding: 15px 15px 15px 60px; border-top: 1px solid #e6e6e6; }
+.empty-filtered { padding: 15px 15px 15px 68px; border-top: 1px solid #e6e6e6; }
+/* Left gutter 68px (vendored 60): the checkbox ring and the input's + sit 8px in from the card edge, text moves
+   with them so ring-to-text spacing is unchanged. Touch values (drag handle first) are in the hover: none block. */
+.new-todo { padding-left: 68px; }
+.todo-list li .toggle { left: 8px; }
+.todo-list li .toggle + label { background-position: 8px center; }
+.todo-list li:not(.archive-row) label { padding-left: 68px; }
+.todo-list li.editing .edit { margin-left: 51px; width: calc(100% - 51px); }
 .empty-title { margin: 0; font-size: 16px; font-weight: 300; color: #757575; }
 .empty-sub { margin: 4px 0 0; font-size: 13px; color: #757575; }
 
@@ -607,7 +614,7 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 		align-items: center;
 		justify-content: center;
 		position: absolute;
-		left: 0;
+		left: 8px;
 		top: 0;
 		bottom: 0;
 		width: 44px;
@@ -620,10 +627,10 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 		cursor: grab;
 		z-index: 2;
 	}
-	.todo-list li .toggle { left: 44px; }
-	.todo-list li:not(.archive-row) label { padding-left: 92px; }
-	.todo-list li.editing .edit { margin-left: 76px; width: calc(100% - 76px); }
-	.todo-list li .toggle + label { background-position: 44px center; }
+	.todo-list li .toggle { left: 52px; }
+	.todo-list li:not(.archive-row) label { padding-left: 100px; }
+	.todo-list li.editing .edit { margin-left: 84px; width: calc(100% - 84px); }
+	.todo-list li .toggle + label { background-position: 52px center; }
 	.todo-list li.confirming .drag-handle { opacity: 0.15; }
 }
 
@@ -964,3 +971,22 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 .cat-row .cat-delete:focus-visible,
 .cat-delete:hover:not(:disabled),
 .cat-delete:focus-visible { color: #af5b5e; }
+
+/* New-todo gutter: a decorative + the size of the 30px checkbox ring (18px arms, 1.5px stroke) centred where it sits (x 31, first line), #cfcfcf at rest,
+   #777 while the input has focus. Touch rows carry a drag handle first, so there it sits 8px right of the gutter centre. */
+.header .new-todo-plus {
+	position: absolute;
+	top: 17.5px;
+	left: 16px;
+	width: 30px;
+	height: 30px;
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M6 15h18M15 6v18'/%3E%3C/svg%3E") center / 30px 30px no-repeat;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M6 15h18M15 6v18'/%3E%3C/svg%3E") center / 30px 30px no-repeat;
+	color: #cfcfcf;
+	pointer-events: none;
+	z-index: 2;
+}
+.header .new-todo:focus ~ .new-todo-plus { color: #777; }
+@media (hover: none) {
+	.header .new-todo-plus { left: 23px; }
+}

@@ -2532,6 +2532,9 @@ viewInput task cats newCat =
             , preventDefaultOn "keydown" newTodoKeydown
             ]
             []
+
+        -- Decorative + in the left gutter, where a row's checkbox sits; brighter while the input has focus.
+        , span [ class "icon icon-plus new-todo-plus", attribute "aria-hidden" "true" ] []
         , if List.isEmpty cats then
             text ""
 

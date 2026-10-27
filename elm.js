@@ -10557,6 +10557,14 @@ var $author$project$Main$viewInput = F3(
 							A2($elm$html$Html$Events$preventDefaultOn, 'keydown', $author$project$Main$newTodoKeydown)
 						]),
 					_List_Nil),
+					A2(
+					$elm$html$Html$span,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('icon icon-plus new-todo-plus'),
+							A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
+						]),
+					_List_Nil),
 					$elm$core$List$isEmpty(cats) ? $elm$html$Html$text('') : A2(
 					$elm$html$Html$div,
 					_List_fromArray(
