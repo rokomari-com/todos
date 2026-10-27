@@ -10,6 +10,15 @@
 	--cat-5: #00838f; /* Teal */
 	--cat-6: #a0790b; /* Ochre */
 	--cat-7: #8d6e63; /* Brown */
+	/* Text shades: same hue, darkened only where needed for >= 4.5:1 on white and on #f1f1f1 (open pill). */
+	--cat-0-text: #2b68d5;
+	--cat-1-text: #a15b16;
+	--cat-2-text: #297c4d;
+	--cat-3-text: #c2185b;
+	--cat-4-text: #7b52c7;
+	--cat-5-text: #007782;
+	--cat-6-text: #886709;
+	--cat-7-text: #84675d;
 }
 
 body { width: auto; }
@@ -210,7 +219,7 @@ textarea.new-todo::placeholder { line-height: 33px; }
 .empty-sub { margin: 4px 0 0; font-size: 13px; color: #757575; }
 
 /* Footer (direction A1): two borderless pill buttons centred in a 40px row; grey at rest, pale fill on
-   hover / open, red text only for a non-default choice. "Archive completed" sits at the right, Completed view only. */
+   hover / open, red text only for a non-default choice. "Archive all" sits at the right, Completed view only. */
 .footer {
 	position: relative;
 	display: flex;
@@ -231,7 +240,10 @@ textarea.new-todo::placeholder { line-height: 33px; }
 	align-items: center;
 	gap: 6px;
 }
-.footer .clear-completed {
+/* "html .clear-completed:active" in index.css (0,2,1) would switch it to position: relative mid-click, so the
+   button jumps and the click lands on the footer; the :active selector here outranks it. */
+.footer .clear-completed,
+html .footer .clear-completed:active {
 	position: absolute;
 	right: 15px;
 	float: none;
@@ -324,13 +336,15 @@ textarea.new-todo::placeholder { line-height: 33px; }
 	/* Pills stay 28px; an invisible halo gives a 44px tap target. Menu rows grow to 44px. */
 	.menu-button::after,
 	.add-categories::after { content: ''; position: absolute; inset: -8px -2px; }
-	.footer .clear-completed { line-height: 44px; }
+	.footer .clear-completed,
+	html .footer .clear-completed:active { line-height: 44px; }
 	.menu-item { height: 44px; }
 	.menu-list { max-height: 352px; }
 }
 @media (max-width: 480px) {
 	.footer { justify-content: flex-start; padding: 0 9px; }
-	.footer .clear-completed { position: static; margin-left: auto; padding: 0 6px; }
+	.footer .clear-completed,
+	html .footer .clear-completed:active { position: static; margin-left: auto; padding: 0 6px; }
 	.footer .type-menu { left: 0; transform: none; }
 }
 
@@ -757,3 +771,21 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 .main.row-menu-open { z-index: 25; }
 /* Pointer pick: the button gets focus back (a11y) but no ring; cleared on the next key or blur. */
 .no-ring:focus-visible { outline: none; box-shadow: none; }
+
+/* Category name in its palette colour (footer / archive button when set, row hover label). */
+.cat-text-0, .menu-button.deviates.cat-text-0, .row-type .label.cat-text-0,
+.menu-item .menu-label.cat-text-0, .menu-item.selected .menu-label.cat-text-0, .cat-label.cat-text-0 { color: var(--cat-0-text); }
+.cat-text-1, .menu-button.deviates.cat-text-1, .row-type .label.cat-text-1,
+.menu-item .menu-label.cat-text-1, .menu-item.selected .menu-label.cat-text-1, .cat-label.cat-text-1 { color: var(--cat-1-text); }
+.cat-text-2, .menu-button.deviates.cat-text-2, .row-type .label.cat-text-2,
+.menu-item .menu-label.cat-text-2, .menu-item.selected .menu-label.cat-text-2, .cat-label.cat-text-2 { color: var(--cat-2-text); }
+.cat-text-3, .menu-button.deviates.cat-text-3, .row-type .label.cat-text-3,
+.menu-item .menu-label.cat-text-3, .menu-item.selected .menu-label.cat-text-3, .cat-label.cat-text-3 { color: var(--cat-3-text); }
+.cat-text-4, .menu-button.deviates.cat-text-4, .row-type .label.cat-text-4,
+.menu-item .menu-label.cat-text-4, .menu-item.selected .menu-label.cat-text-4, .cat-label.cat-text-4 { color: var(--cat-4-text); }
+.cat-text-5, .menu-button.deviates.cat-text-5, .row-type .label.cat-text-5,
+.menu-item .menu-label.cat-text-5, .menu-item.selected .menu-label.cat-text-5, .cat-label.cat-text-5 { color: var(--cat-5-text); }
+.cat-text-6, .menu-button.deviates.cat-text-6, .row-type .label.cat-text-6,
+.menu-item .menu-label.cat-text-6, .menu-item.selected .menu-label.cat-text-6, .cat-label.cat-text-6 { color: var(--cat-6-text); }
+.cat-text-7, .menu-button.deviates.cat-text-7, .row-type .label.cat-text-7,
+.menu-item .menu-label.cat-text-7, .menu-item.selected .menu-label.cat-text-7, .cat-label.cat-text-7 { color: var(--cat-7-text); }

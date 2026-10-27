@@ -9553,6 +9553,17 @@ var $author$project$Main$OpenManage = {$: 'OpenManage'};
 var $author$project$Main$SetCategoryFilter = function (a) {
 	return {$: 'SetCategoryFilter', a: a};
 };
+var $author$project$Main$catText = function (c) {
+	return 'cat-text-' + $elm$core$String$fromInt(c.color);
+};
+var $author$project$Main$filterId = function (f) {
+	if (f.$ === 'OnlyCategory') {
+		var id = f.a;
+		return $elm$core$Maybe$Just(id);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
 var $author$project$Main$filterLabel = F2(
 	function (cats, f) {
 		switch (f.$) {
@@ -9568,6 +9579,14 @@ var $author$project$Main$filterLabel = F2(
 				return 'No category';
 		}
 	});
+var $author$project$Main$labelColour = function (mc) {
+	if (mc.$ === 'Just') {
+		var c = mc.a;
+		return ' ' + $author$project$Main$catText(c);
+	} else {
+		return '';
+	}
+};
 var $author$project$Main$ClearNoRing = {$: 'ClearNoRing'};
 var $author$project$Main$CloseMenu = function (a) {
 	return {$: 'CloseMenu', a: a};
@@ -10061,7 +10080,12 @@ var $author$project$Main$viewCategoryMenu = F3(
 					$elm$html$Html$span,
 					_List_fromArray(
 						[
-							$elm$html$Html$Attributes$class('menu-label tf-name')
+							$elm$html$Html$Attributes$class(
+							'menu-label tf-name' + $author$project$Main$labelColour(
+								A2(
+									$elm$core$Maybe$andThen,
+									$author$project$Main$findCategory(cats),
+									$author$project$Main$filterId(f))))
 						]),
 					_List_fromArray(
 						[
@@ -10089,7 +10113,20 @@ var $author$project$Main$viewCategoryMenu = F3(
 			$author$project$Main$viewMenu,
 			$author$project$Main$CatMenu,
 			{
-				buttonClass: 'menu-button',
+				buttonClass: function () {
+					if (current.$ === 'OnlyCategory') {
+						var id = current.a;
+						var _v1 = A2($author$project$Main$findCategory, cats, id);
+						if (_v1.$ === 'Just') {
+							var c = _v1.a;
+							return 'menu-button ' + $author$project$Main$catText(c);
+						} else {
+							return 'menu-button';
+						}
+					} else {
+						return 'menu-button';
+					}
+				}(),
 				buttonContent: content(current),
 				deviates: !_Utils_eq(current, $author$project$Main$AnyCategory),
 				down: model.menuDown,
@@ -10328,7 +10365,7 @@ var $author$project$Main$viewControls = function (model) {
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Archive completed')
+						$elm$html$Html$text('Archive all')
 					])) : $elm$html$Html$text(''),
 				(archivedCount > 0) ? A2(
 				$elm$html$Html$a,
@@ -10936,7 +10973,12 @@ var $author$project$Main$viewRowCategoryMenu = F5(
 						$elm$html$Html$span,
 						_List_fromArray(
 							[
-								$elm$html$Html$Attributes$class('menu-label tf-name')
+								$elm$html$Html$Attributes$class(
+								'menu-label tf-name' + $author$project$Main$labelColour(
+									A2(
+										$elm$core$Maybe$andThen,
+										$author$project$Main$findCategory(cats),
+										choice)))
 							]),
 						_List_fromArray(
 							[
@@ -10965,7 +11007,8 @@ var $author$project$Main$viewRowCategoryMenu = F5(
 								$elm$html$Html$span,
 								_List_fromArray(
 									[
-										$elm$html$Html$Attributes$class('label')
+										$elm$html$Html$Attributes$class(
+										'label ' + $author$project$Main$catText(c))
 									]),
 								_List_fromArray(
 									[
@@ -11699,7 +11742,8 @@ var $author$project$Main$viewCategoryRow = F4(
 										_List_fromArray(
 											[
 												$elm$html$Html$Attributes$id('cat-label-' + sid),
-												$elm$html$Html$Attributes$class('cat-label'),
+												$elm$html$Html$Attributes$class(
+												'cat-label ' + $author$project$Main$catText(c)),
 												$elm$html$Html$Attributes$type_('button'),
 												A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Edit ' + c.name),
 												$elm$html$Html$Events$onClick(

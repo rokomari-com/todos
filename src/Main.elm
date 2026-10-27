@@ -3228,7 +3228,7 @@ viewCategoryRow model n i c =
                         [ span [ class "cat-preview" ] [ viewMark (Just c) ]
                         , button
                             [ id ("cat-label-" ++ sid)
-                            , class "cat-label"
+                            , class ("cat-label " ++ catText c)
                             , type_ "button"
                             , attribute "aria-label" ("Edit " ++ c.name)
                             , onClick (StartEditCategory c.id)
@@ -3298,7 +3298,7 @@ deleteCategoryText used =
 -- FOOTER
 
 
-{-| Footer: a status menu and a category menu, centred; "Archive completed" only in the Completed view. -}
+{-| Footer: a status menu and a category menu, centred; "Archive all" only in the Completed view. -}
 viewControls : Model -> Html Msg
 viewControls model =
     let
@@ -3324,7 +3324,7 @@ viewControls model =
                 viewCategoryMenu True model statusScoped
             ]
         , if model.visibility == Completed && completed > 0 then
-            button [ type_ "button", class "clear-completed", onClick ArchiveCompleted ] [ text "Archive completed" ]
+            button [ type_ "button", class "clear-completed", onClick ArchiveCompleted ] [ text "Archive all" ]
 
           else
             text ""
@@ -3408,7 +3408,7 @@ viewCategoryMenu withEdit model base =
                     NoCategory ->
                         [ viewMark Nothing ]
                 )
-            , span [ class "menu-label tf-name" ] [ text (filterLabel cats f) ]
+            , span [ class ("menu-label tf-name" ++ labelColour (Maybe.andThen (findCategory cats) (filterId f))) ] [ text (filterLabel cats f) ]
             ]
 
         row f =
@@ -3429,7 +3429,19 @@ viewCategoryMenu withEdit model base =
     in
     viewMenu CatMenu
         { wrapClass = ""
-        , buttonClass = "menu-button"
+        , buttonClass =
+            -- A set category shows its name in its own palette colour; "No category" keeps the red accent.
+            case current of
+                OnlyCategory id ->
+                    case findCategory cats id of
+                        Just c ->
+                            "menu-button " ++ catText c
+
+                        Nothing ->
+                            "menu-button"
+
+                _ ->
+                    "menu-button"
         , noRing = model.noRing == Just CatMenu
         , open = model.menuOpen == Just CatMenu
         , down = model.menuDown
@@ -3457,6 +3469,33 @@ isRowMenu w =
             False
 
 
+{-| Text in the category's palette colour (`--cat-N`). -}
+catText : Category -> String
+catText c =
+    "cat-text-" ++ String.fromInt c.color
+
+
+{-| Extra class for a menu label: a real category shows in its own colour; Any / No category stay neutral. -}
+labelColour : Maybe Category -> String
+labelColour mc =
+    case mc of
+        Just c ->
+            " " ++ catText c
+
+        Nothing ->
+            ""
+
+
+filterId : CategoryFilter -> Maybe Int
+filterId f =
+    case f of
+        OnlyCategory id ->
+            Just id
+
+        _ ->
+            Nothing
+
+
 rowMenuChoices : List Category -> List (Maybe Int)
 rowMenuChoices cats =
     Nothing :: List.map (Just << .id) cats
@@ -3469,7 +3508,7 @@ viewRowCategoryMenu cats menu ringless todo mc =
         row choice =
             { content =
                 [ span [ class "menu-mark" ] [ markFor cats choice ]
-                , span [ class "menu-label tf-name" ]
+                , span [ class ("menu-label tf-name" ++ labelColour (Maybe.andThen (findCategory cats) choice)) ]
                     [ text
                         (if choice == Nothing then
                             "No category"
@@ -3501,7 +3540,7 @@ viewRowCategoryMenu cats menu ringless todo mc =
         , buttonContent =
             case mc of
                 Just c ->
-                    [ span [ class "label" ] [ text c.name ], viewMark mc ]
+                    [ span [ class ("label " ++ catText c) ] [ text c.name ], viewMark mc ]
 
                 Nothing ->
                     [ viewMark Nothing ]
