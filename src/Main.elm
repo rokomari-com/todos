@@ -11,7 +11,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
-import Html.Lazy exposing (lazy3, lazy5)
+import Html.Lazy exposing (lazy3, lazy5, lazy7)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Process
@@ -87,7 +87,7 @@ isTransient msg =
         GotRects _ _ _ ->
             True
 
-        GotMenuRoom _ _ ->
+        GotMenuRoom _ _ _ ->
             True
 
         CopyMonth _ _ ->
@@ -101,6 +101,15 @@ isTransient msg =
 
         FocusMenuItem _ _ ->
             True
+
+        MenuPointer _ ->
+            True
+
+        ClearNoRing ->
+            True
+
+        Batch msgs ->
+            List.all isTransient msgs
 
         EditCategoryName _ ->
             True
@@ -221,6 +230,20 @@ categoryName cats mid =
     mid |> Maybe.andThen (findCategory cats) |> Maybe.map .name |> Maybe.withDefault "None"
 
 
+{-| The new-todo picker follows the category filter: a specific category or "No category" presets it; Any leaves it. -}
+followFilter : CategoryFilter -> Maybe Int -> Maybe Int
+followFilter f current =
+    case f of
+        OnlyCategory id ->
+            Just id
+
+        NoCategory ->
+            Nothing
+
+        AnyCategory ->
+            current
+
+
 {-| Cycle: Nothing -> first category -> ... -> last -> Nothing. An unknown id restarts at Nothing. -}
 nextCategory : List Category -> Maybe Int -> Maybe Int
 nextCategory cats current =
@@ -338,6 +361,8 @@ type alias Model =
     , returnTo : String
     , editBackup : Maybe ( Int, String )
     , menuOpen : Maybe Which
+    , menuPointer : Bool
+    , noRing : Maybe Which
     , menuDown : Bool
     , copyPending : Maybe String
     , copyFlash : Maybe ( String, Bool )
@@ -445,7 +470,7 @@ init flags url key =
       , uid = Basics.max saved.uid (1 + maxId saved.entries)
       , categories = saved.categories
       , nextCategoryId = saved.nextCategoryId
-      , newCategory = saved.newCategory
+      , newCategory = followFilter saved.categoryFilter saved.newCategory
       , visibility = visibilityFromUrl url
       , categoryFilter = saved.categoryFilter
       , newCatName = ""
@@ -455,6 +480,8 @@ init flags url key =
       , returnTo = "#/active"
       , editBackup = Nothing
       , menuOpen = Nothing
+      , menuPointer = False
+      , noRing = Nothing
       , menuDown = False
       , copyPending = Nothing
       , copyFlash = Nothing
@@ -818,7 +845,7 @@ type Msg
     | Tick Time.Posix
     | SetNewCategory (Maybe Int)
     | CycleNewCategory
-    | CycleEntryCategory Int
+    | SetEntryCategory Int (Maybe Int)
     | SetCategoryFilter CategoryFilter
     | OpenManage
     | UpdateNewCatName String
@@ -837,7 +864,10 @@ type Msg
     | CloseMenu Which
     | CloseMenuRefocus Which
     | FocusMenuItem Which Int
-    | GotMenuRoom Which Float
+    | MenuPointer Bool
+    | ClearNoRing
+    | Batch (List Msg)
+    | GotMenuRoom Which Float Float
     | SetStatus Visibility
     | CopyMonth String String
     | Copied Bool
@@ -1036,6 +1066,18 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        Batch msgs ->
+            List.foldl
+                (\m ( mdl, cmds ) ->
+                    let
+                        ( next, cmd ) =
+                            update m mdl
+                    in
+                    ( next, Cmd.batch [ cmds, cmd ] )
+                )
+                ( model, Cmd.none )
+                msgs
+
         Add ->
             ( { model
                 | uid = model.uid + 1
@@ -1134,7 +1176,8 @@ update msg model =
                     model.pressSeq
             in
             ( { model
-                | drag =
+                | menuOpen = Nothing
+                , drag =
                     Just
                         { id = id
                         , seq = seq
@@ -1436,13 +1479,19 @@ update msg model =
         CycleNewCategory ->
             ( { model | newCategory = nextCategory model.categories model.newCategory }, Cmd.none )
 
-        CycleEntryCategory id ->
-            ( { model | entries = mapEntry id (\t -> { t | category = nextCategory model.categories t.category }) model.entries }
-            , Cmd.none
+        SetEntryCategory id cat ->
+            ( { model | entries = mapEntry id (\t -> { t | category = cat }) model.entries, menuOpen = Nothing, noRing = pickRing (RowMenu id) model }
+            , focusId (menuPrefix (RowMenu id) ++ "button")
             )
 
         SetCategoryFilter f ->
-            ( { model | categoryFilter = f, menuOpen = Nothing }
+            ( { model | categoryFilter = f, newCategory =
+                    if f == model.categoryFilter then
+                        model.newCategory
+
+                    else
+                        followFilter f model.newCategory
+                , menuOpen = Nothing, noRing = pickRing CatMenu model }
             , focusId "tf-button"
             )
 
@@ -1622,26 +1671,9 @@ update msg model =
         OpenMenu which ->
             openMenu which model
 
-        GotMenuRoom which above ->
-            -- Menus open upwards unless the rows (about 40px each, plus padding/separator) do not fit above.
-            let
-                rows =
-                    case which of
-                        StatusMenu ->
-                            3
-
-                        CatMenu ->
-                            -- Any + No category, plus "Edit categories…" outside the archive.
-                            List.length model.categories
-                                + 2
-                                + (if model.visibility == ArchiveView then
-                                    0
-
-                                   else
-                                    1
-                                  )
-            in
-            ( { model | menuDown = above < toFloat (40 * rows + 24) }, Cmd.none )
+        GotMenuRoom _ above menuHeight ->
+            -- Measured after render: open upwards unless the menu (plus its 8px gap) does not fit above the button.
+            ( { model | menuDown = above < menuHeight + 8 }, Cmd.none )
 
         CloseMenu which ->
             if model.menuOpen == Just which then
@@ -1654,7 +1686,22 @@ update msg model =
             ( { model | menuOpen = Nothing }, focusId (menuPrefix which ++ "button") )
 
         FocusMenuItem which i ->
-            ( model, focusId (menuPrefix which ++ "item-" ++ String.fromInt i) )
+            -- Arrow keys mean keyboard use: the pick that follows keeps the focus ring.
+            ( { model | menuPointer = False }, focusId (menuPrefix which ++ "item-" ++ String.fromInt i) )
+
+        MenuPointer on ->
+            if model.menuPointer == on then
+                ( model, Cmd.none )
+
+            else
+                ( { model | menuPointer = on }, Cmd.none )
+
+        ClearNoRing ->
+            if model.noRing == Nothing then
+                ( model, Cmd.none )
+
+            else
+                ( { model | noRing = Nothing }, Cmd.none )
 
         CopyMonth month txt ->
             -- One copy in flight at a time, so a result can't land on a different month's button.
@@ -1683,7 +1730,7 @@ update msg model =
                 ( model, Cmd.none )
 
         SetStatus v ->
-            ( { model | menuOpen = Nothing }
+            ( { model | menuOpen = Nothing, noRing = pickRing StatusMenu model }
             , if v == model.visibility then
                 focusId "sm-button"
 
@@ -1739,9 +1786,20 @@ update msg model =
             )
 
 
+{-| After a pointer pick the button is refocused (for a11y) without the focus ring. -}
+pickRing : Which -> Model -> Maybe Which
+pickRing which model =
+    if model.menuPointer then
+        Just which
+
+    else
+        Nothing
+
+
 type Which
     = StatusMenu
     | CatMenu
+    | RowMenu Int
 
 
 menuPrefix : Which -> String
@@ -1752,6 +1810,10 @@ menuPrefix which =
 
         CatMenu ->
             "tf-"
+
+        RowMenu id ->
+            -- Trailing dash keeps "rm-1-" from prefixing "rm-12-...".
+            "rm-" ++ String.fromInt id ++ "-"
 
 
 statusOrder : List Visibility
@@ -1785,16 +1847,23 @@ openMenu which model =
 
                 CatMenu ->
                     menuIndex model.categories model.categoryFilter
+
+                RowMenu id ->
+                    model.entries
+                        |> List.filter (\e -> e.id == id)
+                        |> List.head
+                        |> Maybe.andThen (\e -> indexOf e.category (rowMenuChoices model.categories))
+                        |> Maybe.withDefault 0
     in
     ( { model | menuOpen = Just which }
     , Cmd.batch
         [ focusId (prefix ++ "item-" ++ String.fromInt current)
-        , Dom.getElement (prefix ++ "button")
+        , Task.map2 Tuple.pair (Dom.getElement (prefix ++ "button")) (Dom.getElement (prefix ++ "menu"))
             |> Task.attempt
                 (\r ->
                     case r of
-                        Ok el ->
-                            GotMenuRoom which (el.element.y - el.viewport.y)
+                        Ok ( btn, menu ) ->
+                            GotMenuRoom which (btn.element.y - btn.viewport.y) menu.element.height
 
                         Err _ ->
                             NoOp
@@ -2063,6 +2132,7 @@ viewMain model =
     in
     section
         [ class "main"
+        , classList [ ( "row-menu-open", isRowMenu model.menuOpen ) ]
         , style "visibility" (cssVisibility (List.isEmpty model.entries))
         ]
         [ input
@@ -2113,6 +2183,13 @@ viewRows model visible =
                 (model.categoryFilter == AnyCategory && not (List.isEmpty model.categories))
                 (model.confirmingDelete == Just t.id)
                 (rowDrag model.drag t.id)
+                (if model.menuOpen == Just (RowMenu t.id) then
+                    Just model.menuDown
+
+                 else
+                    Nothing
+                )
+                (model.noRing == Just (RowMenu t.id))
                 t
     in
     List.map row visible
@@ -2271,7 +2348,7 @@ climbToDraggable _ =
                     Decode.field "className" (Decode.oneOf [ Decode.string, Decode.succeed "" ])
                         |> Decode.andThen
                             (\cls ->
-                                if List.any (\c -> List.member c [ "drag-handle", "confirm-delete" ]) (String.words cls) then
+                                if List.any (\c -> List.member c [ "drag-handle", "confirm-delete", "type-menu" ]) (String.words cls) then
                                     Decode.succeed False
 
                                 else if tag == "LI" then
@@ -2361,6 +2438,24 @@ onTouchContextMenu : Attribute Msg
 onTouchContextMenu =
     preventDefaultOn "contextmenu"
         (touchOnly (Decode.succeed ( NoOp, True )))
+
+
+{-| Menu-item keys: like onKeyPrevent, but Alt+key is left to the row (reorder) and handled keys don't bubble. -}
+menuKeys : List ( String, Msg ) -> Attribute Msg
+menuKeys table =
+    custom "keydown"
+        (Decode.map2 Tuple.pair (Decode.field "key" Decode.string) (Decode.field "altKey" Decode.bool)
+            |> Decode.andThen
+                (\( key, alt ) ->
+                    case ( alt, List.filter (\( k, _ ) -> k == key) table |> List.head ) of
+                        ( False, Just ( _, msg ) ) ->
+                            -- Tab keeps its default so focus can leave the menu.
+                            Decode.succeed { message = msg, preventDefault = key /= "Tab", stopPropagation = True }
+
+                        _ ->
+                            Decode.fail "ignored key"
+                )
+        )
 
 
 onKeyPrevent : List ( String, Msg ) -> Attribute Msg
@@ -2577,9 +2672,9 @@ isVisible visibility todo =
             False
 
 
-viewKeyedEntry : List Category -> Bool -> Bool -> RowDrag -> Entry -> ( String, Html Msg )
-viewKeyedEntry cats showMark confirming rd todo =
-    ( String.fromInt todo.id, lazy5 viewEntry cats showMark confirming rd todo )
+viewKeyedEntry : List Category -> Bool -> Bool -> RowDrag -> Maybe Bool -> Bool -> Entry -> ( String, Html Msg )
+viewKeyedEntry cats showMark confirming rd menu ringless todo =
+    ( String.fromInt todo.id, lazy7 viewEntry cats showMark confirming rd menu ringless todo )
 
 
 isFloating : RowDrag -> Bool
@@ -2592,8 +2687,9 @@ isFloating rd =
             False
 
 
-viewEntry : List Category -> Bool -> Bool -> RowDrag -> Entry -> Html Msg
-viewEntry cats showMark confirming rd todo =
+{-| `menu` is the row category menu: Nothing when closed, Just down when open. -}
+viewEntry : List Category -> Bool -> Bool -> RowDrag -> Maybe Bool -> Bool -> Entry -> Html Msg
+viewEntry cats showMark confirming rd menu ringless todo =
     li
         ([ classList
             [ ( "completed", todo.completed )
@@ -2650,20 +2746,8 @@ viewEntry cats showMark confirming rd todo =
                     mc =
                         Maybe.andThen (findCategory cats) todo.category
                 in
-                -- No category: the button stays (click assigns one) but shows nothing, even on hover.
-                button
-                    [ classList [ ( "row-type", True ), ( "row-type-none", mc == Nothing ) ]
-                    , type_ "button"
-                    , attribute "aria-label" ("Category: " ++ categoryName cats todo.category ++ ". Click to change.")
-                    , onClick (CycleEntryCategory todo.id)
-                    ]
-                    (case mc of
-                        Just c ->
-                            [ span [ class "label" ] [ text c.name ], viewMark mc ]
-
-                        Nothing ->
-                            []
-                    )
+                -- No category: a hollow ring that only shows on row hover / focus (faint on touch); opens the menu.
+                viewRowCategoryMenu cats menu ringless todo mc
 
               else
                 text ""
@@ -3270,7 +3354,7 @@ viewStatusMenu : Model -> List Entry -> Html Msg
 viewStatusMenu model scoped =
     let
         row v =
-            { content = [ text (statusName v) ]
+            { content = [ span [ class "menu-label" ] [ text (statusName v) ] ]
             , count = Just (List.length (List.filter (isVisible v) scoped))
             , selected = Just (model.visibility == v)
             , pick = SetStatus v
@@ -3278,7 +3362,10 @@ viewStatusMenu model scoped =
             }
     in
     viewMenu StatusMenu
-        { open = model.menuOpen == Just StatusMenu
+        { wrapClass = ""
+        , buttonClass = "menu-button"
+        , noRing = model.noRing == Just StatusMenu
+        , open = model.menuOpen == Just StatusMenu
         , down = model.menuDown
         , label = "Status: " ++ statusName model.visibility
         , deviates = model.visibility /= Active
@@ -3308,8 +3395,24 @@ viewCategoryMenu withEdit model base =
                 NoCategory ->
                     [ viewMark Nothing, text "No category" ]
 
+        -- Menu rows: fixed 16px mark slot (empty for Any) so labels line up.
+        rowContent f =
+            [ span [ class "menu-mark" ]
+                (case f of
+                    AnyCategory ->
+                        []
+
+                    OnlyCategory id ->
+                        [ markFor cats (Just id) ]
+
+                    NoCategory ->
+                        [ viewMark Nothing ]
+                )
+            , span [ class "menu-label tf-name" ] [ text (filterLabel cats f) ]
+            ]
+
         row f =
-            { content = content f
+            { content = rowContent f
             , count = Just (List.length (List.filter (inScope f) base))
             , selected = Just (f == current)
             , pick = SetCategoryFilter f
@@ -3317,7 +3420,7 @@ viewCategoryMenu withEdit model base =
             }
 
         edit =
-            { content = [ text "Edit categories\u{2026}" ]
+            { content = [ span [ class "menu-label" ] [ text "Edit categories\u{2026}" ] ]
             , count = Nothing
             , selected = Nothing
             , pick = OpenManage
@@ -3325,7 +3428,10 @@ viewCategoryMenu withEdit model base =
             }
     in
     viewMenu CatMenu
-        { open = model.menuOpen == Just CatMenu
+        { wrapClass = ""
+        , buttonClass = "menu-button"
+        , noRing = model.noRing == Just CatMenu
+        , open = model.menuOpen == Just CatMenu
         , down = model.menuDown
         , label = "Category filter: " ++ filterLabel cats current
         , deviates = current /= AnyCategory
@@ -3338,6 +3444,68 @@ viewCategoryMenu withEdit model base =
                     else
                         []
                    )
+        }
+
+
+isRowMenu : Maybe Which -> Bool
+isRowMenu w =
+    case w of
+        Just (RowMenu _) ->
+            True
+
+        _ ->
+            False
+
+
+rowMenuChoices : List Category -> List (Maybe Int)
+rowMenuChoices cats =
+    Nothing :: List.map (Just << .id) cats
+
+
+{-| Row category control: the mark opens a menu of "No category" + each category; the current one has a check. -}
+viewRowCategoryMenu : List Category -> Maybe Bool -> Bool -> Entry -> Maybe Category -> Html Msg
+viewRowCategoryMenu cats menu ringless todo mc =
+    let
+        row choice =
+            { content =
+                [ span [ class "menu-mark" ] [ markFor cats choice ]
+                , span [ class "menu-label tf-name" ]
+                    [ text
+                        (if choice == Nothing then
+                            "No category"
+
+                         else
+                            categoryName cats choice
+                        )
+                    ]
+                ]
+            , count = Nothing
+            , selected = Just (choice == todo.category)
+            , pick = SetEntryCategory todo.id choice
+            , divider = False
+            }
+    in
+    viewMenu (RowMenu todo.id)
+        { wrapClass =
+            if mc == Nothing then
+                "row-cat row-cat-none"
+
+            else
+                "row-cat"
+        , buttonClass = "row-type"
+        , noRing = ringless
+        , open = menu /= Nothing
+        , down = Maybe.withDefault False menu
+        , label = "Category: " ++ categoryName cats todo.category ++ ". Change category"
+        , deviates = False
+        , buttonContent =
+            case mc of
+                Just c ->
+                    [ span [ class "label" ] [ text c.name ], viewMark mc ]
+
+                Nothing ->
+                    [ viewMark Nothing ]
+        , rows = List.map row (rowMenuChoices cats)
         }
 
 
@@ -3364,13 +3532,53 @@ type alias MenuRow =
 
 
 type alias MenuSpec =
-    { open : Bool
+    { wrapClass : String
+    , buttonClass : String
+    , noRing : Bool
+    , open : Bool
     , down : Bool
     , label : String
     , deviates : Bool
     , buttonContent : List (Html Msg)
     , rows : List MenuRow
     }
+
+
+{-| Button keys: Esc / arrows as before. Any key also marks keyboard use (the next pick keeps the ring)
+and drops a pending no-ring. Enter/Space keep their default so they fire click.
+-}
+menuButtonKeys : Which -> Attribute Msg
+menuButtonKeys which =
+    let
+        kb rest =
+            Batch (ClearNoRing :: MenuPointer False :: rest)
+
+        handled msg =
+            Decode.succeed { message = kb [ msg ], preventDefault = True, stopPropagation = True }
+    in
+    custom "keydown"
+        (Decode.map2 Tuple.pair (Decode.field "key" Decode.string) (Decode.field "altKey" Decode.bool)
+            |> Decode.andThen
+                (\( key, alt ) ->
+                    if alt then
+                        -- Alt+arrows belong to the row (reorder).
+                        Decode.fail "alt"
+
+                    else
+                        case key of
+                            "Escape" ->
+                                handled (CloseMenu which)
+
+                            "ArrowDown" ->
+                                handled (OpenMenu which)
+
+                            "ArrowUp" ->
+                                handled (OpenMenu which)
+
+                            _ ->
+                                Decode.succeed { message = kb [], preventDefault = False, stopPropagation = False }
+                )
+        )
 
 
 {-| Dropdown shared by the status and category menus. Ids: `<prefix>button`, `<prefix>menu`, `<prefix>item-N`.
@@ -3401,8 +3609,9 @@ viewMenu which spec =
                     , ( "menu-edit", r.selected == Nothing )
                     ]
                  , onClick r.pick
+                 , on "pointerdown" (Decode.succeed (MenuPointer True))
                  , preventDefaultOn "mousedown" (Decode.succeed ( NoOp, True ))
-                 , onKeyPrevent
+                 , menuKeys
                     [ ( "ArrowDown", FocusMenuItem which (modBy n (i + 1)) )
                     , ( "ArrowUp", FocusMenuItem which (modBy n (i - 1)) )
                     , ( "Home", FocusMenuItem which 0 )
@@ -3427,7 +3636,23 @@ viewMenu which spec =
                                 [ attribute "role" "menuitem" ]
                        )
                 )
-                (r.content
+                ((case r.selected of
+                    Just sel ->
+                        [ span [ class "menu-check", attribute "aria-hidden" "true" ]
+                            [ text
+                                (if sel then
+                                    "\u{2713}"
+
+                                 else
+                                    ""
+                                )
+                            ]
+                        ]
+
+                    Nothing ->
+                        []
+                 )
+                    ++ r.content
                     ++ (case r.count of
                             Just c ->
                                 [ span [ class "menu-count" ] [ text (String.fromInt c) ] ]
@@ -3454,11 +3679,14 @@ viewMenu which spec =
                                 Decode.succeed (CloseMenu which)
                     )
     in
-    div [ class "type-menu-wrap", on "focusout" leavesMenu ]
+    div [ class ("type-menu-wrap " ++ spec.wrapClass), on "focusout" leavesMenu ]
         [ button
             [ type_ "button"
             , id (prefix ++ "button")
-            , classList [ ( "menu-button", True ), ( "deviates", spec.deviates ) ]
+            , class spec.buttonClass
+            , classList [ ( "deviates", spec.deviates ), ( "no-ring", spec.noRing ) ]
+            , on "pointerdown" (Decode.succeed (MenuPointer True))
+            , on "blur" (Decode.succeed ClearNoRing)
             , attribute "aria-haspopup" "menu"
             , attribute "aria-controls" (prefix ++ "menu")
             , attribute "aria-expanded"
@@ -3471,20 +3699,29 @@ viewMenu which spec =
             , attribute "aria-label" spec.label
             , onClick (ToggleMenu which)
             , preventDefaultOn "mousedown" (Decode.succeed ( NoOp, True ))
-            , onKeyPrevent
-                [ ( "Escape", CloseMenu which )
-                , ( "ArrowDown", OpenMenu which )
-                , ( "ArrowUp", OpenMenu which )
-                ]
+            , menuButtonKeys which
             ]
             spec.buttonContent
         , if spec.open then
+            let
+                -- Choice rows scroll (more than 8); action rows (Edit categories…) stay fixed below.
+                ( choices, actions ) =
+                    List.indexedMap Tuple.pair spec.rows
+                        |> List.partition (\( _, r ) -> r.selected /= Nothing)
+
+                render =
+                    List.concatMap (\( i, r ) -> item i r)
+            in
             div
-                [ classList [ ( "type-menu", True ), ( "menu-down", spec.down ) ]
+                [ classList
+                    [ ( "type-menu", True )
+                    , ( "menu-down", spec.down )
+                    , ( "menu-status", which == StatusMenu )
+                    ]
                 , id (prefix ++ "menu")
                 , attribute "role" "menu"
                 ]
-                (List.concat (List.indexedMap item spec.rows))
+                (div [ class "menu-list", attribute "role" "none" ] (render choices) :: render actions)
 
           else
             text ""

@@ -23,7 +23,9 @@ TodoMVC (Elm 0.19.1) plus user-configurable categories. Original TodoMVC styling
 - Manage view `#/categories` (footer menu "Edit categories…"): rows show mark + name; ↑ ↓ × fade in on hover / keyboard focus (always visible, faint, on touch). Click, tap or Enter on a name to edit that row (one at a time): the name becomes a field and the 8-colour strip appears under it. Enter or leaving the row saves a valid name, Esc restores; colour picks save at once. ↑/↓ order drives the picker and menu; × deletes after an inline confirm. Back returns to the last list route.
 - Limits: max 12 categories; names trimmed, non-empty, unique case-insensitively ("Name already used"), max 40 chars.
 - Delete: that category's todos (archived included) keep their text and get no category; a filter or new-todo choice pointing at it resets to Any category / None.
-- New todo: picker under the input cycles None → each category → None (Alt+T in the input does the same; choice persists). Row mark: click cycles the same sequence; a todo without a category shows no mark. Marks are hidden while a category filter is on.
+- New todo: picker under the input cycles None → each category → None (Alt+T in the input does the same; choice persists). Marks are hidden while a category filter is on.
+- Picker follows the filter: choosing a category filter (or one restored on load) presets the picker to it, "No category" presets None, Any leaves it; the picker can still be changed until the filter changes again.
+- Row mark opens a menu (same keys as the footer menus): "No category" + each category, current one ticked; picking sets it and refocuses the mark. A todo without a category shows a hollow ring only on row hover / focus (faint on touch). Archive rows have no control.
 - Toggle-all and archive-completed act on the category scope. The archive view's category menu matches the footer one minus "Edit categories…", with counts of archived todos.
 - Each category has a colour (palette slot 0..7 = `--cat-0..7` in `css/types.css`, all ≥ 3:1 on white) and a shape (circle, square, diamond, triangle, round-robin by creation order) so colour is never the only cue.
 - Storage (localStorage `elm-todo-save`): `categories: [{id, name, color, shape}]`, `nextCategoryId`, `newCategory` (id or null), `categoryFilter` (`"all"`, `"none"` or an id); each entry has `category` (id or null). Decoding is lenient: invalid categories are dropped, dangling ids become null / `"all"`.
@@ -31,7 +33,7 @@ TodoMVC (Elm 0.19.1) plus user-configurable categories. Original TodoMVC styling
 
 ## Footer
 
-- Two centred dropdowns, borderless grey, no chevron: status ("Active") and category ("Any category", or mark + name when set, truncated at about 14 characters). A non-default choice (All, Completed, any category) shows its text in red.
+- Two centred pill dropdowns (grey text; pale fill on hover / open; no border, no chevron): status ("Active") and category ("Any category", or mark + name when set, truncated at about 14 characters). A non-default choice (All, Completed, any category) shows its text in red.
 - Status menu: Active / Completed / All, each with its count in the current category scope. Category menu: Any category / each category / No category, each with its count in the current status scope, then "Edit categories…".
 - Both menus: Enter, Space, ↓ or ↑ opens; arrows wrap, Home/End jump, Esc closes and refocuses the button, Tab closes. They open upward, or downward when there is no room above.
 - "Archive completed" appears at the right only in the Completed view when the category scope has a completed todo.

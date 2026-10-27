@@ -5218,6 +5218,18 @@ var $author$project$Main$GotTime = F2(
 var $elm$json$Json$Decode$decodeValue = _Json_run;
 var $author$project$Main$AnyCategory = {$: 'AnyCategory'};
 var $author$project$Main$emptySaved = {categories: _List_Nil, categoryFilter: $author$project$Main$AnyCategory, entries: _List_Nil, field: '', newCategory: $elm$core$Maybe$Nothing, nextCategoryId: 1, uid: 0};
+var $author$project$Main$followFilter = F2(
+	function (f, current) {
+		switch (f.$) {
+			case 'OnlyCategory':
+				var id = f.a;
+				return $elm$core$Maybe$Just(id);
+			case 'NoCategory':
+				return $elm$core$Maybe$Nothing;
+			default:
+				return current;
+		}
+	});
 var $elm$time$Time$Name = function (a) {
 	return {$: 'Name', a: a};
 };
@@ -5956,9 +5968,11 @@ var $author$project$Main$init = F3(
 				key: key,
 				menuDown: false,
 				menuOpen: $elm$core$Maybe$Nothing,
+				menuPointer: false,
 				newCatName: '',
-				newCategory: saved.newCategory,
+				newCategory: A2($author$project$Main$followFilter, saved.categoryFilter, saved.newCategory),
 				nextCategoryId: saved.nextCategoryId,
+				noRing: $elm$core$Maybe$Nothing,
 				pressSeq: 0,
 				pressing: $elm$core$Maybe$Nothing,
 				returnTo: '#/active',
@@ -6965,6 +6979,14 @@ var $author$project$Main$encodeModel = function (m) {
 				}())
 			]));
 };
+var $elm$core$Basics$not = _Basics_not;
+var $elm$core$List$all = F2(
+	function (isOkay, list) {
+		return !A2(
+			$elm$core$List$any,
+			A2($elm$core$Basics$composeL, $elm$core$Basics$not, isOkay),
+			list);
+	});
 var $author$project$Main$isTransient = function (msg) {
 	switch (msg.$) {
 		case 'NoOp':
@@ -6991,6 +7013,13 @@ var $author$project$Main$isTransient = function (msg) {
 			return true;
 		case 'FocusMenuItem':
 			return true;
+		case 'MenuPointer':
+			return true;
+		case 'ClearNoRing':
+			return true;
+		case 'Batch':
+			var msgs = msg.a;
+			return A2($elm$core$List$all, $author$project$Main$isTransient, msgs);
 		case 'EditCategoryName':
 			return true;
 		case 'UpdateNewCatName':
@@ -7027,6 +7056,7 @@ var $author$project$Main$ArchiveItemAt = F2(
 	function (a, b) {
 		return {$: 'ArchiveItemAt', a: a, b: b};
 	});
+var $author$project$Main$CatMenu = {$: 'CatMenu'};
 var $author$project$Main$CheckAllAt = F2(
 	function (a, b) {
 		return {$: 'CheckAllAt', a: a, b: b};
@@ -7050,6 +7080,10 @@ var $author$project$Main$LongPress = F2(
 		return {$: 'LongPress', a: a, b: b};
 	});
 var $author$project$Main$NoOp = {$: 'NoOp'};
+var $author$project$Main$RowMenu = function (a) {
+	return {$: 'RowMenu', a: a};
+};
+var $author$project$Main$StatusMenu = {$: 'StatusMenu'};
 var $author$project$Main$Touched = F2(
 	function (a, b) {
 		return {$: 'Touched', a: a, b: b};
@@ -7145,7 +7179,6 @@ var $author$project$Main$inScope = F2(
 var $author$project$Main$isLive = function (e) {
 	return _Utils_eq(e.archivedAt, $elm$core$Maybe$Nothing);
 };
-var $elm$core$Basics$not = _Basics_not;
 var $author$project$Main$isVisible = F2(
 	function (visibility, todo) {
 		switch (visibility.$) {
@@ -7258,10 +7291,14 @@ var $author$project$Main$maxOrder = function (entries) {
 				entries)));
 };
 var $author$project$Main$menuPrefix = function (which) {
-	if (which.$ === 'StatusMenu') {
-		return 'sm-';
-	} else {
-		return 'tf-';
+	switch (which.$) {
+		case 'StatusMenu':
+			return 'sm-';
+		case 'CatMenu':
+			return 'tf-';
+		default:
+			var id = which.a;
+			return 'rm-' + ($elm$core$String$fromInt(id) + '-');
 	}
 };
 var $author$project$Main$migrate = function (now) {
@@ -7440,9 +7477,9 @@ var $author$project$Main$nextCategory = F2(
 			}
 		}
 	});
-var $author$project$Main$GotMenuRoom = F2(
-	function (a, b) {
-		return {$: 'GotMenuRoom', a: a, b: b};
+var $author$project$Main$GotMenuRoom = F3(
+	function (a, b, c) {
+		return {$: 'GotMenuRoom', a: a, b: b, c: c};
 	});
 var $author$project$Main$menuFilters = function (cats) {
 	return A2(
@@ -7471,19 +7508,54 @@ var $author$project$Main$menuIndex = F2(
 				f,
 				$author$project$Main$menuFilters(cats)));
 	});
+var $author$project$Main$rowMenuChoices = function (cats) {
+	return A2(
+		$elm$core$List$cons,
+		$elm$core$Maybe$Nothing,
+		A2(
+			$elm$core$List$map,
+			A2(
+				$elm$core$Basics$composeL,
+				$elm$core$Maybe$Just,
+				function ($) {
+					return $.id;
+				}),
+			cats));
+};
 var $author$project$Main$statusOrder = _List_fromArray(
 	[$author$project$Main$Active, $author$project$Main$Completed, $author$project$Main$All]);
 var $author$project$Main$openMenu = F2(
 	function (which, model) {
 		var prefix = $author$project$Main$menuPrefix(which);
 		var current = function () {
-			if (which.$ === 'StatusMenu') {
-				return A2(
-					$elm$core$Maybe$withDefault,
-					0,
-					A2($author$project$Main$indexOf, model.visibility, $author$project$Main$statusOrder));
-			} else {
-				return A2($author$project$Main$menuIndex, model.categories, model.categoryFilter);
+			switch (which.$) {
+				case 'StatusMenu':
+					return A2(
+						$elm$core$Maybe$withDefault,
+						0,
+						A2($author$project$Main$indexOf, model.visibility, $author$project$Main$statusOrder));
+				case 'CatMenu':
+					return A2($author$project$Main$menuIndex, model.categories, model.categoryFilter);
+				default:
+					var id = which.a;
+					return A2(
+						$elm$core$Maybe$withDefault,
+						0,
+						A2(
+							$elm$core$Maybe$andThen,
+							function (e) {
+								return A2(
+									$author$project$Main$indexOf,
+									e.category,
+									$author$project$Main$rowMenuChoices(model.categories));
+							},
+							$elm$core$List$head(
+								A2(
+									$elm$core$List$filter,
+									function (e) {
+										return _Utils_eq(e.id, id);
+									},
+									model.entries))));
 			}
 		}();
 		return _Utils_Tuple2(
@@ -7501,14 +7573,24 @@ var $author$project$Main$openMenu = F2(
 						$elm$core$Task$attempt,
 						function (r) {
 							if (r.$ === 'Ok') {
-								var el = r.a;
-								return A2($author$project$Main$GotMenuRoom, which, el.element.y - el.viewport.y);
+								var _v1 = r.a;
+								var btn = _v1.a;
+								var menu = _v1.b;
+								return A3($author$project$Main$GotMenuRoom, which, btn.element.y - btn.viewport.y, menu.element.height);
 							} else {
 								return $author$project$Main$NoOp;
 							}
 						},
-						$elm$browser$Browser$Dom$getElement(prefix + 'button'))
+						A3(
+							$elm$core$Task$map2,
+							$elm$core$Tuple$pair,
+							$elm$browser$Browser$Dom$getElement(prefix + 'button'),
+							$elm$browser$Browser$Dom$getElement(prefix + 'menu')))
 					])));
+	});
+var $author$project$Main$pickRing = F2(
+	function (which, model) {
+		return model.menuPointer ? $elm$core$Maybe$Just(which) : $elm$core$Maybe$Nothing;
 	});
 var $elm$core$Basics$pow = _Basics_pow;
 var $elm$browser$Browser$Navigation$pushUrl = _Browser_pushUrl;
@@ -7627,6 +7709,25 @@ var $author$project$Main$update = F2(
 			switch (msg.$) {
 				case 'NoOp':
 					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				case 'Batch':
+					var msgs = msg.a;
+					return A3(
+						$elm$core$List$foldl,
+						F2(
+							function (m, _v1) {
+								var mdl = _v1.a;
+								var cmds = _v1.b;
+								var _v2 = A2($author$project$Main$update, m, mdl);
+								var next = _v2.a;
+								var cmd = _v2.b;
+								return _Utils_Tuple2(
+									next,
+									$elm$core$Platform$Cmd$batch(
+										_List_fromArray(
+											[cmds, cmd])));
+							}),
+						_Utils_Tuple2(model, $elm$core$Platform$Cmd$none),
+						msgs);
 				case 'Add':
 					return _Utils_Tuple2(
 						_Utils_update(
@@ -7689,7 +7790,7 @@ var $author$project$Main$update = F2(
 								}),
 							A2(
 								$elm$core$Task$attempt,
-								function (_v1) {
+								function (_v3) {
 									return $author$project$Main$NoOp;
 								},
 								$elm$browser$Browser$Dom$focus(
@@ -7737,11 +7838,11 @@ var $author$project$Main$update = F2(
 				case 'CancelEdit':
 					var id = msg.a;
 					var restore = function (t) {
-						var _v2 = model.editBackup;
-						if (_v2.$ === 'Just') {
-							var _v3 = _v2.a;
-							var bid = _v3.a;
-							var original = _v3.b;
+						var _v4 = model.editBackup;
+						if (_v4.$ === 'Just') {
+							var _v5 = _v4.a;
+							var bid = _v5.a;
+							var original = _v5.b;
 							return _Utils_eq(bid, id) ? _Utils_update(
 								t,
 								{description: original, editing: false}) : _Utils_update(
@@ -7809,6 +7910,7 @@ var $author$project$Main$update = F2(
 								confirmingDelete: $elm$core$Maybe$Nothing,
 								drag: $elm$core$Maybe$Just(
 									{active: immediate, clientY: cy, id: id, pageY: py, rects: _List_Nil, seq: seq, slot: -1, startPageY: py, startX: cx, startY: cy}),
+								menuOpen: $elm$core$Maybe$Nothing,
 								pressSeq: seq + 1,
 								pressing: $elm$core$Maybe$Nothing
 							}),
@@ -7817,11 +7919,11 @@ var $author$project$Main$update = F2(
 					var seq = msg.a;
 					var ids = msg.b;
 					var result = msg.c;
-					var _v4 = _Utils_Tuple2(model.drag, result);
-					if (_v4.a.$ === 'Just') {
-						if (_v4.b.$ === 'Ok') {
-							var d = _v4.a.a;
-							var els = _v4.b.a;
+					var _v6 = _Utils_Tuple2(model.drag, result);
+					if (_v6.a.$ === 'Just') {
+						if (_v6.b.$ === 'Ok') {
+							var d = _v6.a.a;
+							var els = _v6.b.a;
 							return _Utils_eq(d.seq, seq) ? _Utils_Tuple2(
 								_Utils_update(
 									model,
@@ -7843,7 +7945,7 @@ var $author$project$Main$update = F2(
 									}),
 								$elm$core$Platform$Cmd$none) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 						} else {
-							var d = _v4.a.a;
+							var d = _v6.a.a;
 							return _Utils_eq(d.seq, seq) ? _Utils_Tuple2(
 								_Utils_update(
 									model,
@@ -7857,9 +7959,9 @@ var $author$project$Main$update = F2(
 					var cx = msg.a;
 					var cy = msg.b;
 					var py = msg.c;
-					var _v5 = model.drag;
-					if (_v5.$ === 'Just') {
-						var d = _v5.a;
+					var _v7 = model.drag;
+					if (_v7.$ === 'Just') {
+						var d = _v7.a;
 						var far = $elm$core$Basics$sqrt(
 							A2($elm$core$Basics$pow, cx - d.startX, 2) + A2($elm$core$Basics$pow, cy - d.startY, 2)) > 6;
 						return _Utils_Tuple2(
@@ -7877,9 +7979,9 @@ var $author$project$Main$update = F2(
 						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 					}
 				case 'DragEnded':
-					var _v6 = model.drag;
-					if (_v6.$ === 'Just') {
-						var d = _v6.a;
+					var _v8 = model.drag;
+					if (_v8.$ === 'Just') {
+						var d = _v8.a;
 						return (d.active && (!$elm$core$List$isEmpty(d.rects))) ? A3(
 							$author$project$Main$moveTo,
 							d.id,
@@ -7901,9 +8003,9 @@ var $author$project$Main$update = F2(
 							{drag: $elm$core$Maybe$Nothing}),
 						$elm$core$Platform$Cmd$none);
 				case 'DragFrame':
-					var _v7 = model.drag;
-					if (_v7.$ === 'Just') {
-						var d = _v7.a;
+					var _v9 = model.drag;
+					if (_v9.$ === 'Just') {
+						var d = _v9.a;
 						return d.active ? _Utils_Tuple2(
 							model,
 							A2($elm$core$Task$perform, $author$project$Main$GotViewport, $elm$browser$Browser$Dom$getViewport)) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
@@ -7912,9 +8014,9 @@ var $author$project$Main$update = F2(
 					}
 				case 'GotViewport':
 					var vp = msg.a;
-					var _v8 = model.drag;
-					if (_v8.$ === 'Just') {
-						var d = _v8.a;
+					var _v10 = model.drag;
+					if (_v10.$ === 'Just') {
+						var d = _v10.a;
 						var h = vp.viewport.height;
 						var want = (_Utils_cmp(d.clientY, $author$project$Main$edgeZone) < 0) ? (-$author$project$Main$autoScrollStep) : ((_Utils_cmp(d.clientY, h - $author$project$Main$edgeZone) > 0) ? $author$project$Main$autoScrollStep : 0);
 						var newY = A3(
@@ -7935,7 +8037,7 @@ var $author$project$Main$update = F2(
 								}),
 							A2(
 								$elm$core$Task$perform,
-								function (_v9) {
+								function (_v11) {
 									return $author$project$Main$NoOp;
 								},
 								A2($elm$browser$Browser$Dom$setViewport, vp.viewport.x, newY))) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
@@ -7951,12 +8053,12 @@ var $author$project$Main$update = F2(
 							return $.id;
 						},
 						$author$project$Main$visibleList(model));
-					var _v10 = A2($author$project$Main$indexOf, id, ids);
-					if (_v10.$ === 'Just') {
-						var i = _v10.a;
-						var _v11 = A3($author$project$Main$moveTo, id, i + delta, model);
-						var m = _v11.a;
-						var cmd = _v11.b;
+					var _v12 = A2($author$project$Main$indexOf, id, ids);
+					if (_v12.$ === 'Just') {
+						var i = _v12.a;
+						var _v13 = A3($author$project$Main$moveTo, id, i + delta, model);
+						var m = _v13.a;
+						var cmd = _v13.b;
 						return _Utils_Tuple2(
 							m,
 							$elm$core$Platform$Cmd$batch(
@@ -7984,16 +8086,16 @@ var $author$project$Main$update = F2(
 							}),
 						A2(
 							$elm$core$Task$perform,
-							function (_v12) {
+							function (_v14) {
 								return A2($author$project$Main$LongPress, id, model.pressSeq);
 							},
 							$elm$core$Process$sleep(500)));
 				case 'PressMove':
 					var x = msg.a;
 					var y = msg.b;
-					var _v13 = model.pressing;
-					if (_v13.$ === 'Just') {
-						var p = _v13.a;
+					var _v15 = model.pressing;
+					if (_v15.$ === 'Just') {
+						var p = _v15.a;
 						return (($elm$core$Basics$abs(x - p.x) > 10) || ($elm$core$Basics$abs(y - p.y) > 10)) ? _Utils_Tuple2(
 							_Utils_update(
 								model,
@@ -8004,9 +8106,9 @@ var $author$project$Main$update = F2(
 					}
 				case 'PressEnd':
 					var id = msg.a;
-					var _v14 = model.pressing;
-					if (_v14.$ === 'Just') {
-						var p = _v14.a;
+					var _v16 = model.pressing;
+					if (_v16.$ === 'Just') {
+						var p = _v16.a;
 						if (_Utils_eq(p.id, id)) {
 							var $temp$msg = A2($author$project$Main$EditingEntry, id, true),
 								$temp$model = _Utils_update(
@@ -8034,9 +8136,9 @@ var $author$project$Main$update = F2(
 				case 'LongPress':
 					var id = msg.a;
 					var seq = msg.b;
-					var _v15 = model.pressing;
-					if (_v15.$ === 'Just') {
-						var p = _v15.a;
+					var _v17 = model.pressing;
+					if (_v17.$ === 'Just') {
+						var p = _v17.a;
 						return (_Utils_eq(p.id, id) && _Utils_eq(p.seq, seq)) ? _Utils_Tuple2(
 							_Utils_update(
 								model,
@@ -8054,9 +8156,9 @@ var $author$project$Main$update = F2(
 							model,
 							{confirmingCategory: $elm$core$Maybe$Nothing, confirmingDelete: $elm$core$Maybe$Nothing, pressing: $elm$core$Maybe$Nothing}),
 						function () {
-							var _v16 = model.confirmingCategory;
-							if (_v16.$ === 'Just') {
-								var cid = _v16.a;
+							var _v18 = model.confirmingCategory;
+							if (_v18.$ === 'Just') {
+								var cid = _v18.a;
 								return $author$project$Main$focusId(
 									'cat-del-' + $elm$core$String$fromInt(cid));
 							} else {
@@ -8236,8 +8338,9 @@ var $author$project$Main$update = F2(
 								newCategory: A2($author$project$Main$nextCategory, model.categories, model.newCategory)
 							}),
 						$elm$core$Platform$Cmd$none);
-				case 'CycleEntryCategory':
+				case 'SetEntryCategory':
 					var id = msg.a;
+					var cat = msg.b;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
@@ -8248,19 +8351,29 @@ var $author$project$Main$update = F2(
 									function (t) {
 										return _Utils_update(
 											t,
-											{
-												category: A2($author$project$Main$nextCategory, model.categories, t.category)
-											});
+											{category: cat});
 									},
-									model.entries)
+									model.entries),
+								menuOpen: $elm$core$Maybe$Nothing,
+								noRing: A2(
+									$author$project$Main$pickRing,
+									$author$project$Main$RowMenu(id),
+									model)
 							}),
-						$elm$core$Platform$Cmd$none);
+						$author$project$Main$focusId(
+							$author$project$Main$menuPrefix(
+								$author$project$Main$RowMenu(id)) + 'button'));
 				case 'SetCategoryFilter':
 					var f = msg.a;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
-							{categoryFilter: f, menuOpen: $elm$core$Maybe$Nothing}),
+							{
+								categoryFilter: f,
+								menuOpen: $elm$core$Maybe$Nothing,
+								newCategory: _Utils_eq(f, model.categoryFilter) ? model.newCategory : A2($author$project$Main$followFilter, f, model.newCategory),
+								noRing: A2($author$project$Main$pickRing, $author$project$Main$CatMenu, model)
+							}),
 						$author$project$Main$focusId('tf-button'));
 				case 'OpenManage':
 					return _Utils_Tuple2(
@@ -8293,9 +8406,9 @@ var $author$project$Main$update = F2(
 									}),
 								$elm$core$Platform$Cmd$none);
 						} else {
-							var _v17 = A3($author$project$Main$nameProblem, model.categories, $elm$core$Maybe$Nothing, name_);
-							if (_v17.$ === 'Just') {
-								var problem = _v17.a;
+							var _v19 = A3($author$project$Main$nameProblem, model.categories, $elm$core$Maybe$Nothing, name_);
+							if (_v19.$ === 'Just') {
+								var problem = _v19.a;
 								return _Utils_Tuple2(
 									_Utils_update(
 										model,
@@ -8329,9 +8442,9 @@ var $author$project$Main$update = F2(
 					}
 				case 'StartEditCategory':
 					var id = msg.a;
-					var _v18 = A2($author$project$Main$findCategory, model.categories, id);
-					if (_v18.$ === 'Just') {
-						var c = _v18.a;
+					var _v20 = A2($author$project$Main$findCategory, model.categories, id);
+					if (_v20.$ === 'Just') {
+						var c = _v20.a;
 						return _Utils_Tuple2(
 							_Utils_update(
 								model,
@@ -8354,8 +8467,8 @@ var $author$project$Main$update = F2(
 							{
 								editingCat: A2(
 									$elm$core$Maybe$map,
-									function (_v19) {
-										var id = _v19.a;
+									function (_v21) {
+										var id = _v21.a;
 										return _Utils_Tuple2(id, raw);
 									},
 									model.editingCat)
@@ -8363,11 +8476,11 @@ var $author$project$Main$update = F2(
 						$elm$core$Platform$Cmd$none);
 				case 'CommitCategory':
 					var id = msg.a;
-					var _v20 = model.editingCat;
-					if (_v20.$ === 'Just') {
-						var _v21 = _v20.a;
-						var eid = _v21.a;
-						var raw = _v21.b;
+					var _v22 = model.editingCat;
+					if (_v22.$ === 'Just') {
+						var _v23 = _v22.a;
+						var eid = _v23.a;
+						var raw = _v23.b;
 						return (_Utils_eq(eid, id) && _Utils_eq(
 							A3(
 								$author$project$Main$nameProblem,
@@ -8437,9 +8550,9 @@ var $author$project$Main$update = F2(
 						},
 						model.categories);
 					var n = $elm$core$List$length(ids);
-					var _v22 = A2($author$project$Main$indexOf, id, ids);
-					if (_v22.$ === 'Just') {
-						var i = _v22.a;
+					var _v24 = A2($author$project$Main$indexOf, id, ids);
+					if (_v24.$ === 'Just') {
+						var i = _v24.a;
 						var others = A2(
 							$elm$core$List$filter,
 							function (c) {
@@ -8525,20 +8638,13 @@ var $author$project$Main$update = F2(
 					var which = msg.a;
 					return A2($author$project$Main$openMenu, which, model);
 				case 'GotMenuRoom':
-					var which = msg.a;
 					var above = msg.b;
-					var rows = function () {
-						if (which.$ === 'StatusMenu') {
-							return 3;
-						} else {
-							return ($elm$core$List$length(model.categories) + 2) + (_Utils_eq(model.visibility, $author$project$Main$ArchiveView) ? 0 : 1);
-						}
-					}();
+					var menuHeight = msg.c;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
 							{
-								menuDown: _Utils_cmp(above, (40 * rows) + 24) < 0
+								menuDown: _Utils_cmp(above, menuHeight + 8) < 0
 							}),
 						$elm$core$Platform$Cmd$none);
 				case 'CloseMenu':
@@ -8562,9 +8668,24 @@ var $author$project$Main$update = F2(
 					var which = msg.a;
 					var i = msg.b;
 					return _Utils_Tuple2(
-						model,
+						_Utils_update(
+							model,
+							{menuPointer: false}),
 						$author$project$Main$focusId(
 							$author$project$Main$menuPrefix(which) + ('item-' + $elm$core$String$fromInt(i))));
+				case 'MenuPointer':
+					var on = msg.a;
+					return _Utils_eq(model.menuPointer, on) ? _Utils_Tuple2(model, $elm$core$Platform$Cmd$none) : _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{menuPointer: on}),
+						$elm$core$Platform$Cmd$none);
+				case 'ClearNoRing':
+					return _Utils_eq(model.noRing, $elm$core$Maybe$Nothing) ? _Utils_Tuple2(model, $elm$core$Platform$Cmd$none) : _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{noRing: $elm$core$Maybe$Nothing}),
+						$elm$core$Platform$Cmd$none);
 				case 'CopyMonth':
 					var month = msg.a;
 					var txt = msg.b;
@@ -8577,9 +8698,9 @@ var $author$project$Main$update = F2(
 						$author$project$Main$copyText(txt));
 				case 'Copied':
 					var ok = msg.a;
-					var _v24 = model.copyPending;
-					if (_v24.$ === 'Just') {
-						var month = _v24.a;
+					var _v25 = model.copyPending;
+					if (_v25.$ === 'Just') {
+						var month = _v25.a;
 						return _Utils_Tuple2(
 							_Utils_update(
 								model,
@@ -8591,7 +8712,7 @@ var $author$project$Main$update = F2(
 								}),
 							A2(
 								$elm$core$Task$perform,
-								function (_v25) {
+								function (_v26) {
 									return $author$project$Main$CopyReset(model.copySeq + 1);
 								},
 								$elm$core$Process$sleep(1500)));
@@ -8610,7 +8731,10 @@ var $author$project$Main$update = F2(
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
-							{menuOpen: $elm$core$Maybe$Nothing}),
+							{
+								menuOpen: $elm$core$Maybe$Nothing,
+								noRing: A2($author$project$Main$pickRing, $author$project$Main$StatusMenu, model)
+							}),
 						_Utils_eq(v, model.visibility) ? $author$project$Main$focusId('sm-button') : $elm$core$Platform$Cmd$batch(
 							_List_fromArray(
 								[
@@ -8650,8 +8774,8 @@ var $author$project$Main$update = F2(
 								menuOpen: $elm$core$Maybe$Nothing,
 								pressing: $elm$core$Maybe$Nothing,
 								returnTo: function () {
-									var _v27 = model.visibility;
-									switch (_v27.$) {
+									var _v28 = model.visibility;
+									switch (_v28.$) {
 										case 'Active':
 											return '#/active';
 										case 'Completed':
@@ -8666,9 +8790,9 @@ var $author$project$Main$update = F2(
 							}),
 						function () {
 							if (_Utils_eq(v, $author$project$Main$ManageView) && (!_Utils_eq(model.visibility, $author$project$Main$ManageView))) {
-								var _v28 = model.categories;
-								if (_v28.b) {
-									var c = _v28.a;
+								var _v29 = model.categories;
+								if (_v29.b) {
+									var c = _v29.a;
 									return $author$project$Main$focusId(
 										'cat-label-' + $elm$core$String$fromInt(c.id));
 								} else {
@@ -9425,7 +9549,6 @@ var $author$project$Main$viewArchiveGroup = F3(
 						entries))
 				]));
 	});
-var $author$project$Main$CatMenu = {$: 'CatMenu'};
 var $author$project$Main$OpenManage = {$: 'OpenManage'};
 var $author$project$Main$SetCategoryFilter = function (a) {
 	return {$: 'SetCategoryFilter', a: a};
@@ -9445,6 +9568,7 @@ var $author$project$Main$filterLabel = F2(
 				return 'No category';
 		}
 	});
+var $author$project$Main$ClearNoRing = {$: 'ClearNoRing'};
 var $author$project$Main$CloseMenu = function (a) {
 	return {$: 'CloseMenu', a: a};
 };
@@ -9455,8 +9579,8 @@ var $author$project$Main$FocusMenuItem = F2(
 	function (a, b) {
 		return {$: 'FocusMenuItem', a: a, b: b};
 	});
-var $author$project$Main$OpenMenu = function (a) {
-	return {$: 'OpenMenu', a: a};
+var $author$project$Main$MenuPointer = function (a) {
+	return {$: 'MenuPointer', a: a};
 };
 var $author$project$Main$ToggleMenu = function (a) {
 	return {$: 'ToggleMenu', a: a};
@@ -9466,32 +9590,113 @@ var $elm$json$Json$Decode$at = F2(
 		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
 	});
 var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
-var $author$project$Main$onKeyPrevent = function (table) {
-	var pick = function (key) {
-		var _v0 = $elm$core$List$head(
+var $author$project$Main$Batch = function (a) {
+	return {$: 'Batch', a: a};
+};
+var $author$project$Main$OpenMenu = function (a) {
+	return {$: 'OpenMenu', a: a};
+};
+var $elm$virtual_dom$VirtualDom$Custom = function (a) {
+	return {$: 'Custom', a: a};
+};
+var $elm$html$Html$Events$custom = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Custom(decoder));
+	});
+var $author$project$Main$menuButtonKeys = function (which) {
+	var kb = function (rest) {
+		return $author$project$Main$Batch(
 			A2(
-				$elm$core$List$filter,
-				function (_v1) {
-					var k = _v1.a;
-					return _Utils_eq(k, key);
-				},
-				table));
-		if (_v0.$ === 'Just') {
-			var _v2 = _v0.a;
-			var msg = _v2.b;
-			return $elm$json$Json$Decode$succeed(
-				_Utils_Tuple2(msg, key !== 'Tab'));
-		} else {
-			return $elm$json$Json$Decode$fail('ignored key');
-		}
+				$elm$core$List$cons,
+				$author$project$Main$ClearNoRing,
+				A2(
+					$elm$core$List$cons,
+					$author$project$Main$MenuPointer(false),
+					rest)));
+	};
+	var handled = function (msg) {
+		return $elm$json$Json$Decode$succeed(
+			{
+				message: kb(
+					_List_fromArray(
+						[msg])),
+				preventDefault: true,
+				stopPropagation: true
+			});
 	};
 	return A2(
-		$elm$html$Html$Events$preventDefaultOn,
+		$elm$html$Html$Events$custom,
 		'keydown',
 		A2(
 			$elm$json$Json$Decode$andThen,
-			pick,
-			A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string)));
+			function (_v0) {
+				var key = _v0.a;
+				var alt = _v0.b;
+				if (alt) {
+					return $elm$json$Json$Decode$fail('alt');
+				} else {
+					switch (key) {
+						case 'Escape':
+							return handled(
+								$author$project$Main$CloseMenu(which));
+						case 'ArrowDown':
+							return handled(
+								$author$project$Main$OpenMenu(which));
+						case 'ArrowUp':
+							return handled(
+								$author$project$Main$OpenMenu(which));
+						default:
+							return $elm$json$Json$Decode$succeed(
+								{
+									message: kb(_List_Nil),
+									preventDefault: false,
+									stopPropagation: false
+								});
+					}
+				}
+			},
+			A3(
+				$elm$json$Json$Decode$map2,
+				$elm$core$Tuple$pair,
+				A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string),
+				A2($elm$json$Json$Decode$field, 'altKey', $elm$json$Json$Decode$bool))));
+};
+var $author$project$Main$menuKeys = function (table) {
+	return A2(
+		$elm$html$Html$Events$custom,
+		'keydown',
+		A2(
+			$elm$json$Json$Decode$andThen,
+			function (_v0) {
+				var key = _v0.a;
+				var alt = _v0.b;
+				var _v1 = _Utils_Tuple2(
+					alt,
+					$elm$core$List$head(
+						A2(
+							$elm$core$List$filter,
+							function (_v2) {
+								var k = _v2.a;
+								return _Utils_eq(k, key);
+							},
+							table)));
+				if ((!_v1.a) && (_v1.b.$ === 'Just')) {
+					var _v3 = _v1.b.a;
+					var msg = _v3.b;
+					return $elm$json$Json$Decode$succeed(
+						{message: msg, preventDefault: key !== 'Tab', stopPropagation: true});
+				} else {
+					return $elm$json$Json$Decode$fail('ignored key');
+				}
+			},
+			A3(
+				$elm$json$Json$Decode$map2,
+				$elm$core$Tuple$pair,
+				A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string),
+				A2($elm$json$Json$Decode$field, 'altKey', $elm$json$Json$Decode$bool))));
 };
 var $elm$html$Html$Attributes$tabindex = function (n) {
 	return A2(
@@ -9557,11 +9762,16 @@ var $author$project$Main$viewMenu = F2(
 										])),
 									$elm$html$Html$Events$onClick(r.pick),
 									A2(
+									$elm$html$Html$Events$on,
+									'pointerdown',
+									$elm$json$Json$Decode$succeed(
+										$author$project$Main$MenuPointer(true))),
+									A2(
 									$elm$html$Html$Events$preventDefaultOn,
 									'mousedown',
 									$elm$json$Json$Decode$succeed(
 										_Utils_Tuple2($author$project$Main$NoOp, true))),
-									$author$project$Main$onKeyPrevent(
+									$author$project$Main$menuKeys(
 									_List_fromArray(
 										[
 											_Utils_Tuple2(
@@ -9591,9 +9801,9 @@ var $author$project$Main$viewMenu = F2(
 										]))
 								]),
 							function () {
-								var _v0 = r.selected;
-								if (_v0.$ === 'Just') {
-									var sel = _v0.a;
+								var _v3 = r.selected;
+								if (_v3.$ === 'Just') {
+									var sel = _v3.a;
 									return _List_fromArray(
 										[
 											A2($elm$html$Html$Attributes$attribute, 'role', 'menuitemradio'),
@@ -9610,36 +9820,60 @@ var $author$project$Main$viewMenu = F2(
 								}
 							}()),
 						_Utils_ap(
-							r.content,
 							function () {
-								var _v1 = r.count;
-								if (_v1.$ === 'Just') {
-									var c = _v1.a;
+								var _v4 = r.selected;
+								if (_v4.$ === 'Just') {
+									var sel = _v4.a;
 									return _List_fromArray(
 										[
 											A2(
 											$elm$html$Html$span,
 											_List_fromArray(
 												[
-													$elm$html$Html$Attributes$class('menu-count')
+													$elm$html$Html$Attributes$class('menu-check'),
+													A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
 												]),
 											_List_fromArray(
 												[
 													$elm$html$Html$text(
-													$elm$core$String$fromInt(c))
+													sel ? '\u2713' : '')
 												]))
 										]);
 								} else {
 									return _List_Nil;
 								}
-							}()))
+							}(),
+							_Utils_ap(
+								r.content,
+								function () {
+									var _v5 = r.count;
+									if (_v5.$ === 'Just') {
+										var c = _v5.a;
+										return _List_fromArray(
+											[
+												A2(
+												$elm$html$Html$span,
+												_List_fromArray(
+													[
+														$elm$html$Html$Attributes$class('menu-count')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text(
+														$elm$core$String$fromInt(c))
+													]))
+											]);
+									} else {
+										return _List_Nil;
+									}
+								}())))
 					]);
 			});
 		return A2(
 			$elm$html$Html$div,
 			_List_fromArray(
 				[
-					$elm$html$Html$Attributes$class('type-menu-wrap'),
+					$elm$html$Html$Attributes$class('type-menu-wrap ' + spec.wrapClass),
 					A2($elm$html$Html$Events$on, 'focusout', leavesMenu)
 				]),
 			_List_fromArray(
@@ -9650,12 +9884,22 @@ var $author$project$Main$viewMenu = F2(
 						[
 							$elm$html$Html$Attributes$type_('button'),
 							$elm$html$Html$Attributes$id(prefix + 'button'),
+							$elm$html$Html$Attributes$class(spec.buttonClass),
 							$elm$html$Html$Attributes$classList(
 							_List_fromArray(
 								[
-									_Utils_Tuple2('menu-button', true),
-									_Utils_Tuple2('deviates', spec.deviates)
+									_Utils_Tuple2('deviates', spec.deviates),
+									_Utils_Tuple2('no-ring', spec.noRing)
 								])),
+							A2(
+							$elm$html$Html$Events$on,
+							'pointerdown',
+							$elm$json$Json$Decode$succeed(
+								$author$project$Main$MenuPointer(true))),
+							A2(
+							$elm$html$Html$Events$on,
+							'blur',
+							$elm$json$Json$Decode$succeed($author$project$Main$ClearNoRing)),
 							A2($elm$html$Html$Attributes$attribute, 'aria-haspopup', 'menu'),
 							A2($elm$html$Html$Attributes$attribute, 'aria-controls', prefix + 'menu'),
 							A2(
@@ -9670,36 +9914,57 @@ var $author$project$Main$viewMenu = F2(
 							'mousedown',
 							$elm$json$Json$Decode$succeed(
 								_Utils_Tuple2($author$project$Main$NoOp, true))),
-							$author$project$Main$onKeyPrevent(
-							_List_fromArray(
-								[
-									_Utils_Tuple2(
-									'Escape',
-									$author$project$Main$CloseMenu(which)),
-									_Utils_Tuple2(
-									'ArrowDown',
-									$author$project$Main$OpenMenu(which)),
-									_Utils_Tuple2(
-									'ArrowUp',
-									$author$project$Main$OpenMenu(which))
-								]))
+							$author$project$Main$menuButtonKeys(which)
 						]),
 					spec.buttonContent),
-					spec.open ? A2(
-					$elm$html$Html$div,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$classList(
+					function () {
+					if (spec.open) {
+						var render = $elm$core$List$concatMap(
+							function (_v2) {
+								var i = _v2.a;
+								var r = _v2.b;
+								return A2(item, i, r);
+							});
+						var _v0 = A2(
+							$elm$core$List$partition,
+							function (_v1) {
+								var r = _v1.b;
+								return !_Utils_eq(r.selected, $elm$core$Maybe$Nothing);
+							},
+							A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, spec.rows));
+						var choices = _v0.a;
+						var actions = _v0.b;
+						return A2(
+							$elm$html$Html$div,
 							_List_fromArray(
 								[
-									_Utils_Tuple2('type-menu', true),
-									_Utils_Tuple2('menu-down', spec.down)
-								])),
-							$elm$html$Html$Attributes$id(prefix + 'menu'),
-							A2($elm$html$Html$Attributes$attribute, 'role', 'menu')
-						]),
-					$elm$core$List$concat(
-						A2($elm$core$List$indexedMap, item, spec.rows))) : $elm$html$Html$text('')
+									$elm$html$Html$Attributes$classList(
+									_List_fromArray(
+										[
+											_Utils_Tuple2('type-menu', true),
+											_Utils_Tuple2('menu-down', spec.down),
+											_Utils_Tuple2(
+											'menu-status',
+											_Utils_eq(which, $author$project$Main$StatusMenu))
+										])),
+									$elm$html$Html$Attributes$id(prefix + 'menu'),
+									A2($elm$html$Html$Attributes$attribute, 'role', 'menu')
+								]),
+							A2(
+								$elm$core$List$cons,
+								A2(
+									$elm$html$Html$div,
+									_List_fromArray(
+										[
+											$elm$html$Html$Attributes$class('menu-list'),
+											A2($elm$html$Html$Attributes$attribute, 'role', 'none')
+										]),
+									render(choices)),
+								render(actions)));
+					} else {
+						return $elm$html$Html$text('');
+					}
+				}()
 				]));
 	});
 var $author$project$Main$viewCategoryMenu = F3(
@@ -9707,7 +9972,16 @@ var $author$project$Main$viewCategoryMenu = F3(
 		var edit = {
 			content: _List_fromArray(
 				[
-					$elm$html$Html$text('Edit categories\u2026')
+					A2(
+					$elm$html$Html$span,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('menu-label')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text('Edit categories\u2026')
+						]))
 				]),
 			count: $elm$core$Maybe$Nothing,
 			divider: true,
@@ -9754,9 +10028,51 @@ var $author$project$Main$viewCategoryMenu = F3(
 						]);
 			}
 		};
+		var rowContent = function (f) {
+			return _List_fromArray(
+				[
+					A2(
+					$elm$html$Html$span,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('menu-mark')
+						]),
+					function () {
+						switch (f.$) {
+							case 'AnyCategory':
+								return _List_Nil;
+							case 'OnlyCategory':
+								var id = f.a;
+								return _List_fromArray(
+									[
+										A2(
+										$author$project$Main$markFor,
+										cats,
+										$elm$core$Maybe$Just(id))
+									]);
+							default:
+								return _List_fromArray(
+									[
+										$author$project$Main$viewMark($elm$core$Maybe$Nothing)
+									]);
+						}
+					}()),
+					A2(
+					$elm$html$Html$span,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('menu-label tf-name')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							A2($author$project$Main$filterLabel, cats, f))
+						]))
+				]);
+		};
 		var row = function (f) {
 			return {
-				content: content(f),
+				content: rowContent(f),
 				count: $elm$core$Maybe$Just(
 					$elm$core$List$length(
 						A2(
@@ -9773,10 +10089,14 @@ var $author$project$Main$viewCategoryMenu = F3(
 			$author$project$Main$viewMenu,
 			$author$project$Main$CatMenu,
 			{
+				buttonClass: 'menu-button',
 				buttonContent: content(current),
 				deviates: !_Utils_eq(current, $author$project$Main$AnyCategory),
 				down: model.menuDown,
 				label: 'Category filter: ' + A2($author$project$Main$filterLabel, cats, current),
+				noRing: _Utils_eq(
+					model.noRing,
+					$elm$core$Maybe$Just($author$project$Main$CatMenu)),
 				open: _Utils_eq(
 					model.menuOpen,
 					$elm$core$Maybe$Just($author$project$Main$CatMenu)),
@@ -9786,7 +10106,8 @@ var $author$project$Main$viewCategoryMenu = F3(
 						row,
 						$author$project$Main$menuFilters(cats)),
 					withEdit ? _List_fromArray(
-						[edit]) : _List_Nil)
+						[edit]) : _List_Nil),
+				wrapClass: ''
 			});
 	});
 var $author$project$Main$viewArchive = function (model) {
@@ -9878,7 +10199,6 @@ var $elm$html$Html$footer = _VirtualDom_node('footer');
 var $author$project$Main$SetStatus = function (a) {
 	return {$: 'SetStatus', a: a};
 };
-var $author$project$Main$StatusMenu = {$: 'StatusMenu'};
 var $author$project$Main$statusName = function (v) {
 	switch (v.$) {
 		case 'Completed':
@@ -9895,8 +10215,17 @@ var $author$project$Main$viewStatusMenu = F2(
 			return {
 				content: _List_fromArray(
 					[
-						$elm$html$Html$text(
-						$author$project$Main$statusName(v))
+						A2(
+						$elm$html$Html$span,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('menu-label')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								$author$project$Main$statusName(v))
+							]))
 					]),
 				count: $elm$core$Maybe$Just(
 					$elm$core$List$length(
@@ -9914,6 +10243,7 @@ var $author$project$Main$viewStatusMenu = F2(
 			$author$project$Main$viewMenu,
 			$author$project$Main$StatusMenu,
 			{
+				buttonClass: 'menu-button',
 				buttonContent: _List_fromArray(
 					[
 						$elm$html$Html$text(
@@ -9922,10 +10252,14 @@ var $author$project$Main$viewStatusMenu = F2(
 				deviates: !_Utils_eq(model.visibility, $author$project$Main$Active),
 				down: model.menuDown,
 				label: 'Status: ' + $author$project$Main$statusName(model.visibility),
+				noRing: _Utils_eq(
+					model.noRing,
+					$elm$core$Maybe$Just($author$project$Main$StatusMenu)),
 				open: _Utils_eq(
 					model.menuOpen,
 					$elm$core$Maybe$Just($author$project$Main$StatusMenu)),
-				rows: A2($elm$core$List$map, row, $author$project$Main$statusOrder)
+				rows: A2($elm$core$List$map, row, $author$project$Main$statusOrder),
+				wrapClass: ''
 			});
 	});
 var $author$project$Main$viewControls = function (model) {
@@ -10200,16 +10534,16 @@ var $author$project$Main$viewInput = F3(
 var $author$project$Main$CheckAll = function (a) {
 	return {$: 'CheckAll', a: a};
 };
-var $elm$core$List$all = F2(
-	function (isOkay, list) {
-		return !A2(
-			$elm$core$List$any,
-			A2($elm$core$Basics$composeL, $elm$core$Basics$not, isOkay),
-			list);
-	});
 var $elm$html$Html$Attributes$checked = $elm$html$Html$Attributes$boolProperty('checked');
 var $elm$html$Html$Attributes$for = $elm$html$Html$Attributes$stringProperty('htmlFor');
 var $elm$html$Html$input = _VirtualDom_node('input');
+var $author$project$Main$isRowMenu = function (w) {
+	if ((w.$ === 'Just') && (w.a.$ === 'RowMenu')) {
+		return true;
+	} else {
+		return false;
+	}
+};
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
 var $author$project$Main$statusWord = function (v) {
@@ -10372,6 +10706,8 @@ var $author$project$Main$rowDrag = F2(
 			return $author$project$Main$Still;
 		}
 	});
+var $elm$virtual_dom$VirtualDom$lazy7 = _VirtualDom_lazy7;
+var $elm$html$Html$Lazy$lazy7 = $elm$virtual_dom$VirtualDom$lazy7;
 var $author$project$Main$ArchiveItem = function (a) {
 	return {$: 'ArchiveItem', a: a};
 };
@@ -10379,9 +10715,6 @@ var $author$project$Main$Check = F2(
 	function (a, b) {
 		return {$: 'Check', a: a, b: b};
 	});
-var $author$project$Main$CycleEntryCategory = function (a) {
-	return {$: 'CycleEntryCategory', a: a};
-};
 var $author$project$Main$UpdateEntry = F2(
 	function (a, b) {
 		return {$: 'UpdateEntry', a: a, b: b};
@@ -10497,7 +10830,7 @@ var $author$project$Main$climbToDraggable = function (_v0) {
 								$elm$core$List$member,
 								c,
 								_List_fromArray(
-									['drag-handle', 'confirm-delete']));
+									['drag-handle', 'confirm-delete', 'type-menu']));
 						},
 						$elm$core$String$words(cls)) ? $elm$json$Json$Decode$succeed(false) : ((tag === 'LI') ? $elm$json$Json$Decode$succeed(true) : $elm$json$Json$Decode$oneOf(
 						_List_fromArray(
@@ -10579,8 +10912,88 @@ var $author$project$Main$onRowKeydown = function (id) {
 						['target', 'tagName']),
 					$elm$json$Json$Decode$string))));
 };
-var $author$project$Main$viewEntry = F5(
-	function (cats, showMark, confirming, rd, todo) {
+var $author$project$Main$SetEntryCategory = F2(
+	function (a, b) {
+		return {$: 'SetEntryCategory', a: a, b: b};
+	});
+var $author$project$Main$viewRowCategoryMenu = F5(
+	function (cats, menu, ringless, todo, mc) {
+		var row = function (choice) {
+			return {
+				content: _List_fromArray(
+					[
+						A2(
+						$elm$html$Html$span,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('menu-mark')
+							]),
+						_List_fromArray(
+							[
+								A2($author$project$Main$markFor, cats, choice)
+							])),
+						A2(
+						$elm$html$Html$span,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('menu-label tf-name')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(
+								_Utils_eq(choice, $elm$core$Maybe$Nothing) ? 'No category' : A2($author$project$Main$categoryName, cats, choice))
+							]))
+					]),
+				count: $elm$core$Maybe$Nothing,
+				divider: false,
+				pick: A2($author$project$Main$SetEntryCategory, todo.id, choice),
+				selected: $elm$core$Maybe$Just(
+					_Utils_eq(choice, todo.category))
+			};
+		};
+		return A2(
+			$author$project$Main$viewMenu,
+			$author$project$Main$RowMenu(todo.id),
+			{
+				buttonClass: 'row-type',
+				buttonContent: function () {
+					if (mc.$ === 'Just') {
+						var c = mc.a;
+						return _List_fromArray(
+							[
+								A2(
+								$elm$html$Html$span,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('label')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text(c.name)
+									])),
+								$author$project$Main$viewMark(mc)
+							]);
+					} else {
+						return _List_fromArray(
+							[
+								$author$project$Main$viewMark($elm$core$Maybe$Nothing)
+							]);
+					}
+				}(),
+				deviates: false,
+				down: A2($elm$core$Maybe$withDefault, false, menu),
+				label: 'Category: ' + (A2($author$project$Main$categoryName, cats, todo.category) + '. Change category'),
+				noRing: ringless,
+				open: !_Utils_eq(menu, $elm$core$Maybe$Nothing),
+				rows: A2(
+					$elm$core$List$map,
+					row,
+					$author$project$Main$rowMenuChoices(cats)),
+				wrapClass: _Utils_eq(mc, $elm$core$Maybe$Nothing) ? 'row-cat row-cat-none' : 'row-cat'
+			});
+	});
+var $author$project$Main$viewEntry = F7(
+	function (cats, showMark, confirming, rd, menu, ringless, todo) {
 		return A2(
 			$elm$html$Html$li,
 			_Utils_ap(
@@ -10697,47 +11110,7 @@ var $author$project$Main$viewEntry = F5(
 									$elm$core$Maybe$andThen,
 									$author$project$Main$findCategory(cats),
 									todo.category);
-								return A2(
-									$elm$html$Html$button,
-									_List_fromArray(
-										[
-											$elm$html$Html$Attributes$classList(
-											_List_fromArray(
-												[
-													_Utils_Tuple2('row-type', true),
-													_Utils_Tuple2(
-													'row-type-none',
-													_Utils_eq(mc, $elm$core$Maybe$Nothing))
-												])),
-											$elm$html$Html$Attributes$type_('button'),
-											A2(
-											$elm$html$Html$Attributes$attribute,
-											'aria-label',
-											'Category: ' + (A2($author$project$Main$categoryName, cats, todo.category) + '. Click to change.')),
-											$elm$html$Html$Events$onClick(
-											$author$project$Main$CycleEntryCategory(todo.id))
-										]),
-									function () {
-										if (mc.$ === 'Just') {
-											var c = mc.a;
-											return _List_fromArray(
-												[
-													A2(
-													$elm$html$Html$span,
-													_List_fromArray(
-														[
-															$elm$html$Html$Attributes$class('label')
-														]),
-													_List_fromArray(
-														[
-															$elm$html$Html$text(c.name)
-														])),
-													$author$project$Main$viewMark(mc)
-												]);
-										} else {
-											return _List_Nil;
-										}
-									}());
+								return A5($author$project$Main$viewRowCategoryMenu, cats, menu, ringless, todo, mc);
 							} else {
 								return $elm$html$Html$text('');
 							}
@@ -10835,16 +11208,16 @@ var $author$project$Main$viewEntry = F5(
 						])) : $elm$html$Html$text('')
 				]));
 	});
-var $author$project$Main$viewKeyedEntry = F5(
-	function (cats, showMark, confirming, rd, todo) {
+var $author$project$Main$viewKeyedEntry = F7(
+	function (cats, showMark, confirming, rd, menu, ringless, todo) {
 		return _Utils_Tuple2(
 			$elm$core$String$fromInt(todo.id),
-			A6($elm$html$Html$Lazy$lazy5, $author$project$Main$viewEntry, cats, showMark, confirming, rd, todo));
+			A8($elm$html$Html$Lazy$lazy7, $author$project$Main$viewEntry, cats, showMark, confirming, rd, menu, ringless, todo));
 	});
 var $author$project$Main$viewRows = F2(
 	function (model, visible) {
 		var row = function (t) {
-			return A5(
+			return A7(
 				$author$project$Main$viewKeyedEntry,
 				model.categories,
 				_Utils_eq(model.categoryFilter, $author$project$Main$AnyCategory) && (!$elm$core$List$isEmpty(model.categories)),
@@ -10852,6 +11225,14 @@ var $author$project$Main$viewRows = F2(
 					model.confirmingDelete,
 					$elm$core$Maybe$Just(t.id)),
 				A2($author$project$Main$rowDrag, model.drag, t.id),
+				_Utils_eq(
+					model.menuOpen,
+					$elm$core$Maybe$Just(
+						$author$project$Main$RowMenu(t.id))) ? $elm$core$Maybe$Just(model.menuDown) : $elm$core$Maybe$Nothing,
+				_Utils_eq(
+					model.noRing,
+					$elm$core$Maybe$Just(
+						$author$project$Main$RowMenu(t.id))),
 				t);
 		};
 		return A2($elm$core$List$map, row, visible);
@@ -10879,6 +11260,13 @@ var $author$project$Main$viewMain = function (model) {
 		_List_fromArray(
 			[
 				$elm$html$Html$Attributes$class('main'),
+				$elm$html$Html$Attributes$classList(
+				_List_fromArray(
+					[
+						_Utils_Tuple2(
+						'row-menu-open',
+						$author$project$Main$isRowMenu(model.menuOpen))
+					])),
 				A2(
 				$elm$html$Html$Attributes$style,
 				'visibility',
@@ -10973,6 +11361,33 @@ var $elm$html$Html$Attributes$maxlength = function (n) {
 		_VirtualDom_attribute,
 		'maxlength',
 		$elm$core$String$fromInt(n));
+};
+var $author$project$Main$onKeyPrevent = function (table) {
+	var pick = function (key) {
+		var _v0 = $elm$core$List$head(
+			A2(
+				$elm$core$List$filter,
+				function (_v1) {
+					var k = _v1.a;
+					return _Utils_eq(k, key);
+				},
+				table));
+		if (_v0.$ === 'Just') {
+			var _v2 = _v0.a;
+			var msg = _v2.b;
+			return $elm$json$Json$Decode$succeed(
+				_Utils_Tuple2(msg, key !== 'Tab'));
+		} else {
+			return $elm$json$Json$Decode$fail('ignored key');
+		}
+	};
+	return A2(
+		$elm$html$Html$Events$preventDefaultOn,
+		'keydown',
+		A2(
+			$elm$json$Json$Decode$andThen,
+			pick,
+			A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string)));
 };
 var $author$project$Main$AskDeleteCategory = function (a) {
 	return {$: 'AskDeleteCategory', a: a};
