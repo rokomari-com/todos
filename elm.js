@@ -11347,7 +11347,10 @@ var $author$project$Main$viewMain = function (model) {
 					[
 						_Utils_Tuple2(
 						'row-menu-open',
-						$author$project$Main$isRowMenu(model.menuOpen))
+						$author$project$Main$isRowMenu(model.menuOpen)),
+						_Utils_Tuple2(
+						'filter-set',
+						!_Utils_eq(model.categoryFilter, $author$project$Main$AnyCategory))
 					])),
 				A2(
 				$elm$html$Html$Attributes$style,

@@ -2119,7 +2119,7 @@ viewMain model =
     in
     section
         [ class "main"
-        , classList [ ( "row-menu-open", isRowMenu model.menuOpen ) ]
+        , classList [ ( "row-menu-open", isRowMenu model.menuOpen ), ( "filter-set", model.categoryFilter /= AnyCategory ) ]
         , style "visibility" (cssVisibility (List.isEmpty live))
         , style "display"
             (if List.isEmpty live then

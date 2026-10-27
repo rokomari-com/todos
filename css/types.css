@@ -38,7 +38,7 @@ body { width: auto; }
 .shape-triangle { width: 10px; height: 9px; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 /* No category: hollow grey ring */
 /* No category: the short dash (same glyph as the "No category" icon), grey. */
-.mark.mark-none { width: 16px; height: 16px; border: 0; border-radius: 0; color: #949494; background: currentColor; -webkit-mask: var(--i-dash) center / 16px 16px no-repeat; mask: var(--i-dash) center / 16px 16px no-repeat; }
+.mark.mark-none { width: 14px; height: 14px; border: 0; border-radius: 0; color: #949494; background: currentColor; -webkit-mask: var(--i-dash) center / 14px 14px no-repeat; mask: var(--i-dash) center / 14px 14px no-repeat; }
 
 .type-choice:focus-visible,
 .row-type:focus-visible,
@@ -227,7 +227,7 @@ textarea.new-todo::placeholder { line-height: 33px; }
 	grid-template-columns: 1fr auto 1fr;
 	align-items: center;
 	gap: 6px;
-	min-height: 34px;
+	min-height: 28px;
 	margin: 12px 0 40px;
 	padding: 0 15px;
 	font-weight: 300;
@@ -244,27 +244,6 @@ textarea.new-todo::placeholder { line-height: 33px; }
 	align-items: center;
 	gap: 6px;
 }
-/* Filter-line pills and the archive bar's pill: 16px text, 34px tall; their menus 15px / 36px rows (44 on touch), 20px wider.
-   Row category menus keep the base 14px / 32px. */
-.filter-line .menu-button,
-.filter-line .add-categories,
-.archive-bar-menu .menu-button { height: 34px; padding: 0 14px; border-radius: 17px; font-size: 16px; }
-.filter-line .type-menu,
-.archive-bar-menu .type-menu { width: 240px; }
-.filter-line .type-menu.menu-status { width: 220px; }
-.filter-line .menu-item,
-.archive-bar-menu .menu-item { height: 36px; font-size: 15px; }
-.filter-line .menu-list,
-.archive-bar-menu .menu-list { max-height: 288px; } /* 8 rows before scrolling */
-@media (hover: none) {
-	.filter-line .menu-item,
-	.archive-bar-menu .menu-item { height: 44px; }
-	.filter-line .menu-list,
-	.archive-bar-menu .menu-list { max-height: 352px; }
-	.filter-line .menu-button::after,
-	.filter-line .add-categories::after,
-	.archive-bar-menu .menu-button::after { inset: -5px -2px; }
-}
 /* "html .clear-completed:active" in index.css (0,2,1) sets its own position mid-click; the :active selector here
    outranks it so the button never moves under the pointer. */
 .filter-line .clear-completed,
@@ -276,11 +255,11 @@ html .filter-line .clear-completed:active {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	height: 34px;
+	height: 28px;
 	padding: 0 10px;
-	border-radius: 17px;
+	border-radius: 14px;
 	font-size: 14px;
-	line-height: 34px;
+	line-height: 28px;
 	color: #777;
 	white-space: nowrap;
 }
@@ -368,7 +347,7 @@ html .filter-line .clear-completed:active {
 	/* Pills stay 28px; an invisible halo gives a 44px tap target. Menu rows grow to 44px. */
 	.menu-button::after,
 	.add-categories::after { content: ''; position: absolute; inset: -8px -2px; }
-	.filter-line .clear-completed::after { content: ''; position: absolute; inset: -5px -2px; }
+	.filter-line .clear-completed::after { content: ''; position: absolute; inset: -8px -2px; }
 	.menu-item { height: 44px; }
 	.menu-list { max-height: 352px; }
 }
@@ -900,6 +879,16 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 	.cat-row .cat-tool { width: 44px; }
 	.cat-row.confirming .cat-tools { display: none; }
 }
+/* Category filter set (OnlyCategory / NoCategory): rows show no mark, so × returns inside the row in the right-most
+   slot, dimmed, with the archive icon (completed rows) to its left; no gutter tab. Any category keeps the tab. */
+@media (hover: hover) {
+	.main.filter-set .todo-list li:not(.archive-row) .destroy { right: 10px; color: #cc9a9a; }
+	.main.filter-set .todo-list li:not(.archive-row) .destroy:hover,
+	.main.filter-set .todo-list li:not(.archive-row) .destroy:focus-visible { color: #af5b5e; }
+	.main.filter-set .todo-list li.completed:not(.archive-row) .destroy { right: 10px; }
+	.main.filter-set .todo-list li:not(.archive-row) .archive-item { right: 52px; }
+	.main.filter-set .todo-list li:not(.archive-row)::after { display: none; }
+}
 /* Archive rows: Restore / Delete are wider text buttons, so their tab needs a wider gutter. */
 @media (hover: hover) and (min-width: 900px) {
 	.archive-row .archive-actions {
@@ -923,8 +912,8 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 	.archive-row.confirming .archive-actions { display: none; }
 }
 
-/* Icon vocabulary: one thin-line set (Lucide-style paths, inline SVG masks; no font, no request). 16px, 1.5px stroke
-   (2.25 in the 24-unit box), painted in currentColor so a coloured pill colours its icon. One glyph, one meaning:
+/* Icon vocabulary: one thin-line set (Lucide-style paths, inline SVG masks; no font, no request). 1em (14px beside 14px text),
+   stroke 2.25 in the 24-unit box, painted in currentColor so a coloured pill colours its icon. One glyph, one meaning:
    circle Active · dashed circle Any category · circle-check Completed · three lines All · archive box Archived / archive · x delete · plus add ·
    gear manage · rotate-ccw restore · two squares copy · dash No category. Always aria-hidden next to a text label. */
 :root {
@@ -943,11 +932,11 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 .icon {
 	display: inline-block;
 	flex: none;
-	width: 16px;
-	height: 16px;
+	width: 1em;
+	height: 1em;
 	background-color: currentColor;
-	-webkit-mask: var(--icon) center / 16px 16px no-repeat;
-	mask: var(--icon) center / 16px 16px no-repeat;
+	-webkit-mask: var(--icon) center / 1em 1em no-repeat;
+	mask: var(--icon) center / 1em 1em no-repeat;
 }
 .icon-active { --icon: var(--i-active); }
 .icon-any { --icon: var(--i-any); }
