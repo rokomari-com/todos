@@ -2939,7 +2939,8 @@ viewArchiveGroup model showMark ( label, entries ) =
             , title "Copy this month as a prompt for a summary"
             , onClick (CopyMonth label (summaryPrompt model label entries))
             ]
-            [ span [ attribute "aria-live" "polite" ]
+            [ icon "copy"
+            , span [ attribute "aria-live" "polite" ]
                 [ text
                     (case flash of
                         Just True ->
@@ -3012,8 +3013,8 @@ viewArchiveEntry zone cats showMark confirming e =
               else
                 text ""
             , div [ class "archive-actions" ]
-                [ button [ class "archive-restore", type_ "button", onClick (Restore e.id) ] [ text "Restore" ]
-                , button [ class "archive-delete", type_ "button", onClick (Delete e.id) ] [ text "Delete" ]
+                [ button [ class "archive-restore", type_ "button", onClick (Restore e.id) ] [ icon "restore", text "Restore" ]
+                , button [ class "archive-delete", type_ "button", onClick (Delete e.id) ] [ icon "x", text "Delete" ]
                 ]
             , span [ class "archive-date" ] [ text (shortDate zone e) ]
             ]
@@ -3185,7 +3186,7 @@ viewCategoryRow model n i c =
                 , attribute "aria-label" ("Delete " ++ c.name)
                 , stopPropagationOn "click" (Decode.succeed ( AskDeleteCategory c.id, True ))
                 ]
-                [ text "\u{00D7}" ]
+                [ icon "x" ]
             ]
     in
     if model.confirmingCategory == Just c.id then
@@ -3278,9 +3279,8 @@ deleteCategoryText used =
 -- FIXED CONTROLS
 
 
-{-| Fixed controls, outside the card: the status menu in the viewport's top-right corner ("Archive all" just left
-of it, Completed view only) and the category menu at the bottom centre. DOM order gives Tab order: after the rows,
-"Archive all", status, category.
+{-| Filter line below the card, outside it: the status and category menus centred; "Archive all" at the right
+end, Completed view only.
 -}
 viewControls : Model -> Html Msg
 viewControls model =
@@ -3294,23 +3294,40 @@ viewControls model =
         statusScoped =
             List.filter (\e -> isLive e && isVisible model.visibility e) model.entries
     in
-    div [ class "fixed-controls" ]
-        [ div [ class "status-corner" ]
-            [ if model.visibility == Completed && completed > 0 then
-                button [ type_ "button", class "clear-completed", onClick ArchiveCompleted ] [ text "Archive all" ]
-
-              else
-                text ""
-            , viewStatusMenu model scoped
-            ]
-        , div [ class "category-dock" ]
-            [ if List.isEmpty model.categories then
-                a [ class "add-categories", href "#/categories" ] [ text "Add categories\u{2026}" ]
+    div [ class "filter-line" ]
+        [ div [ class "filter-menus" ]
+            [ viewStatusMenu model scoped
+            , if List.isEmpty model.categories then
+                a [ class "add-categories", href "#/categories" ] [ icon "plus", text "Add categories\u{2026}" ]
 
               else
                 viewCategoryMenu True model statusScoped
             ]
+        , if model.visibility == Completed && completed > 0 then
+            button [ type_ "button", class "clear-completed", onClick ArchiveCompleted ] [ icon "archive", text "Archive all" ]
+
+          else
+            text ""
         ]
+
+
+{-| A 16px line icon (CSS mask, currentColor). Decorative: always next to a text label or inside a labelled button. -}
+icon : String -> Html msg
+icon name =
+    span [ class ("icon icon-" ++ name), attribute "aria-hidden" "true" ] []
+
+
+statusIcon : Visibility -> Html msg
+statusIcon v =
+    case v of
+        Completed ->
+            icon "completed"
+
+        All ->
+            icon "all"
+
+        _ ->
+            icon "active"
 
 
 statusName : Visibility -> String
@@ -3331,7 +3348,7 @@ viewStatusMenu : Model -> List Entry -> Html Msg
 viewStatusMenu model scoped =
     let
         row v =
-            { content = [ span [ class "menu-label" ] [ text (statusName v) ] ]
+            { content = [ span [ class "menu-mark" ] [ statusIcon v ], span [ class "menu-label" ] [ text (statusName v) ] ]
             , count = Just (List.length (List.filter (isVisible v) scoped))
             , selected = Just (model.visibility == v)
             , pick = SetStatus v
@@ -3343,7 +3360,7 @@ viewStatusMenu model scoped =
             List.length (List.filter (\e -> isArchived e && inScope model.categoryFilter e) model.entries)
 
         archivedRow =
-            { content = [ span [ class "menu-label" ] [ text "Archived" ] ]
+            { content = [ span [ class "menu-mark" ] [ icon "archive" ], span [ class "menu-label" ] [ text "Archived" ] ]
             , count = Just archivedCount
             , selected = Nothing
             , pick = OpenArchive
@@ -3358,7 +3375,7 @@ viewStatusMenu model scoped =
         , down = model.menuDown
         , label = "Status: " ++ statusName model.visibility
         , deviates = model.visibility /= Active
-        , buttonContent = [ text (statusName model.visibility) ]
+        , buttonContent = [ statusIcon model.visibility, text (statusName model.visibility) ]
         , rows =
             List.map row statusOrder
                 ++ (if archivedCount > 0 then
@@ -3383,26 +3400,26 @@ viewCategoryMenu withEdit model base =
         content f =
             case f of
                 AnyCategory ->
-                    [ text "Any category" ]
+                    [ viewMark Nothing, text "Any category" ]
 
                 OnlyCategory id ->
                     [ markFor cats (Just id), span [ class "tf-name" ] [ text (categoryName cats (Just id)) ] ]
 
                 NoCategory ->
-                    [ viewMark Nothing, text "No category" ]
+                    [ icon "dash", text "No category" ]
 
-        -- Menu rows: fixed 16px mark slot (empty for Any) so labels line up.
+        -- Menu rows: fixed 16px mark slot so labels line up. Any: hollow ring; No category: dash.
         rowContent f =
             [ span [ class "menu-mark" ]
                 (case f of
                     AnyCategory ->
-                        []
+                        [ viewMark Nothing ]
 
                     OnlyCategory id ->
                         [ markFor cats (Just id) ]
 
                     NoCategory ->
-                        [ viewMark Nothing ]
+                        [ icon "dash" ]
                 )
             , span [ class ("menu-label tf-name" ++ labelColour (Maybe.andThen (findCategory cats) (filterId f))) ] [ text (filterLabel cats f) ]
             ]
@@ -3416,7 +3433,7 @@ viewCategoryMenu withEdit model base =
             }
 
         edit =
-            { content = [ span [ class "menu-label" ] [ text "Manage categories\u{2026}" ] ]
+            { content = [ span [ class "menu-mark" ] [ icon "gear" ], span [ class "menu-label" ] [ text "Manage categories\u{2026}" ] ]
             , count = Nothing
             , selected = Nothing
             , pick = OpenManage

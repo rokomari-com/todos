@@ -9094,6 +9094,16 @@ var $author$project$Main$CopyMonth = F2(
 	});
 var $elm$html$Html$button = _VirtualDom_node('button');
 var $elm$html$Html$h2 = _VirtualDom_node('h2');
+var $author$project$Main$icon = function (name) {
+	return A2(
+		$elm$html$Html$span,
+		_List_fromArray(
+			[
+				$elm$html$Html$Attributes$class('icon icon-' + name),
+				A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
+			]),
+		_List_Nil);
+};
 var $elm$virtual_dom$VirtualDom$lazy5 = _VirtualDom_lazy5;
 var $elm$html$Html$Lazy$lazy5 = $elm$virtual_dom$VirtualDom$lazy5;
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
@@ -9353,6 +9363,7 @@ var $author$project$Main$viewArchiveEntry = F5(
 										]),
 									_List_fromArray(
 										[
+											$author$project$Main$icon('restore'),
 											$elm$html$Html$text('Restore')
 										])),
 									A2(
@@ -9366,6 +9377,7 @@ var $author$project$Main$viewArchiveEntry = F5(
 										]),
 									_List_fromArray(
 										[
+											$author$project$Main$icon('x'),
 											$elm$html$Html$text('Delete')
 										]))
 								])),
@@ -9487,6 +9499,7 @@ var $author$project$Main$viewArchiveGroup = F3(
 						]),
 					_List_fromArray(
 						[
+							$author$project$Main$icon('copy'),
 							A2(
 							$elm$html$Html$span,
 							_List_fromArray(
@@ -9980,6 +9993,16 @@ var $author$project$Main$viewCategoryMenu = F3(
 					$elm$html$Html$span,
 					_List_fromArray(
 						[
+							$elm$html$Html$Attributes$class('menu-mark')
+						]),
+					_List_fromArray(
+						[
+							$author$project$Main$icon('gear')
+						])),
+					A2(
+					$elm$html$Html$span,
+					_List_fromArray(
+						[
 							$elm$html$Html$Attributes$class('menu-label')
 						]),
 					_List_fromArray(
@@ -9999,6 +10022,7 @@ var $author$project$Main$viewCategoryMenu = F3(
 				case 'AnyCategory':
 					return _List_fromArray(
 						[
+							$author$project$Main$viewMark($elm$core$Maybe$Nothing),
 							$elm$html$Html$text('Any category')
 						]);
 				case 'OnlyCategory':
@@ -10027,7 +10051,7 @@ var $author$project$Main$viewCategoryMenu = F3(
 				default:
 					return _List_fromArray(
 						[
-							$author$project$Main$viewMark($elm$core$Maybe$Nothing),
+							$author$project$Main$icon('dash'),
 							$elm$html$Html$text('No category')
 						]);
 			}
@@ -10044,7 +10068,10 @@ var $author$project$Main$viewCategoryMenu = F3(
 					function () {
 						switch (f.$) {
 							case 'AnyCategory':
-								return _List_Nil;
+								return _List_fromArray(
+									[
+										$author$project$Main$viewMark($elm$core$Maybe$Nothing)
+									]);
 							case 'OnlyCategory':
 								var id = f.a;
 								return _List_fromArray(
@@ -10057,7 +10084,7 @@ var $author$project$Main$viewCategoryMenu = F3(
 							default:
 								return _List_fromArray(
 									[
-										$author$project$Main$viewMark($elm$core$Maybe$Nothing)
+										$author$project$Main$icon('dash')
 									]);
 						}
 					}()),
@@ -10221,6 +10248,16 @@ var $author$project$Main$OpenArchive = {$: 'OpenArchive'};
 var $author$project$Main$SetStatus = function (a) {
 	return {$: 'SetStatus', a: a};
 };
+var $author$project$Main$statusIcon = function (v) {
+	switch (v.$) {
+		case 'Completed':
+			return $author$project$Main$icon('completed');
+		case 'All':
+			return $author$project$Main$icon('all');
+		default:
+			return $author$project$Main$icon('active');
+	}
+};
 var $author$project$Main$statusName = function (v) {
 	switch (v.$) {
 		case 'Completed':
@@ -10237,6 +10274,16 @@ var $author$project$Main$viewStatusMenu = F2(
 			return {
 				content: _List_fromArray(
 					[
+						A2(
+						$elm$html$Html$span,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('menu-mark')
+							]),
+						_List_fromArray(
+							[
+								$author$project$Main$statusIcon(v)
+							])),
 						A2(
 						$elm$html$Html$span,
 						_List_fromArray(
@@ -10275,6 +10322,16 @@ var $author$project$Main$viewStatusMenu = F2(
 					$elm$html$Html$span,
 					_List_fromArray(
 						[
+							$elm$html$Html$Attributes$class('menu-mark')
+						]),
+					_List_fromArray(
+						[
+							$author$project$Main$icon('archive')
+						])),
+					A2(
+					$elm$html$Html$span,
+					_List_fromArray(
+						[
 							$elm$html$Html$Attributes$class('menu-label')
 						]),
 					_List_fromArray(
@@ -10294,6 +10351,7 @@ var $author$project$Main$viewStatusMenu = F2(
 				buttonClass: 'menu-button',
 				buttonContent: _List_fromArray(
 					[
+						$author$project$Main$statusIcon(model.visibility),
 						$elm$html$Html$text(
 						$author$project$Main$statusName(model.visibility))
 					]),
@@ -10337,7 +10395,7 @@ var $author$project$Main$viewControls = function (model) {
 		$elm$html$Html$div,
 		_List_fromArray(
 			[
-				$elm$html$Html$Attributes$class('fixed-controls')
+				$elm$html$Html$Attributes$class('filter-line')
 			]),
 		_List_fromArray(
 			[
@@ -10345,32 +10403,11 @@ var $author$project$Main$viewControls = function (model) {
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('status-corner')
+						$elm$html$Html$Attributes$class('filter-menus')
 					]),
 				_List_fromArray(
 					[
-						(_Utils_eq(model.visibility, $author$project$Main$Completed) && (completed > 0)) ? A2(
-						$elm$html$Html$button,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$type_('button'),
-								$elm$html$Html$Attributes$class('clear-completed'),
-								$elm$html$Html$Events$onClick($author$project$Main$ArchiveCompleted)
-							]),
-						_List_fromArray(
-							[
-								$elm$html$Html$text('Archive all')
-							])) : $elm$html$Html$text(''),
-						A2($author$project$Main$viewStatusMenu, model, scoped)
-					])),
-				A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('category-dock')
-					]),
-				_List_fromArray(
-					[
+						A2($author$project$Main$viewStatusMenu, model, scoped),
 						$elm$core$List$isEmpty(model.categories) ? A2(
 						$elm$html$Html$a,
 						_List_fromArray(
@@ -10380,9 +10417,23 @@ var $author$project$Main$viewControls = function (model) {
 							]),
 						_List_fromArray(
 							[
+								$author$project$Main$icon('plus'),
 								$elm$html$Html$text('Add categories\u2026')
 							])) : A3($author$project$Main$viewCategoryMenu, true, model, statusScoped)
-					]))
+					])),
+				(_Utils_eq(model.visibility, $author$project$Main$Completed) && (completed > 0)) ? A2(
+				$elm$html$Html$button,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$type_('button'),
+						$elm$html$Html$Attributes$class('clear-completed'),
+						$elm$html$Html$Events$onClick($author$project$Main$ArchiveCompleted)
+					]),
+				_List_fromArray(
+					[
+						$author$project$Main$icon('archive'),
+						$elm$html$Html$text('Archive all')
+					])) : $elm$html$Html$text('')
 			]));
 };
 var $author$project$Main$UpdateField = function (a) {
@@ -11496,7 +11547,7 @@ var $author$project$Main$viewCategoryRow = F4(
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text('\u00D7')
+						$author$project$Main$icon('x')
 					]))
 			]);
 		var inputId = 'cat-name-' + sid;
