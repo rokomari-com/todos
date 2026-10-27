@@ -5216,9 +5216,8 @@ var $author$project$Main$GotTime = F2(
 		return {$: 'GotTime', a: a, b: b};
 	});
 var $elm$json$Json$Decode$decodeValue = _Json_run;
-var $author$project$Main$AnyType = {$: 'AnyType'};
-var $author$project$Main$Personal = {$: 'Personal'};
-var $author$project$Main$emptySaved = {entries: _List_Nil, field: '', newType: $author$project$Main$Personal, typeFilter: $author$project$Main$AnyType, uid: 0};
+var $author$project$Main$AnyCategory = {$: 'AnyCategory'};
+var $author$project$Main$emptySaved = {categories: _List_Nil, categoryFilter: $author$project$Main$AnyCategory, entries: _List_Nil, field: '', newCategory: $elm$core$Maybe$Nothing, nextCategoryId: 1, uid: 0};
 var $elm$time$Time$Name = function (a) {
 	return {$: 'Name', a: a};
 };
@@ -5270,249 +5269,17 @@ var $elm$time$Time$Posix = function (a) {
 };
 var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
 var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
-var $author$project$Main$Saved = F5(
-	function (entries, field, uid, newType, typeFilter) {
-		return {entries: entries, field: field, newType: newType, typeFilter: typeFilter, uid: uid};
-	});
-var $elm$json$Json$Decode$field = _Json_decodeField;
-var $elm$json$Json$Decode$int = _Json_decodeInt;
-var $author$project$Main$Entry = F8(
-	function (description, completed, editing, id, entryType, completedAt, archivedAt, order) {
-		return {archivedAt: archivedAt, completed: completed, completedAt: completedAt, description: description, editing: editing, entryType: entryType, id: id, order: order};
-	});
-var $author$project$Main$andMap = $elm$json$Json$Decode$map2($elm$core$Basics$apR);
-var $elm$json$Json$Decode$bool = _Json_decodeBool;
-var $elm$json$Json$Decode$oneOf = _Json_oneOf;
-var $elm$core$Basics$composeL = F3(
-	function (g, f, x) {
-		return g(
-			f(x));
-	});
-var $author$project$Main$optionalTime = function (name) {
-	return $elm$json$Json$Decode$oneOf(
-		_List_fromArray(
-			[
-				A2(
-				$elm$json$Json$Decode$field,
-				name,
-				A2(
-					$elm$json$Json$Decode$map,
-					A2($elm$core$Basics$composeL, $elm$core$Maybe$Just, $elm$time$Time$millisToPosix),
-					$elm$json$Json$Decode$int)),
-				$elm$json$Json$Decode$succeed($elm$core$Maybe$Nothing)
-			]));
+var $author$project$Main$OnlyCategory = function (a) {
+	return {$: 'OnlyCategory', a: a};
 };
-var $elm$json$Json$Decode$string = _Json_decodeString;
 var $elm$json$Json$Decode$andThen = _Json_andThen;
-var $elm$json$Json$Decode$fail = _Json_fail;
-var $author$project$Main$Work = {$: 'Work'};
-var $author$project$Main$requireListed = function (t) {
-	if (t.$ === 'Personal') {
-		return t;
-	} else {
-		return t;
-	}
-};
-var $author$project$Main$allTypes = A2(
-	$elm$core$List$map,
-	$author$project$Main$requireListed,
-	_List_fromArray(
-		[$author$project$Main$Personal, $author$project$Main$Work]));
-var $elm$core$List$filter = F2(
-	function (isGood, list) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, xs) {
-					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
-				}),
-			_List_Nil,
-			list);
-	});
-var $elm$core$List$head = function (list) {
-	if (list.b) {
-		var x = list.a;
-		var xs = list.b;
-		return $elm$core$Maybe$Just(x);
-	} else {
-		return $elm$core$Maybe$Nothing;
-	}
-};
-var $author$project$Main$typeKey = function (t) {
-	if (t.$ === 'Personal') {
-		return 'personal';
-	} else {
-		return 'work';
-	}
-};
-var $author$project$Main$typeFromKey = function (key) {
-	return $elm$core$List$head(
-		A2(
-			$elm$core$List$filter,
-			function (t) {
-				return _Utils_eq(
-					$author$project$Main$typeKey(t),
-					key);
-			},
-			$author$project$Main$allTypes));
-};
-var $author$project$Main$typeDecoder = A2(
-	$elm$json$Json$Decode$andThen,
-	function (s) {
-		var _v0 = $author$project$Main$typeFromKey(s);
-		if (_v0.$ === 'Just') {
-			var t = _v0.a;
-			return $elm$json$Json$Decode$succeed(t);
+var $elm$core$Maybe$andThen = F2(
+	function (callback, maybeValue) {
+		if (maybeValue.$ === 'Just') {
+			var value = maybeValue.a;
+			return callback(value);
 		} else {
-			return $elm$json$Json$Decode$fail('unknown type ' + s);
-		}
-	},
-	$elm$json$Json$Decode$string);
-var $author$project$Main$typeOrPersonal = function (name) {
-	return $elm$json$Json$Decode$oneOf(
-		_List_fromArray(
-			[
-				A2($elm$json$Json$Decode$field, name, $author$project$Main$typeDecoder),
-				$elm$json$Json$Decode$succeed($author$project$Main$Personal)
-			]));
-};
-var $author$project$Main$entryDecoder = A2(
-	$author$project$Main$andMap,
-	$elm$json$Json$Decode$oneOf(
-		_List_fromArray(
-			[
-				A2($elm$json$Json$Decode$field, 'order', $elm$json$Json$Decode$int),
-				$elm$json$Json$Decode$succeed(-1)
-			])),
-	A2(
-		$author$project$Main$andMap,
-		$author$project$Main$optionalTime('archivedAt'),
-		A2(
-			$author$project$Main$andMap,
-			$author$project$Main$optionalTime('completedAt'),
-			A2(
-				$author$project$Main$andMap,
-				$author$project$Main$typeOrPersonal('type'),
-				A2(
-					$author$project$Main$andMap,
-					A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$int),
-					A2(
-						$author$project$Main$andMap,
-						$elm$json$Json$Decode$succeed(false),
-						A2(
-							$author$project$Main$andMap,
-							A2($elm$json$Json$Decode$field, 'completed', $elm$json$Json$Decode$bool),
-							A2(
-								$author$project$Main$andMap,
-								A2($elm$json$Json$Decode$field, 'description', $elm$json$Json$Decode$string),
-								$elm$json$Json$Decode$succeed($author$project$Main$Entry)))))))));
-var $elm$core$List$maybeCons = F3(
-	function (f, mx, xs) {
-		var _v0 = f(mx);
-		if (_v0.$ === 'Just') {
-			var x = _v0.a;
-			return A2($elm$core$List$cons, x, xs);
-		} else {
-			return xs;
-		}
-	});
-var $elm$core$List$filterMap = F2(
-	function (f, xs) {
-		return A3(
-			$elm$core$List$foldr,
-			$elm$core$List$maybeCons(f),
-			_List_Nil,
-			xs);
-	});
-var $elm$json$Json$Decode$list = _Json_decodeList;
-var $author$project$Main$lenientEntries = A2(
-	$elm$json$Json$Decode$map,
-	$elm$core$List$filterMap($elm$core$Basics$identity),
-	$elm$json$Json$Decode$list(
-		$elm$json$Json$Decode$oneOf(
-			_List_fromArray(
-				[
-					A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, $author$project$Main$entryDecoder),
-					$elm$json$Json$Decode$succeed($elm$core$Maybe$Nothing)
-				]))));
-var $elm$json$Json$Decode$map5 = _Json_map5;
-var $author$project$Main$OnlyType = function (a) {
-	return {$: 'OnlyType', a: a};
-};
-var $author$project$Main$typeFilterDecoder = $elm$json$Json$Decode$oneOf(
-	_List_fromArray(
-		[
-			A2(
-			$elm$json$Json$Decode$andThen,
-			function (k) {
-				var _v0 = $author$project$Main$typeFromKey(k);
-				if (_v0.$ === 'Just') {
-					var t = _v0.a;
-					return $elm$json$Json$Decode$succeed(
-						$author$project$Main$OnlyType(t));
-				} else {
-					return $elm$json$Json$Decode$succeed($author$project$Main$AnyType);
-				}
-			},
-			A2($elm$json$Json$Decode$field, 'typeFilter', $elm$json$Json$Decode$string)),
-			$elm$json$Json$Decode$succeed($author$project$Main$AnyType)
-		]));
-var $author$project$Main$savedDecoder = A6(
-	$elm$json$Json$Decode$map5,
-	$author$project$Main$Saved,
-	$elm$json$Json$Decode$oneOf(
-		_List_fromArray(
-			[
-				A2($elm$json$Json$Decode$field, 'entries', $author$project$Main$lenientEntries),
-				$elm$json$Json$Decode$succeed(_List_Nil)
-			])),
-	$elm$json$Json$Decode$oneOf(
-		_List_fromArray(
-			[
-				A2($elm$json$Json$Decode$field, 'field', $elm$json$Json$Decode$string),
-				$elm$json$Json$Decode$succeed('')
-			])),
-	$elm$json$Json$Decode$oneOf(
-		_List_fromArray(
-			[
-				A2($elm$json$Json$Decode$field, 'uid', $elm$json$Json$Decode$int),
-				$elm$json$Json$Decode$succeed(0)
-			])),
-	$author$project$Main$typeOrPersonal('newType'),
-	$author$project$Main$typeFilterDecoder);
-var $elm$time$Time$utc = A2($elm$time$Time$Zone, 0, _List_Nil);
-var $author$project$Main$Active = {$: 'Active'};
-var $author$project$Main$All = {$: 'All'};
-var $author$project$Main$ArchiveView = {$: 'ArchiveView'};
-var $author$project$Main$Completed = {$: 'Completed'};
-var $author$project$Main$visibilityFromUrl = function (url) {
-	var _v0 = url.fragment;
-	_v0$3:
-	while (true) {
-		if (_v0.$ === 'Just') {
-			switch (_v0.a) {
-				case '/active':
-					return $author$project$Main$Active;
-				case '/completed':
-					return $author$project$Main$Completed;
-				case '/archive':
-					return $author$project$Main$ArchiveView;
-				default:
-					break _v0$3;
-			}
-		} else {
-			break _v0$3;
-		}
-	}
-	return $author$project$Main$All;
-};
-var $elm$core$Result$withDefault = F2(
-	function (def, result) {
-		if (result.$ === 'Ok') {
-			var a = result.a;
-			return a;
-		} else {
-			return def;
+			return $elm$core$Maybe$Nothing;
 		}
 	});
 var $elm$core$List$any = F2(
@@ -5534,6 +5301,618 @@ var $elm$core$List$any = F2(
 					continue any;
 				}
 			}
+		}
+	});
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$core$Basics$ge = _Utils_ge;
+var $elm$json$Json$Decode$int = _Json_decodeInt;
+var $elm$json$Json$Decode$oneOf = _Json_oneOf;
+var $author$project$Main$lenientField = F3(
+	function (name, dec, fallback) {
+		return $elm$json$Json$Decode$oneOf(
+			_List_fromArray(
+				[
+					A2($elm$json$Json$Decode$field, name, dec),
+					$elm$json$Json$Decode$succeed(fallback)
+				]));
+	});
+var $elm$json$Json$Decode$map4 = _Json_map4;
+var $elm$core$Basics$modBy = _Basics_modBy;
+var $author$project$Main$paletteSize = 8;
+var $author$project$Main$Circle = {$: 'Circle'};
+var $author$project$Main$Diamond = {$: 'Diamond'};
+var $author$project$Main$Square = {$: 'Square'};
+var $author$project$Main$Triangle = {$: 'Triangle'};
+var $author$project$Main$allShapes = _List_fromArray(
+	[$author$project$Main$Circle, $author$project$Main$Square, $author$project$Main$Diamond, $author$project$Main$Triangle]);
+var $elm$core$List$drop = F2(
+	function (n, list) {
+		drop:
+		while (true) {
+			if (n <= 0) {
+				return list;
+			} else {
+				if (!list.b) {
+					return list;
+				} else {
+					var x = list.a;
+					var xs = list.b;
+					var $temp$n = n - 1,
+						$temp$list = xs;
+					n = $temp$n;
+					list = $temp$list;
+					continue drop;
+				}
+			}
+		}
+	});
+var $elm$core$List$head = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(x);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $author$project$Main$shapeForId = function (id) {
+	return A2(
+		$elm$core$Maybe$withDefault,
+		$author$project$Main$Circle,
+		$elm$core$List$head(
+			A2(
+				$elm$core$List$drop,
+				A2(
+					$elm$core$Basics$modBy,
+					$elm$core$List$length($author$project$Main$allShapes),
+					id - 1),
+				$author$project$Main$allShapes)));
+};
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var $author$project$Main$shapeKey = function (s) {
+	switch (s.$) {
+		case 'Circle':
+			return 'circle';
+		case 'Square':
+			return 'square';
+		case 'Diamond':
+			return 'diamond';
+		default:
+			return 'triangle';
+	}
+};
+var $author$project$Main$shapeFromKey = function (k) {
+	return $elm$core$List$head(
+		A2(
+			$elm$core$List$filter,
+			function (s) {
+				return _Utils_eq(
+					$author$project$Main$shapeKey(s),
+					k);
+			},
+			$author$project$Main$allShapes));
+};
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $elm$core$String$trim = _String_trim;
+var $author$project$Main$categoryDecoder = A5(
+	$elm$json$Json$Decode$map4,
+	F4(
+		function (id, name, color, shape) {
+			return {
+				color: ((color >= 0) && (_Utils_cmp(color, $author$project$Main$paletteSize) < 0)) ? color : A2($elm$core$Basics$modBy, $author$project$Main$paletteSize, id - 1),
+				id: id,
+				name: $elm$core$String$trim(name),
+				shape: A2(
+					$elm$core$Maybe$withDefault,
+					$author$project$Main$shapeForId(id),
+					A2($elm$core$Maybe$andThen, $author$project$Main$shapeFromKey, shape))
+			};
+		}),
+	A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$int),
+	A2($elm$json$Json$Decode$field, 'name', $elm$json$Json$Decode$string),
+	A3($author$project$Main$lenientField, 'color', $elm$json$Json$Decode$int, -1),
+	A3(
+		$author$project$Main$lenientField,
+		'shape',
+		A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, $elm$json$Json$Decode$string),
+		$elm$core$Maybe$Nothing));
+var $elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
+	});
+var $author$project$Main$maxCategories = 12;
+var $elm$core$String$toLower = _String_toLower;
+var $author$project$Main$normName = A2($elm$core$Basics$composeR, $elm$core$String$trim, $elm$core$String$toLower);
+var $elm$core$List$takeReverse = F3(
+	function (n, list, kept) {
+		takeReverse:
+		while (true) {
+			if (n <= 0) {
+				return kept;
+			} else {
+				if (!list.b) {
+					return kept;
+				} else {
+					var x = list.a;
+					var xs = list.b;
+					var $temp$n = n - 1,
+						$temp$list = xs,
+						$temp$kept = A2($elm$core$List$cons, x, kept);
+					n = $temp$n;
+					list = $temp$list;
+					kept = $temp$kept;
+					continue takeReverse;
+				}
+			}
+		}
+	});
+var $elm$core$List$takeTailRec = F2(
+	function (n, list) {
+		return $elm$core$List$reverse(
+			A3($elm$core$List$takeReverse, n, list, _List_Nil));
+	});
+var $elm$core$List$takeFast = F3(
+	function (ctr, n, list) {
+		if (n <= 0) {
+			return _List_Nil;
+		} else {
+			var _v0 = _Utils_Tuple2(n, list);
+			_v0$1:
+			while (true) {
+				_v0$5:
+				while (true) {
+					if (!_v0.b.b) {
+						return list;
+					} else {
+						if (_v0.b.b.b) {
+							switch (_v0.a) {
+								case 1:
+									break _v0$1;
+								case 2:
+									var _v2 = _v0.b;
+									var x = _v2.a;
+									var _v3 = _v2.b;
+									var y = _v3.a;
+									return _List_fromArray(
+										[x, y]);
+								case 3:
+									if (_v0.b.b.b.b) {
+										var _v4 = _v0.b;
+										var x = _v4.a;
+										var _v5 = _v4.b;
+										var y = _v5.a;
+										var _v6 = _v5.b;
+										var z = _v6.a;
+										return _List_fromArray(
+											[x, y, z]);
+									} else {
+										break _v0$5;
+									}
+								default:
+									if (_v0.b.b.b.b && _v0.b.b.b.b.b) {
+										var _v7 = _v0.b;
+										var x = _v7.a;
+										var _v8 = _v7.b;
+										var y = _v8.a;
+										var _v9 = _v8.b;
+										var z = _v9.a;
+										var _v10 = _v9.b;
+										var w = _v10.a;
+										var tl = _v10.b;
+										return (ctr > 1000) ? A2(
+											$elm$core$List$cons,
+											x,
+											A2(
+												$elm$core$List$cons,
+												y,
+												A2(
+													$elm$core$List$cons,
+													z,
+													A2(
+														$elm$core$List$cons,
+														w,
+														A2($elm$core$List$takeTailRec, n - 4, tl))))) : A2(
+											$elm$core$List$cons,
+											x,
+											A2(
+												$elm$core$List$cons,
+												y,
+												A2(
+													$elm$core$List$cons,
+													z,
+													A2(
+														$elm$core$List$cons,
+														w,
+														A3($elm$core$List$takeFast, ctr + 1, n - 4, tl)))));
+									} else {
+										break _v0$5;
+									}
+							}
+						} else {
+							if (_v0.a === 1) {
+								break _v0$1;
+							} else {
+								break _v0$5;
+							}
+						}
+					}
+				}
+				return list;
+			}
+			var _v1 = _v0.b;
+			var x = _v1.a;
+			return _List_fromArray(
+				[x]);
+		}
+	});
+var $elm$core$List$take = F2(
+	function (n, list) {
+		return A3($elm$core$List$takeFast, 0, n, list);
+	});
+var $author$project$Main$cleanCategories = A2(
+	$elm$core$Basics$composeR,
+	A2(
+		$elm$core$List$foldl,
+		F2(
+			function (c, acc) {
+				return ($elm$core$String$isEmpty(c.name) || A2(
+					$elm$core$List$any,
+					function (x) {
+						return _Utils_eq(x.id, c.id) || _Utils_eq(
+							$author$project$Main$normName(x.name),
+							$author$project$Main$normName(c.name));
+					},
+					acc)) ? acc : _Utils_ap(
+					acc,
+					_List_fromArray(
+						[c]));
+			}),
+		_List_Nil),
+	$elm$core$List$take($author$project$Main$maxCategories));
+var $elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var $author$project$Main$Entry = F8(
+	function (description, completed, editing, id, category, completedAt, archivedAt, order) {
+		return {archivedAt: archivedAt, category: category, completed: completed, completedAt: completedAt, description: description, editing: editing, id: id, order: order};
+	});
+var $author$project$Main$andMap = $elm$json$Json$Decode$map2($elm$core$Basics$apR);
+var $elm$json$Json$Decode$bool = _Json_decodeBool;
+var $elm$json$Json$Decode$null = _Json_decodeNull;
+var $elm$json$Json$Decode$nullable = function (decoder) {
+	return $elm$json$Json$Decode$oneOf(
+		_List_fromArray(
+			[
+				$elm$json$Json$Decode$null($elm$core$Maybe$Nothing),
+				A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, decoder)
+			]));
+};
+var $author$project$Main$optionalTime = function (name) {
+	return $elm$json$Json$Decode$oneOf(
+		_List_fromArray(
+			[
+				A2(
+				$elm$json$Json$Decode$field,
+				name,
+				A2(
+					$elm$json$Json$Decode$map,
+					A2($elm$core$Basics$composeL, $elm$core$Maybe$Just, $elm$time$Time$millisToPosix),
+					$elm$json$Json$Decode$int)),
+				$elm$json$Json$Decode$succeed($elm$core$Maybe$Nothing)
+			]));
+};
+var $elm$core$Tuple$pair = F2(
+	function (a, b) {
+		return _Utils_Tuple2(a, b);
+	});
+var $author$project$Main$entryDecoder = A3(
+	$elm$json$Json$Decode$map2,
+	$elm$core$Tuple$pair,
+	A2(
+		$author$project$Main$andMap,
+		A3($author$project$Main$lenientField, 'order', $elm$json$Json$Decode$int, -1),
+		A2(
+			$author$project$Main$andMap,
+			$author$project$Main$optionalTime('archivedAt'),
+			A2(
+				$author$project$Main$andMap,
+				$author$project$Main$optionalTime('completedAt'),
+				A2(
+					$author$project$Main$andMap,
+					A3(
+						$author$project$Main$lenientField,
+						'category',
+						$elm$json$Json$Decode$nullable($elm$json$Json$Decode$int),
+						$elm$core$Maybe$Nothing),
+					A2(
+						$author$project$Main$andMap,
+						A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$int),
+						A2(
+							$author$project$Main$andMap,
+							$elm$json$Json$Decode$succeed(false),
+							A2(
+								$author$project$Main$andMap,
+								A2($elm$json$Json$Decode$field, 'completed', $elm$json$Json$Decode$bool),
+								A2(
+									$author$project$Main$andMap,
+									A2($elm$json$Json$Decode$field, 'description', $elm$json$Json$Decode$string),
+									$elm$json$Json$Decode$succeed($author$project$Main$Entry))))))))),
+	A3(
+		$author$project$Main$lenientField,
+		'type',
+		A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, $elm$json$Json$Decode$string),
+		$elm$core$Maybe$Nothing));
+var $author$project$Main$NoCategory = {$: 'NoCategory'};
+var $author$project$Main$filterDecoder = $elm$json$Json$Decode$oneOf(
+	_List_fromArray(
+		[
+			A2($elm$json$Json$Decode$map, $author$project$Main$OnlyCategory, $elm$json$Json$Decode$int),
+			A2(
+			$elm$json$Json$Decode$map,
+			function (k) {
+				return (k === 'none') ? $author$project$Main$NoCategory : $author$project$Main$AnyCategory;
+			},
+			$elm$json$Json$Decode$string),
+			$elm$json$Json$Decode$succeed($author$project$Main$AnyCategory)
+		]));
+var $author$project$Main$legacyCategories = _List_fromArray(
+	[
+		{color: 0, id: 1, name: 'Personal', shape: $author$project$Main$Circle},
+		{color: 1, id: 2, name: 'Work', shape: $author$project$Main$Square}
+	]);
+var $author$project$Main$legacyId = function (key) {
+	switch (key) {
+		case 'personal':
+			return $elm$core$Maybe$Just(1);
+		case 'work':
+			return $elm$core$Maybe$Just(2);
+		default:
+			return $elm$core$Maybe$Nothing;
+	}
+};
+var $elm$core$List$maybeCons = F3(
+	function (f, mx, xs) {
+		var _v0 = f(mx);
+		if (_v0.$ === 'Just') {
+			var x = _v0.a;
+			return A2($elm$core$List$cons, x, xs);
+		} else {
+			return xs;
+		}
+	});
+var $elm$core$List$filterMap = F2(
+	function (f, xs) {
+		return A3(
+			$elm$core$List$foldr,
+			$elm$core$List$maybeCons(f),
+			_List_Nil,
+			xs);
+	});
+var $elm$json$Json$Decode$list = _Json_decodeList;
+var $author$project$Main$lenientList = function (dec) {
+	return A2(
+		$elm$json$Json$Decode$map,
+		$elm$core$List$filterMap($elm$core$Basics$identity),
+		$elm$json$Json$Decode$list(
+			$elm$json$Json$Decode$oneOf(
+				_List_fromArray(
+					[
+						A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, dec),
+						$elm$json$Json$Decode$succeed($elm$core$Maybe$Nothing)
+					]))));
+};
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $elm$json$Json$Decode$map5 = _Json_map5;
+var $elm$core$Basics$neq = _Utils_notEqual;
+var $author$project$Main$findCategory = F2(
+	function (cats, id) {
+		return $elm$core$List$head(
+			A2(
+				$elm$core$List$filter,
+				function (c) {
+					return _Utils_eq(c.id, id);
+				},
+				cats));
+	});
+var $author$project$Main$validCategory = F2(
+	function (cats, mid) {
+		if (mid.$ === 'Just') {
+			var id = mid.a;
+			return _Utils_eq(
+				A2($author$project$Main$findCategory, cats, id),
+				$elm$core$Maybe$Nothing) ? $elm$core$Maybe$Nothing : mid;
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $elm$core$List$isEmpty = function (xs) {
+	if (!xs.b) {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $author$project$Main$validFilter = F2(
+	function (cats, f) {
+		switch (f.$) {
+			case 'OnlyCategory':
+				var id = f.a;
+				return _Utils_eq(
+					A2($author$project$Main$findCategory, cats, id),
+					$elm$core$Maybe$Nothing) ? $author$project$Main$AnyCategory : f;
+			case 'NoCategory':
+				return $elm$core$List$isEmpty(cats) ? $author$project$Main$AnyCategory : f;
+			default:
+				return f;
+		}
+	});
+var $author$project$Main$savedDecoder = A2(
+	$elm$json$Json$Decode$andThen,
+	$elm$core$Basics$identity,
+	A5(
+		$elm$json$Json$Decode$map4,
+		F4(
+			function (pairs, field, uid, stored) {
+				return A6(
+					$elm$json$Json$Decode$map5,
+					F5(
+						function (newCat, filter, legacyNew, legacyFilter, nextStored) {
+							var legacy = _Utils_eq(stored, $elm$core$Maybe$Nothing) && A2(
+								$elm$core$List$any,
+								function (_v1) {
+									var t = _v1.b;
+									return !_Utils_eq(
+										A2($elm$core$Maybe$andThen, $author$project$Main$legacyId, t),
+										$elm$core$Maybe$Nothing);
+								},
+								pairs);
+							var cats = legacy ? $author$project$Main$legacyCategories : A2($elm$core$Maybe$withDefault, _List_Nil, stored);
+							var entries = A2(
+								$elm$core$List$map,
+								function (_v0) {
+									var e = _v0.a;
+									var t = _v0.b;
+									return _Utils_update(
+										e,
+										{
+											category: A2(
+												$author$project$Main$validCategory,
+												cats,
+												legacy ? A2($elm$core$Maybe$andThen, $author$project$Main$legacyId, t) : (_Utils_eq(stored, $elm$core$Maybe$Nothing) ? $elm$core$Maybe$Nothing : e.category))
+										});
+								},
+								pairs);
+							return {
+								categories: cats,
+								categoryFilter: A2(
+									$author$project$Main$validFilter,
+									cats,
+									legacy ? A2(
+										$elm$core$Maybe$withDefault,
+										$author$project$Main$AnyCategory,
+										A2(
+											$elm$core$Maybe$map,
+											$author$project$Main$OnlyCategory,
+											A2($elm$core$Maybe$andThen, $author$project$Main$legacyId, legacyFilter))) : filter),
+								entries: entries,
+								field: field,
+								newCategory: A2(
+									$author$project$Main$validCategory,
+									cats,
+									legacy ? A2($elm$core$Maybe$andThen, $author$project$Main$legacyId, legacyNew) : newCat),
+								nextCategoryId: A2(
+									$elm$core$Basics$max,
+									nextStored,
+									1 + A2(
+										$elm$core$Maybe$withDefault,
+										0,
+										$elm$core$List$maximum(
+											A2(
+												$elm$core$List$map,
+												function ($) {
+													return $.id;
+												},
+												cats)))),
+								uid: uid
+							};
+						}),
+					A3(
+						$author$project$Main$lenientField,
+						'newCategory',
+						$elm$json$Json$Decode$nullable($elm$json$Json$Decode$int),
+						$elm$core$Maybe$Nothing),
+					A3($author$project$Main$lenientField, 'categoryFilter', $author$project$Main$filterDecoder, $author$project$Main$AnyCategory),
+					A3(
+						$author$project$Main$lenientField,
+						'newType',
+						A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, $elm$json$Json$Decode$string),
+						$elm$core$Maybe$Nothing),
+					A3(
+						$author$project$Main$lenientField,
+						'typeFilter',
+						A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, $elm$json$Json$Decode$string),
+						$elm$core$Maybe$Nothing),
+					A3($author$project$Main$lenientField, 'nextCategoryId', $elm$json$Json$Decode$int, 1));
+			}),
+		A3(
+			$author$project$Main$lenientField,
+			'entries',
+			$author$project$Main$lenientList($author$project$Main$entryDecoder),
+			_List_Nil),
+		A3($author$project$Main$lenientField, 'field', $elm$json$Json$Decode$string, ''),
+		A3($author$project$Main$lenientField, 'uid', $elm$json$Json$Decode$int, 0),
+		$elm$json$Json$Decode$oneOf(
+			_List_fromArray(
+				[
+					A2(
+					$elm$json$Json$Decode$field,
+					'categories',
+					A2(
+						$elm$json$Json$Decode$map,
+						A2($elm$core$Basics$composeL, $elm$core$Maybe$Just, $author$project$Main$cleanCategories),
+						$author$project$Main$lenientList($author$project$Main$categoryDecoder))),
+					$elm$json$Json$Decode$succeed($elm$core$Maybe$Nothing)
+				]))));
+var $elm$time$Time$utc = A2($elm$time$Time$Zone, 0, _List_Nil);
+var $author$project$Main$Active = {$: 'Active'};
+var $author$project$Main$All = {$: 'All'};
+var $author$project$Main$ArchiveView = {$: 'ArchiveView'};
+var $author$project$Main$Completed = {$: 'Completed'};
+var $author$project$Main$ManageView = {$: 'ManageView'};
+var $author$project$Main$visibilityFromUrl = function (url) {
+	var _v0 = url.fragment;
+	_v0$5:
+	while (true) {
+		if (_v0.$ === 'Just') {
+			switch (_v0.a) {
+				case '/active':
+					return $author$project$Main$Active;
+				case '/completed':
+					return $author$project$Main$Completed;
+				case '/archive':
+					return $author$project$Main$ArchiveView;
+				case '/categories':
+					return $author$project$Main$ManageView;
+				case '/all':
+					return $author$project$Main$All;
+				default:
+					break _v0$5;
+			}
+		} else {
+			break _v0$5;
+		}
+	}
+	return $author$project$Main$Active;
+};
+var $elm$core$Result$withDefault = F2(
+	function (def, result) {
+		if (result.$ === 'Ok') {
+			var a = result.a;
+			return a;
+		} else {
+			return def;
 		}
 	});
 var $author$project$Main$withOrders = function (entries) {
@@ -5560,18 +5939,29 @@ var $author$project$Main$init = F3(
 			A2($elm$json$Json$Decode$decodeValue, $author$project$Main$savedDecoder, flags));
 		return _Utils_Tuple2(
 			{
+				addError: $elm$core$Maybe$Nothing,
 				announce: '',
+				categories: saved.categories,
+				categoryFilter: saved.categoryFilter,
+				confirmingCategory: $elm$core$Maybe$Nothing,
 				confirmingDelete: $elm$core$Maybe$Nothing,
+				copyFlash: $elm$core$Maybe$Nothing,
+				copyPending: $elm$core$Maybe$Nothing,
+				copySeq: 0,
 				drag: $elm$core$Maybe$Nothing,
 				editBackup: $elm$core$Maybe$Nothing,
+				editingCat: $elm$core$Maybe$Nothing,
 				entries: $author$project$Main$withOrders(saved.entries),
 				field: saved.field,
 				key: key,
-				newType: saved.newType,
+				menuDown: false,
+				menuOpen: $elm$core$Maybe$Nothing,
+				newCatName: '',
+				newCategory: saved.newCategory,
+				nextCategoryId: saved.nextCategoryId,
 				pressSeq: 0,
 				pressing: $elm$core$Maybe$Nothing,
-				typeFilter: saved.typeFilter,
-				typeMenuOpen: false,
+				returnTo: '#/active',
 				uid: A2(
 					$elm$core$Basics$max,
 					saved.uid,
@@ -5584,11 +5974,15 @@ var $author$project$Main$init = F3(
 				$elm$core$Basics$identity,
 				A3($elm$core$Task$map2, $author$project$Main$GotTime, $elm$time$Time$here, $elm$time$Time$now)));
 	});
+var $author$project$Main$Copied = function (a) {
+	return {$: 'Copied', a: a};
+};
 var $author$project$Main$Tick = function (a) {
 	return {$: 'Tick', a: a};
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $author$project$Main$DismissConfirm = {$: 'DismissConfirm'};
+var $elm$json$Json$Decode$fail = _Json_fail;
 var $elm$json$Json$Decode$lazy = function (thunk) {
 	return A2(
 		$elm$json$Json$Decode$andThen,
@@ -6022,8 +6416,10 @@ var $elm$browser$Browser$Events$on = F3(
 var $elm$browser$Browser$Events$onClick = A2($elm$browser$Browser$Events$on, $elm$browser$Browser$Events$Document, 'click');
 var $elm$browser$Browser$Events$onKeyDown = A2($elm$browser$Browser$Events$on, $elm$browser$Browser$Events$Document, 'keydown');
 var $author$project$Main$confirmSubs = function (model) {
-	var _v0 = model.confirmingDelete;
-	if (_v0.$ === 'Nothing') {
+	var _v0 = _Utils_Tuple2(model.confirmingDelete, model.confirmingCategory);
+	if ((_v0.a.$ === 'Nothing') && (_v0.b.$ === 'Nothing')) {
+		var _v1 = _v0.a;
+		var _v2 = _v0.b;
 		return $elm$core$Platform$Sub$none;
 	} else {
 		return $elm$core$Platform$Sub$batch(
@@ -6046,6 +6442,7 @@ var $author$project$Main$confirmSubs = function (model) {
 				]));
 	}
 };
+var $author$project$Main$copied = _Platform_incomingPort('copied', $elm$json$Json$Decode$bool);
 var $author$project$Main$DragCancel = {$: 'DragCancel'};
 var $author$project$Main$DragEnded = {$: 'DragEnded'};
 var $author$project$Main$DragFrame = {$: 'DragFrame'};
@@ -6436,26 +6833,12 @@ var $author$project$Main$subscriptions = function (model) {
 			[
 				A2($elm$time$Time$every, (60 * 60) * 1000, $author$project$Main$Tick),
 				$author$project$Main$confirmSubs(model),
-				$author$project$Main$dragSubs(model)
+				$author$project$Main$dragSubs(model),
+				$author$project$Main$copied($author$project$Main$Copied)
 			]));
 };
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$json$Json$Encode$bool = _Json_wrap;
 var $elm$json$Json$Encode$int = _Json_wrap;
-var $elm$json$Json$Encode$null = _Json_encodeNull;
-var $elm$time$Time$posixToMillis = function (_v0) {
-	var millis = _v0.a;
-	return millis;
-};
-var $author$project$Main$encodeTime = function (t) {
-	if (t.$ === 'Just') {
-		var p = t.a;
-		return $elm$json$Json$Encode$int(
-			$elm$time$Time$posixToMillis(p));
-	} else {
-		return $elm$json$Json$Encode$null;
-	}
-};
 var $elm$json$Json$Encode$object = function (pairs) {
 	return _Json_wrap(
 		A3(
@@ -6470,6 +6853,44 @@ var $elm$json$Json$Encode$object = function (pairs) {
 			pairs));
 };
 var $elm$json$Json$Encode$string = _Json_wrap;
+var $author$project$Main$encodeCategory = function (c) {
+	return $elm$json$Json$Encode$object(
+		_List_fromArray(
+			[
+				_Utils_Tuple2(
+				'id',
+				$elm$json$Json$Encode$int(c.id)),
+				_Utils_Tuple2(
+				'name',
+				$elm$json$Json$Encode$string(c.name)),
+				_Utils_Tuple2(
+				'color',
+				$elm$json$Json$Encode$int(c.color)),
+				_Utils_Tuple2(
+				'shape',
+				$elm$json$Json$Encode$string(
+					$author$project$Main$shapeKey(c.shape)))
+			]));
+};
+var $elm$json$Json$Encode$bool = _Json_wrap;
+var $elm$json$Json$Encode$null = _Json_encodeNull;
+var $elm$time$Time$posixToMillis = function (_v0) {
+	var millis = _v0.a;
+	return millis;
+};
+var $author$project$Main$encodeTime = function (t) {
+	if (t.$ === 'Just') {
+		var p = t.a;
+		return $elm$json$Json$Encode$int(
+			$elm$time$Time$posixToMillis(p));
+	} else {
+		return $elm$json$Json$Encode$null;
+	}
+};
+var $author$project$Main$maybeInt = A2(
+	$elm$core$Basics$composeR,
+	$elm$core$Maybe$map($elm$json$Json$Encode$int),
+	$elm$core$Maybe$withDefault($elm$json$Json$Encode$null));
 var $author$project$Main$encodeEntry = function (e) {
 	return $elm$json$Json$Encode$object(
 		_List_fromArray(
@@ -6484,9 +6905,8 @@ var $author$project$Main$encodeEntry = function (e) {
 				'id',
 				$elm$json$Json$Encode$int(e.id)),
 				_Utils_Tuple2(
-				'type',
-				$elm$json$Json$Encode$string(
-					$author$project$Main$typeKey(e.entryType))),
+				'category',
+				$author$project$Main$maybeInt(e.category)),
 				_Utils_Tuple2(
 				'completedAt',
 				$author$project$Main$encodeTime(e.completedAt)),
@@ -6521,21 +6941,28 @@ var $author$project$Main$encodeModel = function (m) {
 				'uid',
 				$elm$json$Json$Encode$int(m.uid)),
 				_Utils_Tuple2(
-				'newType',
-				$elm$json$Json$Encode$string(
-					$author$project$Main$typeKey(m.newType))),
+				'categories',
+				A2($elm$json$Json$Encode$list, $author$project$Main$encodeCategory, m.categories)),
 				_Utils_Tuple2(
-				'typeFilter',
-				$elm$json$Json$Encode$string(
-					function () {
-						var _v0 = m.typeFilter;
-						if (_v0.$ === 'AnyType') {
-							return 'all';
-						} else {
-							var t = _v0.a;
-							return $author$project$Main$typeKey(t);
-						}
-					}()))
+				'nextCategoryId',
+				$elm$json$Json$Encode$int(m.nextCategoryId)),
+				_Utils_Tuple2(
+				'newCategory',
+				$author$project$Main$maybeInt(m.newCategory)),
+				_Utils_Tuple2(
+				'categoryFilter',
+				function () {
+					var _v0 = m.categoryFilter;
+					switch (_v0.$) {
+						case 'AnyCategory':
+							return $elm$json$Json$Encode$string('all');
+						case 'NoCategory':
+							return $elm$json$Json$Encode$string('none');
+						default:
+							var id = _v0.a;
+							return $elm$json$Json$Encode$int(id);
+					}
+				}())
 			]));
 };
 var $author$project$Main$isTransient = function (msg) {
@@ -6553,6 +6980,40 @@ var $author$project$Main$isTransient = function (msg) {
 		case 'GotViewport':
 			return true;
 		case 'GotRects':
+			return true;
+		case 'GotMenuRoom':
+			return true;
+		case 'CopyMonth':
+			return true;
+		case 'Copied':
+			return true;
+		case 'CopyReset':
+			return true;
+		case 'FocusMenuItem':
+			return true;
+		case 'EditCategoryName':
+			return true;
+		case 'UpdateNewCatName':
+			return true;
+		case 'ToggleMenu':
+			return true;
+		case 'OpenMenu':
+			return true;
+		case 'CloseMenu':
+			return true;
+		case 'CloseMenuRefocus':
+			return true;
+		case 'CancelEditCategory':
+			return true;
+		case 'DismissConfirm':
+			return true;
+		case 'SetStatus':
+			return true;
+		case 'OpenManage':
+			return true;
+		case 'UrlRequested':
+			return true;
+		case 'PressMove':
 			return true;
 		default:
 			return false;
@@ -6574,6 +7035,9 @@ var $author$project$Main$CheckAt = F3(
 	function (a, b, c) {
 		return {$: 'CheckAt', a: a, b: b, c: c};
 	});
+var $author$project$Main$CopyReset = function (a) {
+	return {$: 'CopyReset', a: a};
+};
 var $author$project$Main$EditingEntry = F2(
 	function (a, b) {
 		return {$: 'EditingEntry', a: a, b: b};
@@ -6617,6 +7081,47 @@ var $elm$core$Basics$clamp = F3(
 	function (low, high, number) {
 		return (_Utils_cmp(number, low) < 0) ? low : ((_Utils_cmp(number, high) > 0) ? high : number);
 	});
+var $author$project$Main$nameProblem = F3(
+	function (cats, self, raw) {
+		return $elm$core$String$isEmpty(
+			$elm$core$String$trim(raw)) ? $elm$core$Maybe$Just('Name can\u2019t be empty') : (A2(
+			$elm$core$List$any,
+			function (c) {
+				return (!_Utils_eq(
+					$elm$core$Maybe$Just(c.id),
+					self)) && _Utils_eq(
+					$author$project$Main$normName(c.name),
+					$author$project$Main$normName(raw));
+			},
+			cats) ? $elm$core$Maybe$Just('Name already used') : $elm$core$Maybe$Nothing);
+	});
+var $author$project$Main$commitDraft = function (model) {
+	var _v0 = model.editingCat;
+	if (_v0.$ === 'Just') {
+		var _v1 = _v0.a;
+		var id = _v1.a;
+		var raw = _v1.b;
+		return _Utils_eq(
+			A3(
+				$author$project$Main$nameProblem,
+				model.categories,
+				$elm$core$Maybe$Just(id),
+				raw),
+			$elm$core$Maybe$Nothing) ? A2(
+			$elm$core$List$map,
+			function (c) {
+				return _Utils_eq(c.id, id) ? _Utils_update(
+					c,
+					{
+						name: $elm$core$String$trim(raw)
+					}) : c;
+			},
+			model.categories) : model.categories;
+	} else {
+		return model.categories;
+	}
+};
+var $author$project$Main$copyText = _Platform_outgoingPort('copyText', $elm$json$Json$Encode$string);
 var $author$project$Main$edgeZone = 60;
 var $author$project$Main$GotRects = F3(
 	function (a, b, c) {
@@ -6625,11 +7130,16 @@ var $author$project$Main$GotRects = F3(
 var $elm$browser$Browser$Dom$getElement = _Browser_getElement;
 var $author$project$Main$inScope = F2(
 	function (filter, e) {
-		if (filter.$ === 'AnyType') {
-			return true;
-		} else {
-			var t = filter.a;
-			return _Utils_eq(e.entryType, t);
+		switch (filter.$) {
+			case 'AnyCategory':
+				return true;
+			case 'OnlyCategory':
+				var id = filter.a;
+				return _Utils_eq(
+					e.category,
+					$elm$core$Maybe$Just(id));
+			default:
+				return _Utils_eq(e.category, $elm$core$Maybe$Nothing);
 		}
 	});
 var $author$project$Main$isLive = function (e) {
@@ -6645,6 +7155,8 @@ var $author$project$Main$isVisible = F2(
 				return !todo.completed;
 			case 'All':
 				return true;
+			case 'ArchiveView':
+				return false;
 			default:
 				return false;
 		}
@@ -6659,7 +7171,7 @@ var $author$project$Main$visibleList = function (model) {
 		A2(
 			$elm$core$List$filter,
 			function (e) {
-				return $author$project$Main$isLive(e) && (A2($author$project$Main$inScope, model.typeFilter, e) && A2($author$project$Main$isVisible, model.visibility, e));
+				return $author$project$Main$isLive(e) && (A2($author$project$Main$inScope, model.categoryFilter, e) && A2($author$project$Main$isVisible, model.visibility, e));
 			},
 			model.entries));
 };
@@ -6692,21 +7204,25 @@ var $author$project$Main$focusId = function (id) {
 		},
 		$elm$browser$Browser$Dom$focus(id));
 };
+var $author$project$Main$freeColor = F2(
+	function (cats, id) {
+		return A2(
+			$elm$core$Maybe$withDefault,
+			A2($elm$core$Basics$modBy, $author$project$Main$paletteSize, id - 1),
+			$elm$core$List$head(
+				A2(
+					$elm$core$List$filter,
+					function (i) {
+						return !A2(
+							$elm$core$List$any,
+							function (c) {
+								return _Utils_eq(c.color, i);
+							},
+							cats);
+					},
+					A2($elm$core$List$range, 0, $author$project$Main$paletteSize - 1))));
+	});
 var $elm$browser$Browser$Dom$getViewport = _Browser_withWindow(_Browser_getViewport);
-var $elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return $elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
-var $elm$core$Tuple$pair = F2(
-	function (a, b) {
-		return _Utils_Tuple2(a, b);
-	});
 var $author$project$Main$indexOf = F2(
 	function (x, xs) {
 		return A2(
@@ -6721,13 +7237,6 @@ var $author$project$Main$indexOf = F2(
 					},
 					A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, xs))));
 	});
-var $elm$core$List$isEmpty = function (xs) {
-	if (!xs.b) {
-		return true;
-	} else {
-		return false;
-	}
-};
 var $elm$browser$Browser$Navigation$load = _Browser_load;
 var $author$project$Main$mapEntry = F2(
 	function (id, f) {
@@ -6748,35 +7257,13 @@ var $author$project$Main$maxOrder = function (entries) {
 				},
 				entries)));
 };
-var $author$project$Main$menuFilters = A2(
-	$elm$core$List$cons,
-	$author$project$Main$AnyType,
-	A2($elm$core$List$map, $author$project$Main$OnlyType, $author$project$Main$allTypes));
-var $author$project$Main$menuIndex = function (f) {
-	return A2(
-		$elm$core$Maybe$withDefault,
-		0,
-		A2(
-			$elm$core$Maybe$map,
-			$elm$core$Tuple$first,
-			$elm$core$List$head(
-				A2(
-					$elm$core$List$filter,
-					function (_v0) {
-						var x = _v0.b;
-						return _Utils_eq(x, f);
-					},
-					A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, $author$project$Main$menuFilters)))));
+var $author$project$Main$menuPrefix = function (which) {
+	if (which.$ === 'StatusMenu') {
+		return 'sm-';
+	} else {
+		return 'tf-';
+	}
 };
-var $elm$core$Maybe$andThen = F2(
-	function (callback, maybeValue) {
-		if (maybeValue.$ === 'Just') {
-			var value = maybeValue.a;
-			return callback(value);
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
 var $author$project$Main$migrate = function (now) {
 	var nowMs = $elm$time$Time$posixToMillis(now);
 	var valid = function (t) {
@@ -6815,29 +7302,6 @@ var $elm$core$List$concatMap = F2(
 		return $elm$core$List$concat(
 			A2($elm$core$List$map, f, list));
 	});
-var $elm$core$List$drop = F2(
-	function (n, list) {
-		drop:
-		while (true) {
-			if (n <= 0) {
-				return list;
-			} else {
-				if (!list.b) {
-					return list;
-				} else {
-					var x = list.a;
-					var xs = list.b;
-					var $temp$n = n - 1,
-						$temp$list = xs;
-					n = $temp$n;
-					list = $temp$list;
-					continue drop;
-				}
-			}
-		}
-	});
-var $elm$core$Basics$ge = _Utils_ge;
-var $elm$core$Basics$neq = _Utils_notEqual;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$Main$moveTo = F3(
 	function (id, k0, model) {
@@ -6952,15 +7416,100 @@ var $author$project$Main$moveTo = F3(
 	});
 var $author$project$Main$newEntry = F4(
 	function (desc, id, t, order) {
-		return {archivedAt: $elm$core$Maybe$Nothing, completed: false, completedAt: $elm$core$Maybe$Nothing, description: desc, editing: false, entryType: t, id: id, order: order};
+		return {archivedAt: $elm$core$Maybe$Nothing, category: t, completed: false, completedAt: $elm$core$Maybe$Nothing, description: desc, editing: false, id: id, order: order};
 	});
-var $author$project$Main$nextType = function (t) {
-	if (t.$ === 'Personal') {
-		return $author$project$Main$Work;
-	} else {
-		return $author$project$Main$Personal;
-	}
+var $author$project$Main$nextCategory = F2(
+	function (cats, current) {
+		var ids = A2(
+			$elm$core$List$map,
+			function ($) {
+				return $.id;
+			},
+			cats);
+		if (current.$ === 'Nothing') {
+			return $elm$core$List$head(ids);
+		} else {
+			var id = current.a;
+			var _v1 = A2($author$project$Main$indexOf, id, ids);
+			if (_v1.$ === 'Just') {
+				var i = _v1.a;
+				return $elm$core$List$head(
+					A2($elm$core$List$drop, i + 1, ids));
+			} else {
+				return $elm$core$Maybe$Nothing;
+			}
+		}
+	});
+var $author$project$Main$GotMenuRoom = F2(
+	function (a, b) {
+		return {$: 'GotMenuRoom', a: a, b: b};
+	});
+var $author$project$Main$menuFilters = function (cats) {
+	return A2(
+		$elm$core$List$cons,
+		$author$project$Main$AnyCategory,
+		_Utils_ap(
+			A2(
+				$elm$core$List$map,
+				A2(
+					$elm$core$Basics$composeL,
+					$author$project$Main$OnlyCategory,
+					function ($) {
+						return $.id;
+					}),
+				cats),
+			_List_fromArray(
+				[$author$project$Main$NoCategory])));
 };
+var $author$project$Main$menuIndex = F2(
+	function (cats, f) {
+		return A2(
+			$elm$core$Maybe$withDefault,
+			0,
+			A2(
+				$author$project$Main$indexOf,
+				f,
+				$author$project$Main$menuFilters(cats)));
+	});
+var $author$project$Main$statusOrder = _List_fromArray(
+	[$author$project$Main$Active, $author$project$Main$Completed, $author$project$Main$All]);
+var $author$project$Main$openMenu = F2(
+	function (which, model) {
+		var prefix = $author$project$Main$menuPrefix(which);
+		var current = function () {
+			if (which.$ === 'StatusMenu') {
+				return A2(
+					$elm$core$Maybe$withDefault,
+					0,
+					A2($author$project$Main$indexOf, model.visibility, $author$project$Main$statusOrder));
+			} else {
+				return A2($author$project$Main$menuIndex, model.categories, model.categoryFilter);
+			}
+		}();
+		return _Utils_Tuple2(
+			_Utils_update(
+				model,
+				{
+					menuOpen: $elm$core$Maybe$Just(which)
+				}),
+			$elm$core$Platform$Cmd$batch(
+				_List_fromArray(
+					[
+						$author$project$Main$focusId(
+						prefix + ('item-' + $elm$core$String$fromInt(current))),
+						A2(
+						$elm$core$Task$attempt,
+						function (r) {
+							if (r.$ === 'Ok') {
+								var el = r.a;
+								return A2($author$project$Main$GotMenuRoom, which, el.element.y - el.viewport.y);
+							} else {
+								return $author$project$Main$NoOp;
+							}
+						},
+						$elm$browser$Browser$Dom$getElement(prefix + 'button'))
+					])));
+	});
 var $elm$core$Basics$pow = _Basics_pow;
 var $elm$browser$Browser$Navigation$pushUrl = _Browser_pushUrl;
 var $elm$core$Tuple$second = function (_v0) {
@@ -6981,6 +7530,16 @@ var $author$project$Main$setCompleted = F3(
 var $elm$browser$Browser$Dom$setViewport = _Browser_setViewport;
 var $elm$core$Process$sleep = _Process_sleep;
 var $elm$core$Basics$sqrt = _Basics_sqrt;
+var $author$project$Main$statusHash = function (v) {
+	switch (v.$) {
+		case 'Completed':
+			return '#/completed';
+		case 'All':
+			return '#/all';
+		default:
+			return '#/active';
+	}
+};
 var $author$project$Main$thirtyDaysMs = (((30 * 24) * 60) * 60) * 1000;
 var $author$project$Main$sweep = function (now) {
 	return $elm$core$List$map(
@@ -7045,7 +7604,6 @@ var $elm$url$Url$toString = function (url) {
 					_Utils_ap(http, url.host)),
 				url.path)));
 };
-var $elm$core$String$trim = _String_trim;
 var $author$project$Main$withNow = function (toMsg) {
 	return A2($elm$core$Task$perform, toMsg, $elm$time$Time$now);
 };
@@ -7083,7 +7641,7 @@ var $author$project$Main$update = F2(
 											$author$project$Main$newEntry,
 											$elm$core$String$trim(model.field),
 											model.uid,
-											model.newType,
+											A2($author$project$Main$validCategory, model.categories, model.newCategory),
 											1 + $author$project$Main$maxOrder(model.entries))
 										])),
 								field: '',
@@ -7494,8 +8052,17 @@ var $author$project$Main$update = F2(
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
-							{confirmingDelete: $elm$core$Maybe$Nothing, pressing: $elm$core$Maybe$Nothing}),
-						$elm$core$Platform$Cmd$none);
+							{confirmingCategory: $elm$core$Maybe$Nothing, confirmingDelete: $elm$core$Maybe$Nothing, pressing: $elm$core$Maybe$Nothing}),
+						function () {
+							var _v16 = model.confirmingCategory;
+							if (_v16.$ === 'Just') {
+								var cid = _v16.a;
+								return $author$project$Main$focusId(
+									'cat-del-' + $elm$core$String$fromInt(cid));
+							} else {
+								return $elm$core$Platform$Cmd$none;
+							}
+						}());
 				case 'ArchiveCompleted':
 					return _Utils_Tuple2(
 						model,
@@ -7509,7 +8076,7 @@ var $author$project$Main$update = F2(
 								entries: A2(
 									$elm$core$List$map,
 									function (t) {
-										return (t.completed && ($author$project$Main$isLive(t) && A2($author$project$Main$inScope, model.typeFilter, t))) ? _Utils_update(
+										return (t.completed && ($author$project$Main$isLive(t) && A2($author$project$Main$inScope, model.categoryFilter, t))) ? _Utils_update(
 											t,
 											{
 												archivedAt: $elm$core$Maybe$Just(now)
@@ -7622,7 +8189,7 @@ var $author$project$Main$update = F2(
 					var isCompleted = msg.a;
 					var now = msg.b;
 					var setAll = function (t) {
-						return ($author$project$Main$isLive(t) && A2($author$project$Main$inScope, model.typeFilter, t)) ? A3($author$project$Main$setCompleted, isCompleted, now, t) : t;
+						return ($author$project$Main$isLive(t) && A2($author$project$Main$inScope, model.categoryFilter, t)) ? A3($author$project$Main$setCompleted, isCompleted, now, t) : t;
 					};
 					return _Utils_Tuple2(
 						_Utils_update(
@@ -7654,22 +8221,22 @@ var $author$project$Main$update = F2(
 								entries: A2($author$project$Main$sweep, now, model.entries)
 							}),
 						$elm$core$Platform$Cmd$none);
-				case 'SetNewType':
-					var t = msg.a;
+				case 'SetNewCategory':
+					var c = msg.a;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
-							{newType: t}),
+							{newCategory: c}),
 						$author$project$Main$focusId('new-todo'));
-				case 'CycleNewType':
+				case 'CycleNewCategory':
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
 							{
-								newType: $author$project$Main$nextType(model.newType)
+								newCategory: A2($author$project$Main$nextCategory, model.categories, model.newCategory)
 							}),
 						$elm$core$Platform$Cmd$none);
-				case 'CycleEntryType':
+				case 'CycleEntryCategory':
 					var id = msg.a;
 					return _Utils_Tuple2(
 						_Utils_update(
@@ -7682,67 +8249,376 @@ var $author$project$Main$update = F2(
 										return _Utils_update(
 											t,
 											{
-												entryType: $author$project$Main$nextType(t.entryType)
+												category: A2($author$project$Main$nextCategory, model.categories, t.category)
 											});
 									},
 									model.entries)
 							}),
 						$elm$core$Platform$Cmd$none);
-				case 'SetTypeFilter':
+				case 'SetCategoryFilter':
 					var f = msg.a;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
-							{typeFilter: f, typeMenuOpen: false}),
+							{categoryFilter: f, menuOpen: $elm$core$Maybe$Nothing}),
 						$author$project$Main$focusId('tf-button'));
-				case 'ToggleTypeMenu':
-					return model.typeMenuOpen ? _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{typeMenuOpen: false}),
-						$author$project$Main$focusId('tf-button')) : _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{typeMenuOpen: true}),
-						$author$project$Main$focusId(
-							'tf-item-' + $elm$core$String$fromInt(
-								$author$project$Main$menuIndex(model.typeFilter))));
-				case 'OpenTypeMenu':
+				case 'OpenManage':
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
-							{typeMenuOpen: true}),
-						$author$project$Main$focusId(
-							'tf-item-' + $elm$core$String$fromInt(
-								$author$project$Main$menuIndex(model.typeFilter))));
-				case 'CloseTypeMenu':
+							{menuOpen: $elm$core$Maybe$Nothing}),
+						A2($elm$browser$Browser$Navigation$pushUrl, model.key, '#/categories'));
+				case 'UpdateNewCatName':
+					var str = msg.a;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
-							{typeMenuOpen: false}),
+							{addError: $elm$core$Maybe$Nothing, newCatName: str}),
 						$elm$core$Platform$Cmd$none);
-				case 'CloseTypeMenuRefocus':
+				case 'AddCategory':
+					var name_ = $elm$core$String$trim(model.newCatName);
+					var id = model.nextCategoryId;
+					if ($elm$core$String$isEmpty(name_)) {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					} else {
+						if (_Utils_cmp(
+							$elm$core$List$length(model.categories),
+							$author$project$Main$maxCategories) > -1) {
+							return _Utils_Tuple2(
+								_Utils_update(
+									model,
+									{
+										addError: $elm$core$Maybe$Just(
+											'Limit is ' + ($elm$core$String$fromInt($author$project$Main$maxCategories) + ' categories'))
+									}),
+								$elm$core$Platform$Cmd$none);
+						} else {
+							var _v17 = A3($author$project$Main$nameProblem, model.categories, $elm$core$Maybe$Nothing, name_);
+							if (_v17.$ === 'Just') {
+								var problem = _v17.a;
+								return _Utils_Tuple2(
+									_Utils_update(
+										model,
+										{
+											addError: $elm$core$Maybe$Just(problem)
+										}),
+									$elm$core$Platform$Cmd$none);
+							} else {
+								return _Utils_Tuple2(
+									_Utils_update(
+										model,
+										{
+											addError: $elm$core$Maybe$Nothing,
+											categories: _Utils_ap(
+												model.categories,
+												_List_fromArray(
+													[
+														{
+														color: A2($author$project$Main$freeColor, model.categories, id),
+														id: id,
+														name: name_,
+														shape: $author$project$Main$shapeForId(id)
+													}
+													])),
+											newCatName: '',
+											nextCategoryId: id + 1
+										}),
+									$author$project$Main$focusId('cat-new'));
+							}
+						}
+					}
+				case 'StartEditCategory':
+					var id = msg.a;
+					var _v18 = A2($author$project$Main$findCategory, model.categories, id);
+					if (_v18.$ === 'Just') {
+						var c = _v18.a;
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									categories: $author$project$Main$commitDraft(model),
+									confirmingCategory: $elm$core$Maybe$Nothing,
+									editingCat: $elm$core$Maybe$Just(
+										_Utils_Tuple2(id, c.name))
+								}),
+							$author$project$Main$focusId(
+								'cat-name-' + $elm$core$String$fromInt(id)));
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'EditCategoryName':
+					var raw = msg.a;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
-							{typeMenuOpen: false}),
-						$author$project$Main$focusId('tf-button'));
+							{
+								editingCat: A2(
+									$elm$core$Maybe$map,
+									function (_v19) {
+										var id = _v19.a;
+										return _Utils_Tuple2(id, raw);
+									},
+									model.editingCat)
+							}),
+						$elm$core$Platform$Cmd$none);
+				case 'CommitCategory':
+					var id = msg.a;
+					var _v20 = model.editingCat;
+					if (_v20.$ === 'Just') {
+						var _v21 = _v20.a;
+						var eid = _v21.a;
+						var raw = _v21.b;
+						return (_Utils_eq(eid, id) && _Utils_eq(
+							A3(
+								$author$project$Main$nameProblem,
+								model.categories,
+								$elm$core$Maybe$Just(id),
+								raw),
+							$elm$core$Maybe$Nothing)) ? _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									categories: $author$project$Main$commitDraft(model),
+									editingCat: $elm$core$Maybe$Nothing
+								}),
+							$author$project$Main$focusId(
+								'cat-label-' + $elm$core$String$fromInt(id))) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'BlurCategory':
+					var id = msg.a;
+					return _Utils_eq(
+						A2($elm$core$Maybe$map, $elm$core$Tuple$first, model.editingCat),
+						$elm$core$Maybe$Just(id)) ? _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								categories: $author$project$Main$commitDraft(model),
+								editingCat: $elm$core$Maybe$Nothing
+							}),
+						$elm$core$Platform$Cmd$none) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				case 'CancelEditCategory':
+					var id = msg.a;
+					return _Utils_eq(
+						A2($elm$core$Maybe$map, $elm$core$Tuple$first, model.editingCat),
+						$elm$core$Maybe$Just(id)) ? _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{editingCat: $elm$core$Maybe$Nothing}),
+						$author$project$Main$focusId(
+							'cat-label-' + $elm$core$String$fromInt(id))) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				case 'SetCategoryColor':
+					var id = msg.a;
+					var color = msg.b;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								categories: A2(
+									$elm$core$List$map,
+									function (c) {
+										return _Utils_eq(c.id, id) ? _Utils_update(
+											c,
+											{
+												color: A3($elm$core$Basics$clamp, 0, $author$project$Main$paletteSize - 1, color)
+											}) : c;
+									},
+									model.categories)
+							}),
+						$elm$core$Platform$Cmd$none);
+				case 'MoveCategory':
+					var id = msg.a;
+					var delta = msg.b;
+					var ids = A2(
+						$elm$core$List$map,
+						function ($) {
+							return $.id;
+						},
+						model.categories);
+					var n = $elm$core$List$length(ids);
+					var _v22 = A2($author$project$Main$indexOf, id, ids);
+					if (_v22.$ === 'Just') {
+						var i = _v22.a;
+						var others = A2(
+							$elm$core$List$filter,
+							function (c) {
+								return !_Utils_eq(c.id, id);
+							},
+							model.categories);
+						var moved = A2(
+							$elm$core$List$filter,
+							function (c) {
+								return _Utils_eq(c.id, id);
+							},
+							model.categories);
+						var j = A3($elm$core$Basics$clamp, 0, n - 1, i + delta);
+						var target = ((delta < 0) && (j > 0)) ? 'cat-up-' : (((delta > 0) && (_Utils_cmp(j, n - 1) < 0)) ? 'cat-down-' : ((delta < 0) ? 'cat-down-' : 'cat-up-'));
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									categories: _Utils_ap(
+										A2($elm$core$List$take, j, others),
+										_Utils_ap(
+											moved,
+											A2($elm$core$List$drop, j, others)))
+								}),
+							$author$project$Main$focusId(
+								_Utils_ap(
+									target,
+									$elm$core$String$fromInt(id))));
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'AskDeleteCategory':
+					var id = msg.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								categories: $author$project$Main$commitDraft(model),
+								confirmingCategory: $elm$core$Maybe$Just(id),
+								editingCat: $elm$core$Maybe$Nothing
+							}),
+						$author$project$Main$focusId('cat-cancel'));
+				case 'DeleteCategory':
+					var id = msg.a;
+					var cats = A2(
+						$elm$core$List$filter,
+						function (c) {
+							return !_Utils_eq(c.id, id);
+						},
+						model.categories);
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								categories: cats,
+								categoryFilter: A2($author$project$Main$validFilter, cats, model.categoryFilter),
+								confirmingCategory: $elm$core$Maybe$Nothing,
+								editingCat: $elm$core$Maybe$Nothing,
+								entries: A2(
+									$elm$core$List$map,
+									function (e) {
+										return _Utils_eq(
+											e.category,
+											$elm$core$Maybe$Just(id)) ? _Utils_update(
+											e,
+											{category: $elm$core$Maybe$Nothing}) : e;
+									},
+									model.entries),
+								newCategory: A2($author$project$Main$validCategory, cats, model.newCategory)
+							}),
+						$author$project$Main$focusId('cat-new'));
+				case 'ToggleMenu':
+					var which = msg.a;
+					return _Utils_eq(
+						model.menuOpen,
+						$elm$core$Maybe$Just(which)) ? _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{menuOpen: $elm$core$Maybe$Nothing}),
+						$author$project$Main$focusId(
+							$author$project$Main$menuPrefix(which) + 'button')) : A2($author$project$Main$openMenu, which, model);
+				case 'OpenMenu':
+					var which = msg.a;
+					return A2($author$project$Main$openMenu, which, model);
+				case 'GotMenuRoom':
+					var which = msg.a;
+					var above = msg.b;
+					var rows = function () {
+						if (which.$ === 'StatusMenu') {
+							return 3;
+						} else {
+							return ($elm$core$List$length(model.categories) + 2) + (_Utils_eq(model.visibility, $author$project$Main$ArchiveView) ? 0 : 1);
+						}
+					}();
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								menuDown: _Utils_cmp(above, (40 * rows) + 24) < 0
+							}),
+						$elm$core$Platform$Cmd$none);
+				case 'CloseMenu':
+					var which = msg.a;
+					return _Utils_eq(
+						model.menuOpen,
+						$elm$core$Maybe$Just(which)) ? _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{menuOpen: $elm$core$Maybe$Nothing}),
+						$elm$core$Platform$Cmd$none) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				case 'CloseMenuRefocus':
+					var which = msg.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{menuOpen: $elm$core$Maybe$Nothing}),
+						$author$project$Main$focusId(
+							$author$project$Main$menuPrefix(which) + 'button'));
 				case 'FocusMenuItem':
-					var i = msg.a;
+					var which = msg.a;
+					var i = msg.b;
 					return _Utils_Tuple2(
 						model,
 						$author$project$Main$focusId(
-							'tf-item-' + $elm$core$String$fromInt(i)));
-				case 'ShowAll':
+							$author$project$Main$menuPrefix(which) + ('item-' + $elm$core$String$fromInt(i))));
+				case 'CopyMonth':
+					var month = msg.a;
+					var txt = msg.b;
+					return (!_Utils_eq(model.copyPending, $elm$core$Maybe$Nothing)) ? _Utils_Tuple2(model, $elm$core$Platform$Cmd$none) : _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								copyPending: $elm$core$Maybe$Just(month)
+							}),
+						$author$project$Main$copyText(txt));
+				case 'Copied':
+					var ok = msg.a;
+					var _v24 = model.copyPending;
+					if (_v24.$ === 'Just') {
+						var month = _v24.a;
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									copyFlash: $elm$core$Maybe$Just(
+										_Utils_Tuple2(month, ok)),
+									copyPending: $elm$core$Maybe$Nothing,
+									copySeq: model.copySeq + 1
+								}),
+							A2(
+								$elm$core$Task$perform,
+								function (_v25) {
+									return $author$project$Main$CopyReset(model.copySeq + 1);
+								},
+								$elm$core$Process$sleep(1500)));
+					} else {
+						return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+					}
+				case 'CopyReset':
+					var seq = msg.a;
+					return _Utils_eq(seq, model.copySeq) ? _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{copyFlash: $elm$core$Maybe$Nothing}),
+						$elm$core$Platform$Cmd$none) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				case 'SetStatus':
+					var v = msg.a;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
-							{typeFilter: $author$project$Main$AnyType, typeMenuOpen: false, visibility: $author$project$Main$All}),
-						$elm$core$Platform$Cmd$batch(
+							{menuOpen: $elm$core$Maybe$Nothing}),
+						_Utils_eq(v, model.visibility) ? $author$project$Main$focusId('sm-button') : $elm$core$Platform$Cmd$batch(
 							_List_fromArray(
 								[
-									A2($elm$browser$Browser$Navigation$pushUrl, model.key, '#/'),
-									$author$project$Main$focusId('new-todo')
+									A2(
+									$elm$browser$Browser$Navigation$pushUrl,
+									model.key,
+									$author$project$Main$statusHash(v)),
+									$author$project$Main$focusId('sm-button')
 								])));
 				case 'UrlRequested':
 					var req = msg.a;
@@ -7762,15 +8638,46 @@ var $author$project$Main$update = F2(
 					}
 				default:
 					var url = msg.a;
+					var v = $author$project$Main$visibilityFromUrl(url);
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
 							{
+								addError: $elm$core$Maybe$Nothing,
+								confirmingCategory: $elm$core$Maybe$Nothing,
 								confirmingDelete: $elm$core$Maybe$Nothing,
+								editingCat: $elm$core$Maybe$Nothing,
+								menuOpen: $elm$core$Maybe$Nothing,
 								pressing: $elm$core$Maybe$Nothing,
-								visibility: $author$project$Main$visibilityFromUrl(url)
+								returnTo: function () {
+									var _v27 = model.visibility;
+									switch (_v27.$) {
+										case 'Active':
+											return '#/active';
+										case 'Completed':
+											return '#/completed';
+										case 'All':
+											return '#/all';
+										default:
+											return model.returnTo;
+									}
+								}(),
+								visibility: v
 							}),
-						$elm$core$Platform$Cmd$none);
+						function () {
+							if (_Utils_eq(v, $author$project$Main$ManageView) && (!_Utils_eq(model.visibility, $author$project$Main$ManageView))) {
+								var _v28 = model.categories;
+								if (_v28.b) {
+									var c = _v28.a;
+									return $author$project$Main$focusId(
+										'cat-label-' + $elm$core$String$fromInt(c.id));
+								} else {
+									return $author$project$Main$focusId('cat-new');
+								}
+							} else {
+								return $elm$core$Platform$Cmd$none;
+							}
+						}());
 			}
 		}
 	});
@@ -7809,42 +8716,14 @@ var $elm$html$Html$Attributes$classList = function (classes) {
 				A2($elm$core$List$filter, $elm$core$Tuple$second, classes))));
 };
 var $elm$html$Html$div = _VirtualDom_node('div');
-var $elm$html$Html$footer = _VirtualDom_node('footer');
-var $elm$html$Html$p = _VirtualDom_node('p');
+var $author$project$Main$isSubPage = function (v) {
+	return _Utils_eq(v, $author$project$Main$ArchiveView) || _Utils_eq(v, $author$project$Main$ManageView);
+};
+var $elm$virtual_dom$VirtualDom$lazy3 = _VirtualDom_lazy3;
+var $elm$html$Html$Lazy$lazy3 = $elm$virtual_dom$VirtualDom$lazy3;
+var $elm$html$Html$section = _VirtualDom_node('section');
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $author$project$Main$infoFooter = A2(
-	$elm$html$Html$footer,
-	_List_fromArray(
-		[
-			$elm$html$Html$Attributes$class('info')
-		]),
-	_List_fromArray(
-		[
-			A2(
-			$elm$html$Html$p,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('hint-pointer')
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text('Double-click to edit a todo. Drag a row (or Alt+\u2191/\u2193) to reorder. Alt+T switches the type.')
-				])),
-			A2(
-			$elm$html$Html$p,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('hint-touch')
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text('Tap a todo to edit it. Press and hold to delete. Drag the handle to reorder.')
-				]))
-		]));
-var $elm$virtual_dom$VirtualDom$lazy2 = _VirtualDom_lazy2;
-var $elm$html$Html$Lazy$lazy2 = $elm$virtual_dom$VirtualDom$lazy2;
-var $elm$html$Html$section = _VirtualDom_node('section');
 var $elm$html$Html$a = _VirtualDom_node('a');
 var $author$project$Main$doneMs = function (e) {
 	var _v0 = _Utils_Tuple2(e.completedAt, e.archivedAt);
@@ -8068,33 +8947,46 @@ var $elm$html$Html$Attributes$href = function (url) {
 var $author$project$Main$isArchived = function (e) {
 	return !_Utils_eq(e.archivedAt, $elm$core$Maybe$Nothing);
 };
+var $elm$html$Html$p = _VirtualDom_node('p');
+var $author$project$Main$categoryName = F2(
+	function (cats, mid) {
+		return A2(
+			$elm$core$Maybe$withDefault,
+			'None',
+			A2(
+				$elm$core$Maybe$map,
+				function ($) {
+					return $.name;
+				},
+				A2(
+					$elm$core$Maybe$andThen,
+					$author$project$Main$findCategory(cats),
+					mid)));
+	});
+var $author$project$Main$scopeWord = F2(
+	function (cats, f) {
+		switch (f.$) {
+			case 'AnyCategory':
+				return '';
+			case 'OnlyCategory':
+				var id = f.a;
+				return A2(
+					$author$project$Main$categoryName,
+					cats,
+					$elm$core$Maybe$Just(id));
+			default:
+				return 'uncategorised';
+		}
+	});
 var $elm$html$Html$span = _VirtualDom_node('span');
-var $author$project$Main$typeLabel = function (t) {
-	if (t.$ === 'Personal') {
-		return 'Personal';
-	} else {
-		return 'Work';
-	}
-};
-var $elm$html$Html$h2 = _VirtualDom_node('h2');
-var $elm$virtual_dom$VirtualDom$lazy4 = _VirtualDom_lazy4;
-var $elm$html$Html$Lazy$lazy4 = $elm$virtual_dom$VirtualDom$lazy4;
-var $elm$virtual_dom$VirtualDom$keyedNode = function (tag) {
-	return _VirtualDom_keyedNode(
-		_VirtualDom_noScript(tag));
-};
-var $elm$html$Html$Keyed$node = $elm$virtual_dom$VirtualDom$keyedNode;
-var $elm$html$Html$Keyed$ul = $elm$html$Html$Keyed$node('ul');
-var $author$project$Main$Delete = function (a) {
-	return {$: 'Delete', a: a};
-};
-var $author$project$Main$PressCancel = {$: 'PressCancel'};
-var $author$project$Main$Restore = function (a) {
-	return {$: 'Restore', a: a};
-};
+var $author$project$Main$CopyMonth = F2(
+	function (a, b) {
+		return {$: 'CopyMonth', a: a, b: b};
+	});
 var $elm$html$Html$button = _VirtualDom_node('button');
-var $elm$html$Html$label = _VirtualDom_node('label');
-var $elm$html$Html$li = _VirtualDom_node('li');
+var $elm$html$Html$h2 = _VirtualDom_node('h2');
+var $elm$virtual_dom$VirtualDom$lazy5 = _VirtualDom_lazy5;
+var $elm$html$Html$Lazy$lazy5 = $elm$virtual_dom$VirtualDom$lazy5;
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
@@ -8112,6 +9004,116 @@ var $elm$html$Html$Events$onClick = function (msg) {
 		'click',
 		$elm$json$Json$Decode$succeed(msg));
 };
+var $elm$time$Time$toDay = F2(
+	function (zone, time) {
+		return $elm$time$Time$toCivil(
+			A2($elm$time$Time$toAdjustedMinutes, zone, time)).day;
+	});
+var $author$project$Main$shortDate = F2(
+	function (zone, e) {
+		var t = $elm$time$Time$millisToPosix(
+			$author$project$Main$doneMs(e));
+		return $elm$core$String$fromInt(
+			A2($elm$time$Time$toDay, zone, t)) + (' ' + $author$project$Main$monthNames(
+			A2($elm$time$Time$toMonth, zone, t)).a);
+	});
+var $author$project$Main$summaryPrompt = F3(
+	function (model, month, entries) {
+		var prompt = function () {
+			var _v2 = model.categoryFilter;
+			switch (_v2.$) {
+				case 'AnyCategory':
+					return 'Summarise what I got done in ' + (month + '. Group by theme, mention the categories, and keep it under 150 words.');
+				case 'OnlyCategory':
+					var id = _v2.a;
+					return 'Summarise my ' + (A2(
+						$author$project$Main$categoryName,
+						model.categories,
+						$elm$core$Maybe$Just(id)) + (' todos from ' + (month + '. Group by theme and keep it under 150 words.')));
+				default:
+					return 'Summarise my uncategorised todos from ' + (month + '. Group by theme and keep it under 150 words.');
+			}
+		}();
+		var bracket = function (e) {
+			var _v0 = _Utils_Tuple2(
+				model.categoryFilter,
+				A2(
+					$elm$core$Maybe$andThen,
+					$author$project$Main$findCategory(model.categories),
+					e.category));
+			if ((_v0.a.$ === 'AnyCategory') && (_v0.b.$ === 'Just')) {
+				var _v1 = _v0.a;
+				var c = _v0.b.a;
+				return '[' + (c.name + '] ');
+			} else {
+				return '';
+			}
+		};
+		var line = function (e) {
+			return '- ' + (bracket(e) + (A2(
+				$elm$core$String$join,
+				' ',
+				$elm$core$String$words(e.description)) + (' (completed ' + (A2($author$project$Main$shortDate, model.zone, e) + ')'))));
+		};
+		return A2(
+			$elm$core$String$join,
+			'\n',
+			A2(
+				$elm$core$List$cons,
+				prompt,
+				A2(
+					$elm$core$List$cons,
+					'',
+					A2($elm$core$List$map, line, entries))));
+	});
+var $elm$html$Html$Attributes$title = $elm$html$Html$Attributes$stringProperty('title');
+var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
+var $elm$virtual_dom$VirtualDom$keyedNode = function (tag) {
+	return _VirtualDom_keyedNode(
+		_VirtualDom_noScript(tag));
+};
+var $elm$html$Html$Keyed$node = $elm$virtual_dom$VirtualDom$keyedNode;
+var $elm$html$Html$Keyed$ul = $elm$html$Html$Keyed$node('ul');
+var $author$project$Main$Delete = function (a) {
+	return {$: 'Delete', a: a};
+};
+var $author$project$Main$PressCancel = {$: 'PressCancel'};
+var $author$project$Main$Restore = function (a) {
+	return {$: 'Restore', a: a};
+};
+var $elm$html$Html$label = _VirtualDom_node('label');
+var $elm$html$Html$li = _VirtualDom_node('li');
+var $author$project$Main$viewMark = function (mc) {
+	if (mc.$ === 'Just') {
+		var c = mc.a;
+		return A2(
+			$elm$html$Html$span,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class(
+					'mark cat-' + ($elm$core$String$fromInt(c.color) + (' shape-' + $author$project$Main$shapeKey(c.shape)))),
+					A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
+				]),
+			_List_Nil);
+	} else {
+		return A2(
+			$elm$html$Html$span,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('mark mark-none'),
+					A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
+				]),
+			_List_Nil);
+	}
+};
+var $author$project$Main$markFor = F2(
+	function (cats, mid) {
+		return $author$project$Main$viewMark(
+			A2(
+				$elm$core$Maybe$andThen,
+				$author$project$Main$findCategory(cats),
+				mid));
+	});
 var $author$project$Main$touchOnly = function (dec) {
 	return A2(
 		$elm$json$Json$Decode$andThen,
@@ -8169,49 +9171,8 @@ var $author$project$Main$onTouchContextMenu = A2(
 	$author$project$Main$touchOnly(
 		$elm$json$Json$Decode$succeed(
 			_Utils_Tuple2($author$project$Main$NoOp, true))));
-var $elm$time$Time$toDay = F2(
-	function (zone, time) {
-		return $elm$time$Time$toCivil(
-			A2($elm$time$Time$toAdjustedMinutes, zone, time)).day;
-	});
-var $author$project$Main$shortDate = F2(
-	function (zone, e) {
-		var t = $elm$time$Time$millisToPosix(
-			$author$project$Main$doneMs(e));
-		return $elm$core$String$fromInt(
-			A2($elm$time$Time$toDay, zone, t)) + (' ' + $author$project$Main$monthNames(
-			A2($elm$time$Time$toMonth, zone, t)).a);
-	});
-var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
-var $author$project$Main$Circle = {$: 'Circle'};
-var $author$project$Main$Square = {$: 'Square'};
-var $author$project$Main$typeShape = function (t) {
-	if (t.$ === 'Personal') {
-		return $author$project$Main$Circle;
-	} else {
-		return $author$project$Main$Square;
-	}
-};
-var $author$project$Main$viewMark = function (t) {
-	return A2(
-		$elm$html$Html$span,
-		_List_fromArray(
-			[
-				$elm$html$Html$Attributes$class(
-				'mark mark-' + ($author$project$Main$typeKey(t) + function () {
-					var _v0 = $author$project$Main$typeShape(t);
-					if (_v0.$ === 'Circle') {
-						return ' shape-circle';
-					} else {
-						return ' shape-square';
-					}
-				}())),
-				A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
-			]),
-		_List_Nil);
-};
-var $author$project$Main$viewArchiveEntry = F4(
-	function (zone, showMark, confirming, e) {
+var $author$project$Main$viewArchiveEntry = F5(
+	function (zone, cats, showMark, confirming, e) {
 		return A2(
 			$elm$html$Html$li,
 			_List_fromArray(
@@ -8249,7 +9210,12 @@ var $author$project$Main$viewArchiveEntry = F4(
 								[
 									$elm$html$Html$text(e.description)
 								])),
-							showMark ? A2(
+							(showMark && (!_Utils_eq(
+							A2(
+								$elm$core$Maybe$andThen,
+								$author$project$Main$findCategory(cats),
+								e.category),
+							$elm$core$Maybe$Nothing))) ? A2(
 							$elm$html$Html$span,
 							_List_fromArray(
 								[
@@ -8257,7 +9223,7 @@ var $author$project$Main$viewArchiveEntry = F4(
 								]),
 							_List_fromArray(
 								[
-									$author$project$Main$viewMark(e.entryType)
+									A2($author$project$Main$markFor, cats, e.category)
 								])) : $elm$html$Html$text(''),
 							A2(
 							$elm$html$Html$div,
@@ -8357,10 +9323,21 @@ var $author$project$Main$viewArchiveEntry = F4(
 						])) : $elm$html$Html$text('')
 				]));
 	});
-var $author$project$Main$viewArchiveGroup = F4(
-	function (zone, showMark, confirmingId, _v0) {
+var $author$project$Main$viewArchiveGroup = F3(
+	function (model, showMark, _v0) {
 		var label = _v0.a;
 		var entries = _v0.b;
+		var flash = function () {
+			var _v2 = model.copyFlash;
+			if (_v2.$ === 'Just') {
+				var _v3 = _v2.a;
+				var month = _v3.a;
+				var ok = _v3.b;
+				return _Utils_eq(month, label) ? $elm$core$Maybe$Just(ok) : $elm$core$Maybe$Nothing;
+			} else {
+				return $elm$core$Maybe$Nothing;
+			}
+		}();
 		return A2(
 			$elm$html$Html$section,
 			_List_fromArray(
@@ -8380,6 +9357,50 @@ var $author$project$Main$viewArchiveGroup = F4(
 							$elm$html$Html$text(label)
 						])),
 					A2(
+					$elm$html$Html$button,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$type_('button'),
+							$elm$html$Html$Attributes$classList(
+							_List_fromArray(
+								[
+									_Utils_Tuple2('copy-summary', true),
+									_Utils_Tuple2(
+									'flash',
+									!_Utils_eq(flash, $elm$core$Maybe$Nothing))
+								])),
+							$elm$html$Html$Attributes$title('Copy this month as a prompt for a summary'),
+							$elm$html$Html$Events$onClick(
+							A2(
+								$author$project$Main$CopyMonth,
+								label,
+								A3($author$project$Main$summaryPrompt, model, label, entries)))
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$span,
+							_List_fromArray(
+								[
+									A2($elm$html$Html$Attributes$attribute, 'aria-live', 'polite')
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text(
+									function () {
+										if (flash.$ === 'Just') {
+											if (flash.a) {
+												return 'Copied';
+											} else {
+												return 'Copy failed';
+											}
+										} else {
+											return 'Copy for summary';
+										}
+									}())
+								]))
+						])),
+					A2(
 					$elm$html$Html$Keyed$ul,
 					_List_fromArray(
 						[
@@ -8390,52 +9411,61 @@ var $author$project$Main$viewArchiveGroup = F4(
 						function (e) {
 							return _Utils_Tuple2(
 								$elm$core$String$fromInt(e.id),
-								A5(
-									$elm$html$Html$Lazy$lazy4,
+								A6(
+									$elm$html$Html$Lazy$lazy5,
 									$author$project$Main$viewArchiveEntry,
-									zone,
+									model.zone,
+									model.categories,
 									showMark,
 									_Utils_eq(
-										confirmingId,
+										model.confirmingDelete,
 										$elm$core$Maybe$Just(e.id)),
 									e));
 						},
 						entries))
 				]));
 	});
-var $author$project$Main$CloseTypeMenu = {$: 'CloseTypeMenu'};
-var $author$project$Main$CloseTypeMenuRefocus = {$: 'CloseTypeMenuRefocus'};
-var $author$project$Main$FocusMenuItem = function (a) {
-	return {$: 'FocusMenuItem', a: a};
+var $author$project$Main$CatMenu = {$: 'CatMenu'};
+var $author$project$Main$OpenManage = {$: 'OpenManage'};
+var $author$project$Main$SetCategoryFilter = function (a) {
+	return {$: 'SetCategoryFilter', a: a};
 };
-var $author$project$Main$OpenTypeMenu = {$: 'OpenTypeMenu'};
-var $author$project$Main$SetTypeFilter = function (a) {
-	return {$: 'SetTypeFilter', a: a};
+var $author$project$Main$filterLabel = F2(
+	function (cats, f) {
+		switch (f.$) {
+			case 'AnyCategory':
+				return 'Any category';
+			case 'OnlyCategory':
+				var id = f.a;
+				return A2(
+					$author$project$Main$categoryName,
+					cats,
+					$elm$core$Maybe$Just(id));
+			default:
+				return 'No category';
+		}
+	});
+var $author$project$Main$CloseMenu = function (a) {
+	return {$: 'CloseMenu', a: a};
 };
-var $author$project$Main$ToggleTypeMenu = {$: 'ToggleTypeMenu'};
+var $author$project$Main$CloseMenuRefocus = function (a) {
+	return {$: 'CloseMenuRefocus', a: a};
+};
+var $author$project$Main$FocusMenuItem = F2(
+	function (a, b) {
+		return {$: 'FocusMenuItem', a: a, b: b};
+	});
+var $author$project$Main$OpenMenu = function (a) {
+	return {$: 'OpenMenu', a: a};
+};
+var $author$project$Main$ToggleMenu = function (a) {
+	return {$: 'ToggleMenu', a: a};
+};
 var $elm$json$Json$Decode$at = F2(
 	function (fields, decoder) {
 		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
 	});
-var $author$project$Main$filterLabel = function (f) {
-	if (f.$ === 'AnyType') {
-		return 'All types';
-	} else {
-		var t = f.a;
-		return $author$project$Main$typeLabel(t);
-	}
-};
 var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
-var $elm$core$Basics$modBy = _Basics_modBy;
-var $elm$json$Json$Decode$null = _Json_decodeNull;
-var $elm$json$Json$Decode$nullable = function (decoder) {
-	return $elm$json$Json$Decode$oneOf(
-		_List_fromArray(
-			[
-				$elm$json$Json$Decode$null($elm$core$Maybe$Nothing),
-				A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, decoder)
-			]));
-};
 var $author$project$Main$onKeyPrevent = function (table) {
 	var pick = function (key) {
 		var _v0 = $elm$core$List$head(
@@ -8469,17 +9499,20 @@ var $elm$html$Html$Attributes$tabindex = function (n) {
 		'tabIndex',
 		$elm$core$String$fromInt(n));
 };
-var $author$project$Main$viewTypeMenu = F2(
-	function (current, open) {
-		var n = $elm$core$List$length($author$project$Main$menuFilters);
+var $author$project$Main$viewMenu = F2(
+	function (which, spec) {
+		var prefix = $author$project$Main$menuPrefix(which);
+		var n = $elm$core$List$length(spec.rows);
 		var leavesMenu = A2(
 			$elm$json$Json$Decode$andThen,
 			function (rel) {
 				if (rel.$ === 'Just') {
-					var id = rel.a;
-					return A2($elm$core$String$startsWith, 'tf-', id) ? $elm$json$Json$Decode$fail('still inside') : $elm$json$Json$Decode$succeed($author$project$Main$CloseTypeMenu);
+					var relId = rel.a;
+					return A2($elm$core$String$startsWith, prefix, relId) ? $elm$json$Json$Decode$fail('still inside') : $elm$json$Json$Decode$succeed(
+						$author$project$Main$CloseMenu(which));
 				} else {
-					return $elm$json$Json$Decode$succeed($author$project$Main$CloseTypeMenu);
+					return $elm$json$Json$Decode$succeed(
+						$author$project$Main$CloseMenu(which));
 				}
 			},
 			A2(
@@ -8489,89 +9522,119 @@ var $author$project$Main$viewTypeMenu = F2(
 				$elm$json$Json$Decode$nullable(
 					A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$string))));
 		var item = F2(
-			function (i, f) {
-				return A2(
-					$elm$html$Html$button,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$type_('button'),
-							$elm$html$Html$Attributes$id(
-							'tf-item-' + $elm$core$String$fromInt(i)),
-							$elm$html$Html$Attributes$tabindex(-1),
-							$elm$html$Html$Attributes$classList(
+			function (i, r) {
+				return _List_fromArray(
+					[
+						r.divider ? A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('menu-sep'),
+								A2($elm$html$Html$Attributes$attribute, 'role', 'separator')
+							]),
+						_List_Nil) : $elm$html$Html$text(''),
+						A2(
+						$elm$html$Html$button,
+						_Utils_ap(
 							_List_fromArray(
 								[
-									_Utils_Tuple2('menu-item', true),
-									_Utils_Tuple2(
-									'selected',
-									_Utils_eq(f, current))
-								])),
-							A2($elm$html$Html$Attributes$attribute, 'role', 'menuitemradio'),
-							A2(
-							$elm$html$Html$Attributes$attribute,
-							'aria-checked',
-							_Utils_eq(f, current) ? 'true' : 'false'),
-							$elm$html$Html$Events$onClick(
-							$author$project$Main$SetTypeFilter(f)),
-							A2(
-							$elm$html$Html$Events$preventDefaultOn,
-							'mousedown',
-							$elm$json$Json$Decode$succeed(
-								_Utils_Tuple2($author$project$Main$NoOp, true))),
-							$author$project$Main$onKeyPrevent(
-							_List_fromArray(
-								[
-									_Utils_Tuple2(
-									'ArrowDown',
-									$author$project$Main$FocusMenuItem(
-										A2($elm$core$Basics$modBy, n, i + 1))),
-									_Utils_Tuple2(
-									'ArrowUp',
-									$author$project$Main$FocusMenuItem(
-										A2($elm$core$Basics$modBy, n, i - 1))),
-									_Utils_Tuple2(
-									'Home',
-									$author$project$Main$FocusMenuItem(0)),
-									_Utils_Tuple2(
-									'End',
-									$author$project$Main$FocusMenuItem(n - 1)),
-									_Utils_Tuple2('Escape', $author$project$Main$CloseTypeMenuRefocus),
-									_Utils_Tuple2('Tab', $author$project$Main$CloseTypeMenu)
-								]))
-						]),
-					function () {
-						if (f.$ === 'AnyType') {
-							return _List_fromArray(
-								[
-									$elm$html$Html$text('All types')
-								]);
-						} else {
-							var t = f.a;
-							return _List_fromArray(
-								[
-									$author$project$Main$viewMark(t),
-									$elm$html$Html$text(
-									$author$project$Main$typeLabel(t))
-								]);
-						}
-					}());
+									$elm$html$Html$Attributes$type_('button'),
+									$elm$html$Html$Attributes$id(
+									prefix + ('item-' + $elm$core$String$fromInt(i))),
+									$elm$html$Html$Attributes$tabindex(-1),
+									$elm$html$Html$Attributes$classList(
+									_List_fromArray(
+										[
+											_Utils_Tuple2('menu-item', true),
+											_Utils_Tuple2(
+											'selected',
+											_Utils_eq(
+												r.selected,
+												$elm$core$Maybe$Just(true))),
+											_Utils_Tuple2(
+											'menu-edit',
+											_Utils_eq(r.selected, $elm$core$Maybe$Nothing))
+										])),
+									$elm$html$Html$Events$onClick(r.pick),
+									A2(
+									$elm$html$Html$Events$preventDefaultOn,
+									'mousedown',
+									$elm$json$Json$Decode$succeed(
+										_Utils_Tuple2($author$project$Main$NoOp, true))),
+									$author$project$Main$onKeyPrevent(
+									_List_fromArray(
+										[
+											_Utils_Tuple2(
+											'ArrowDown',
+											A2(
+												$author$project$Main$FocusMenuItem,
+												which,
+												A2($elm$core$Basics$modBy, n, i + 1))),
+											_Utils_Tuple2(
+											'ArrowUp',
+											A2(
+												$author$project$Main$FocusMenuItem,
+												which,
+												A2($elm$core$Basics$modBy, n, i - 1))),
+											_Utils_Tuple2(
+											'Home',
+											A2($author$project$Main$FocusMenuItem, which, 0)),
+											_Utils_Tuple2(
+											'End',
+											A2($author$project$Main$FocusMenuItem, which, n - 1)),
+											_Utils_Tuple2(
+											'Escape',
+											$author$project$Main$CloseMenuRefocus(which)),
+											_Utils_Tuple2(
+											'Tab',
+											$author$project$Main$CloseMenu(which))
+										]))
+								]),
+							function () {
+								var _v0 = r.selected;
+								if (_v0.$ === 'Just') {
+									var sel = _v0.a;
+									return _List_fromArray(
+										[
+											A2($elm$html$Html$Attributes$attribute, 'role', 'menuitemradio'),
+											A2(
+											$elm$html$Html$Attributes$attribute,
+											'aria-checked',
+											sel ? 'true' : 'false')
+										]);
+								} else {
+									return _List_fromArray(
+										[
+											A2($elm$html$Html$Attributes$attribute, 'role', 'menuitem')
+										]);
+								}
+							}()),
+						_Utils_ap(
+							r.content,
+							function () {
+								var _v1 = r.count;
+								if (_v1.$ === 'Just') {
+									var c = _v1.a;
+									return _List_fromArray(
+										[
+											A2(
+											$elm$html$Html$span,
+											_List_fromArray(
+												[
+													$elm$html$Html$Attributes$class('menu-count')
+												]),
+											_List_fromArray(
+												[
+													$elm$html$Html$text(
+													$elm$core$String$fromInt(c))
+												]))
+										]);
+								} else {
+									return _List_Nil;
+								}
+							}()))
+					]);
 			});
-		var buttonContent = function () {
-			if (current.$ === 'AnyType') {
-				return _List_fromArray(
-					[
-						$elm$html$Html$text('All types')
-					]);
-			} else {
-				var t = current.a;
-				return _List_fromArray(
-					[
-						$author$project$Main$viewMark(t),
-						$elm$html$Html$text(
-						$author$project$Main$typeLabel(t))
-					]);
-			}
-		}();
 		return A2(
 			$elm$html$Html$div,
 			_List_fromArray(
@@ -8586,26 +9649,22 @@ var $author$project$Main$viewTypeMenu = F2(
 					_List_fromArray(
 						[
 							$elm$html$Html$Attributes$type_('button'),
-							$elm$html$Html$Attributes$id('tf-button'),
+							$elm$html$Html$Attributes$id(prefix + 'button'),
 							$elm$html$Html$Attributes$classList(
 							_List_fromArray(
 								[
-									_Utils_Tuple2('type-filter-button', true),
-									_Utils_Tuple2(
-									'active',
-									!_Utils_eq(current, $author$project$Main$AnyType))
+									_Utils_Tuple2('menu-button', true),
+									_Utils_Tuple2('deviates', spec.deviates)
 								])),
 							A2($elm$html$Html$Attributes$attribute, 'aria-haspopup', 'menu'),
-							A2($elm$html$Html$Attributes$attribute, 'aria-controls', 'tf-menu'),
+							A2($elm$html$Html$Attributes$attribute, 'aria-controls', prefix + 'menu'),
 							A2(
 							$elm$html$Html$Attributes$attribute,
 							'aria-expanded',
-							open ? 'true' : 'false'),
-							A2(
-							$elm$html$Html$Attributes$attribute,
-							'aria-label',
-							'Type filter: ' + $author$project$Main$filterLabel(current)),
-							$elm$html$Html$Events$onClick($author$project$Main$ToggleTypeMenu),
+							spec.open ? 'true' : 'false'),
+							A2($elm$html$Html$Attributes$attribute, 'aria-label', spec.label),
+							$elm$html$Html$Events$onClick(
+							$author$project$Main$ToggleMenu(which)),
 							A2(
 							$elm$html$Html$Events$preventDefaultOn,
 							'mousedown',
@@ -8614,41 +9673,128 @@ var $author$project$Main$viewTypeMenu = F2(
 							$author$project$Main$onKeyPrevent(
 							_List_fromArray(
 								[
-									_Utils_Tuple2('Escape', $author$project$Main$CloseTypeMenu),
-									_Utils_Tuple2('ArrowDown', $author$project$Main$OpenTypeMenu),
-									_Utils_Tuple2('ArrowUp', $author$project$Main$OpenTypeMenu)
+									_Utils_Tuple2(
+									'Escape',
+									$author$project$Main$CloseMenu(which)),
+									_Utils_Tuple2(
+									'ArrowDown',
+									$author$project$Main$OpenMenu(which)),
+									_Utils_Tuple2(
+									'ArrowUp',
+									$author$project$Main$OpenMenu(which))
 								]))
 						]),
-					_Utils_ap(
-						buttonContent,
-						_List_fromArray(
-							[
-								A2(
-								$elm$html$Html$span,
-								_List_fromArray(
-									[
-										$elm$html$Html$Attributes$class('caret'),
-										A2($elm$html$Html$Attributes$attribute, 'aria-hidden', 'true')
-									]),
-								_List_Nil)
-							]))),
-					open ? A2(
+					spec.buttonContent),
+					spec.open ? A2(
 					$elm$html$Html$div,
 					_List_fromArray(
 						[
-							$elm$html$Html$Attributes$class('type-menu'),
-							$elm$html$Html$Attributes$id('tf-menu'),
+							$elm$html$Html$Attributes$classList(
+							_List_fromArray(
+								[
+									_Utils_Tuple2('type-menu', true),
+									_Utils_Tuple2('menu-down', spec.down)
+								])),
+							$elm$html$Html$Attributes$id(prefix + 'menu'),
 							A2($elm$html$Html$Attributes$attribute, 'role', 'menu')
 						]),
-					A2($elm$core$List$indexedMap, item, $author$project$Main$menuFilters)) : $elm$html$Html$text('')
+					$elm$core$List$concat(
+						A2($elm$core$List$indexedMap, item, spec.rows))) : $elm$html$Html$text('')
 				]));
 	});
+var $author$project$Main$viewCategoryMenu = F3(
+	function (withEdit, model, base) {
+		var edit = {
+			content: _List_fromArray(
+				[
+					$elm$html$Html$text('Edit categories\u2026')
+				]),
+			count: $elm$core$Maybe$Nothing,
+			divider: true,
+			pick: $author$project$Main$OpenManage,
+			selected: $elm$core$Maybe$Nothing
+		};
+		var current = model.categoryFilter;
+		var cats = model.categories;
+		var content = function (f) {
+			switch (f.$) {
+				case 'AnyCategory':
+					return _List_fromArray(
+						[
+							$elm$html$Html$text('Any category')
+						]);
+				case 'OnlyCategory':
+					var id = f.a;
+					return _List_fromArray(
+						[
+							A2(
+							$author$project$Main$markFor,
+							cats,
+							$elm$core$Maybe$Just(id)),
+							A2(
+							$elm$html$Html$span,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('tf-name')
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text(
+									A2(
+										$author$project$Main$categoryName,
+										cats,
+										$elm$core$Maybe$Just(id)))
+								]))
+						]);
+				default:
+					return _List_fromArray(
+						[
+							$author$project$Main$viewMark($elm$core$Maybe$Nothing),
+							$elm$html$Html$text('No category')
+						]);
+			}
+		};
+		var row = function (f) {
+			return {
+				content: content(f),
+				count: $elm$core$Maybe$Just(
+					$elm$core$List$length(
+						A2(
+							$elm$core$List$filter,
+							$author$project$Main$inScope(f),
+							base))),
+				divider: false,
+				pick: $author$project$Main$SetCategoryFilter(f),
+				selected: $elm$core$Maybe$Just(
+					_Utils_eq(f, current))
+			};
+		};
+		return A2(
+			$author$project$Main$viewMenu,
+			$author$project$Main$CatMenu,
+			{
+				buttonContent: content(current),
+				deviates: !_Utils_eq(current, $author$project$Main$AnyCategory),
+				down: model.menuDown,
+				label: 'Category filter: ' + A2($author$project$Main$filterLabel, cats, current),
+				open: _Utils_eq(
+					model.menuOpen,
+					$elm$core$Maybe$Just($author$project$Main$CatMenu)),
+				rows: _Utils_ap(
+					A2(
+						$elm$core$List$map,
+						row,
+						$author$project$Main$menuFilters(cats)),
+					withEdit ? _List_fromArray(
+						[edit]) : _List_Nil)
+			});
+	});
 var $author$project$Main$viewArchive = function (model) {
-	var showMark = _Utils_eq(model.typeFilter, $author$project$Main$AnyType);
+	var showMark = _Utils_eq(model.categoryFilter, $author$project$Main$AnyCategory) && (!$elm$core$List$isEmpty(model.categories));
 	var archived = A2(
 		$elm$core$List$filter,
 		function (e) {
-			return $author$project$Main$isArchived(e) && A2($author$project$Main$inScope, model.typeFilter, e);
+			return $author$project$Main$isArchived(e) && A2($author$project$Main$inScope, model.categoryFilter, e);
 		},
 		model.entries);
 	return A2(
@@ -8666,7 +9812,7 @@ var $author$project$Main$viewArchive = function (model) {
 					_List_fromArray(
 						[
 							$elm$html$Html$Attributes$class('archive-back'),
-							$elm$html$Html$Attributes$href('#/')
+							$elm$html$Html$Attributes$href(model.returnTo)
 						]),
 					_List_fromArray(
 						[
@@ -8685,7 +9831,7 @@ var $author$project$Main$viewArchive = function (model) {
 							$elm$core$String$fromInt(
 								$elm$core$List$length(archived)) + ' archived')
 						])),
-					A2(
+					$elm$core$List$isEmpty(model.categories) ? $elm$html$Html$text('') : A2(
 					$elm$html$Html$div,
 					_List_fromArray(
 						[
@@ -8693,7 +9839,11 @@ var $author$project$Main$viewArchive = function (model) {
 						]),
 					_List_fromArray(
 						[
-							A2($author$project$Main$viewTypeMenu, model.typeFilter, model.typeMenuOpen)
+							A3(
+							$author$project$Main$viewCategoryMenu,
+							false,
+							model,
+							A2($elm$core$List$filter, $author$project$Main$isArchived, model.entries))
 						]))
 				])),
 		$elm$core$List$isEmpty(archived) ? _List_fromArray(
@@ -8715,157 +9865,82 @@ var $author$project$Main$viewArchive = function (model) {
 						_List_fromArray(
 							[
 								$elm$html$Html$text(
-								function () {
-									var _v0 = model.typeFilter;
-									if (_v0.$ === 'OnlyType') {
-										var t = _v0.a;
-										return A2($elm$core$List$any, $author$project$Main$isArchived, model.entries) ? ('No archived ' + ($author$project$Main$typeLabel(t) + ' todos.')) : 'Nothing archived yet.';
-									} else {
-										return 'Nothing archived yet.';
-									}
-								}())
+								((!_Utils_eq(model.categoryFilter, $author$project$Main$AnyCategory)) && A2($elm$core$List$any, $author$project$Main$isArchived, model.entries)) ? ('No archived ' + (A2($author$project$Main$scopeWord, model.categories, model.categoryFilter) + ' todos.')) : 'Nothing archived yet.')
 							]))
 					]))
 			]) : A2(
 			$elm$core$List$map,
-			A3($author$project$Main$viewArchiveGroup, model.zone, showMark, model.confirmingDelete),
+			A2($author$project$Main$viewArchiveGroup, model, showMark),
 			A2($author$project$Main$archiveGroups, model.zone, archived)));
 };
 var $author$project$Main$ArchiveCompleted = {$: 'ArchiveCompleted'};
-var $elm$virtual_dom$VirtualDom$lazy3 = _VirtualDom_lazy3;
-var $elm$html$Html$Lazy$lazy3 = $elm$virtual_dom$VirtualDom$lazy3;
-var $author$project$Main$ShowAll = {$: 'ShowAll'};
-var $elm$html$Html$strong = _VirtualDom_node('strong');
-var $elm$html$Html$Attributes$title = $elm$html$Html$Attributes$stringProperty('title');
-var $author$project$Main$viewCount = F3(
-	function (left, anyInScope, hidden_) {
-		return A2(
-			$elm$html$Html$span,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$class('todo-count'),
-					A2($elm$html$Html$Attributes$attribute, 'aria-live', 'polite')
-				]),
-			_Utils_ap(
-				((!left) && anyInScope) ? _List_fromArray(
-					[
-						$elm$html$Html$text('All done')
-					]) : _List_fromArray(
-					[
-						A2(
-						$elm$html$Html$strong,
-						_List_Nil,
-						_List_fromArray(
-							[
-								$elm$html$Html$text(
-								$elm$core$String$fromInt(left))
-							])),
-						$elm$html$Html$text(' left')
-					]),
-				(hidden_ > 0) ? _List_fromArray(
-					[
-						$elm$html$Html$text(', '),
-						A2(
-						$elm$html$Html$button,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$type_('button'),
-								$elm$html$Html$Attributes$class('hidden-hint'),
-								$elm$html$Html$Attributes$title('Show all todos'),
-								A2(
-								$elm$html$Html$Attributes$attribute,
-								'aria-label',
-								$elm$core$String$fromInt(hidden_) + ' hidden. Show all todos'),
-								$elm$html$Html$Events$onClick($author$project$Main$ShowAll)
-							]),
-						_List_fromArray(
-							[
-								$elm$html$Html$text(
-								$elm$core$String$fromInt(hidden_) + ' hidden')
-							]))
-					]) : _List_Nil));
-	});
-var $author$project$Main$statusLink = F3(
-	function (uri, name_, isSelected) {
-		return A2(
-			$elm$html$Html$li,
-			_List_Nil,
-			_List_fromArray(
-				[
-					A2(
-					$elm$html$Html$a,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$href(uri),
-							$elm$html$Html$Attributes$classList(
-							_List_fromArray(
-								[
-									_Utils_Tuple2('selected', isSelected)
-								])),
-							A2(
-							$elm$html$Html$Attributes$attribute,
-							'aria-current',
-							isSelected ? 'page' : 'false')
-						]),
-					_List_fromArray(
-						[
-							$elm$html$Html$text(name_)
-						]))
-				]));
-	});
-var $elm$html$Html$ul = _VirtualDom_node('ul');
-var $author$project$Main$viewFilters = function (model) {
-	return A2(
-		$elm$html$Html$ul,
-		_List_fromArray(
-			[
-				$elm$html$Html$Attributes$class('filters')
-			]),
-		_List_fromArray(
-			[
-				A3(
-				$author$project$Main$statusLink,
-				'#/',
-				'All',
-				_Utils_eq(model.visibility, $author$project$Main$All)),
-				$elm$html$Html$text(' '),
-				A3(
-				$author$project$Main$statusLink,
-				'#/active',
-				'Active',
-				_Utils_eq(model.visibility, $author$project$Main$Active)),
-				$elm$html$Html$text(' '),
-				A3(
-				$author$project$Main$statusLink,
-				'#/completed',
-				'Completed',
-				_Utils_eq(model.visibility, $author$project$Main$Completed)),
-				$elm$html$Html$text(' '),
-				A2(
-				$elm$html$Html$li,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('type-filter-item')
-					]),
-				_List_fromArray(
-					[
-						A2($author$project$Main$viewTypeMenu, model.typeFilter, model.typeMenuOpen)
-					]))
-			]));
+var $elm$html$Html$footer = _VirtualDom_node('footer');
+var $author$project$Main$SetStatus = function (a) {
+	return {$: 'SetStatus', a: a};
 };
+var $author$project$Main$StatusMenu = {$: 'StatusMenu'};
+var $author$project$Main$statusName = function (v) {
+	switch (v.$) {
+		case 'Completed':
+			return 'Completed';
+		case 'All':
+			return 'All';
+		default:
+			return 'Active';
+	}
+};
+var $author$project$Main$viewStatusMenu = F2(
+	function (model, scoped) {
+		var row = function (v) {
+			return {
+				content: _List_fromArray(
+					[
+						$elm$html$Html$text(
+						$author$project$Main$statusName(v))
+					]),
+				count: $elm$core$Maybe$Just(
+					$elm$core$List$length(
+						A2(
+							$elm$core$List$filter,
+							$author$project$Main$isVisible(v),
+							scoped))),
+				divider: false,
+				pick: $author$project$Main$SetStatus(v),
+				selected: $elm$core$Maybe$Just(
+					_Utils_eq(model.visibility, v))
+			};
+		};
+		return A2(
+			$author$project$Main$viewMenu,
+			$author$project$Main$StatusMenu,
+			{
+				buttonContent: _List_fromArray(
+					[
+						$elm$html$Html$text(
+						$author$project$Main$statusName(model.visibility))
+					]),
+				deviates: !_Utils_eq(model.visibility, $author$project$Main$Active),
+				down: model.menuDown,
+				label: 'Status: ' + $author$project$Main$statusName(model.visibility),
+				open: _Utils_eq(
+					model.menuOpen,
+					$elm$core$Maybe$Just($author$project$Main$StatusMenu)),
+				rows: A2($elm$core$List$map, row, $author$project$Main$statusOrder)
+			});
+	});
 var $author$project$Main$viewControls = function (model) {
+	var statusScoped = A2(
+		$elm$core$List$filter,
+		function (e) {
+			return $author$project$Main$isLive(e) && A2($author$project$Main$isVisible, model.visibility, e);
+		},
+		model.entries);
 	var scoped = A2(
 		$elm$core$List$filter,
 		function (e) {
-			return $author$project$Main$isLive(e) && A2($author$project$Main$inScope, model.typeFilter, e);
+			return $author$project$Main$isLive(e) && A2($author$project$Main$inScope, model.categoryFilter, e);
 		},
 		model.entries);
-	var hidden_ = $elm$core$List$length(
-		A2($elm$core$List$filter, $author$project$Main$isLive, model.entries)) - $elm$core$List$length(
-		A2(
-			$elm$core$List$filter,
-			$author$project$Main$isVisible(model.visibility),
-			scoped));
 	var completed = $elm$core$List$length(
 		A2(
 			$elm$core$List$filter,
@@ -8873,12 +9948,11 @@ var $author$project$Main$viewControls = function (model) {
 				return $.completed;
 			},
 			scoped));
-	var left = $elm$core$List$length(scoped) - completed;
 	var archivedCount = $elm$core$List$length(
 		A2(
 			$elm$core$List$filter,
 			function (e) {
-				return $author$project$Main$isArchived(e) && A2($author$project$Main$inScope, model.typeFilter, e);
+				return $author$project$Main$isArchived(e) && A2($author$project$Main$inScope, model.categoryFilter, e);
 			},
 			model.entries));
 	return A2(
@@ -8889,14 +9963,28 @@ var $author$project$Main$viewControls = function (model) {
 			]),
 		_List_fromArray(
 			[
-				A4(
-				$elm$html$Html$Lazy$lazy3,
-				$author$project$Main$viewCount,
-				left,
-				!$elm$core$List$isEmpty(scoped),
-				hidden_),
-				$author$project$Main$viewFilters(model),
-				(completed > 0) ? A2(
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('footer-menus')
+					]),
+				_List_fromArray(
+					[
+						A2($author$project$Main$viewStatusMenu, model, scoped),
+						$elm$core$List$isEmpty(model.categories) ? A2(
+						$elm$html$Html$a,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('add-categories'),
+								$elm$html$Html$Attributes$href('#/categories')
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Add categories\u2026')
+							])) : A3($author$project$Main$viewCategoryMenu, true, model, statusScoped)
+					])),
+				(_Utils_eq(model.visibility, $author$project$Main$Completed) && (completed > 0)) ? A2(
 				$elm$html$Html$button,
 				_List_fromArray(
 					[
@@ -8937,8 +10025,7 @@ var $elm$html$Html$h1 = _VirtualDom_node('h1');
 var $elm$html$Html$header = _VirtualDom_node('header');
 var $elm$html$Html$Attributes$name = $elm$html$Html$Attributes$stringProperty('name');
 var $author$project$Main$Add = {$: 'Add'};
-var $author$project$Main$CycleNewType = {$: 'CycleNewType'};
-var $elm$json$Json$Decode$map4 = _Json_map4;
+var $author$project$Main$CycleNewCategory = {$: 'CycleNewCategory'};
 var $author$project$Main$newTodoKeydown = A2(
 	$elm$json$Json$Decode$andThen,
 	$elm$core$Basics$identity,
@@ -8948,7 +10035,7 @@ var $author$project$Main$newTodoKeydown = A2(
 			function (key, alt, code, shift) {
 				return ((key === 'Enter') && (!shift)) ? $elm$json$Json$Decode$succeed(
 					_Utils_Tuple2($author$project$Main$Add, true)) : ((alt && ((code === 'KeyT') || (key === '†'))) ? $elm$json$Json$Decode$succeed(
-					_Utils_Tuple2($author$project$Main$CycleNewType, true)) : $elm$json$Json$Decode$fail('ignored key'));
+					_Utils_Tuple2($author$project$Main$CycleNewCategory, true)) : $elm$json$Json$Decode$fail('ignored key'));
 			}),
 		A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string),
 		A2($elm$json$Json$Decode$field, 'altKey', $elm$json$Json$Decode$bool),
@@ -8990,11 +10077,11 @@ var $elm$html$Html$Attributes$rows = function (n) {
 };
 var $elm$html$Html$textarea = _VirtualDom_node('textarea');
 var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
-var $author$project$Main$SetNewType = function (a) {
-	return {$: 'SetNewType', a: a};
+var $author$project$Main$SetNewCategory = function (a) {
+	return {$: 'SetNewCategory', a: a};
 };
-var $author$project$Main$viewTypeChoice = F2(
-	function (selected, t) {
+var $author$project$Main$viewTypeChoice = F3(
+	function (cats, selected, choice) {
 		return A2(
 			$elm$html$Html$button,
 			_List_fromArray(
@@ -9006,22 +10093,22 @@ var $author$project$Main$viewTypeChoice = F2(
 							_Utils_Tuple2('type-choice', true),
 							_Utils_Tuple2(
 							'selected',
-							_Utils_eq(selected, t))
+							_Utils_eq(selected, choice))
 						])),
 					A2(
 					$elm$html$Html$Attributes$attribute,
 					'aria-label',
-					$author$project$Main$typeLabel(t)),
+					A2($author$project$Main$categoryName, cats, choice)),
 					A2(
 					$elm$html$Html$Attributes$attribute,
 					'aria-pressed',
-					_Utils_eq(selected, t) ? 'true' : 'false'),
+					_Utils_eq(selected, choice) ? 'true' : 'false'),
 					$elm$html$Html$Events$onClick(
-					$author$project$Main$SetNewType(t))
+					$author$project$Main$SetNewCategory(choice))
 				]),
 			_List_fromArray(
 				[
-					$author$project$Main$viewMark(t),
+					A2($author$project$Main$markFor, cats, choice),
 					A2(
 					$elm$html$Html$span,
 					_List_fromArray(
@@ -9031,17 +10118,24 @@ var $author$project$Main$viewTypeChoice = F2(
 					_List_fromArray(
 						[
 							$elm$html$Html$text(
-							$author$project$Main$typeLabel(t))
+							A2($author$project$Main$categoryName, cats, choice))
 						]))
 				]));
 	});
-var $author$project$Main$viewInput = F2(
-	function (task, newType) {
+var $author$project$Main$viewInput = F3(
+	function (task, cats, newCat) {
 		return A2(
 			$elm$html$Html$header,
 			_List_fromArray(
 				[
-					$elm$html$Html$Attributes$class('header')
+					$elm$html$Html$Attributes$classList(
+					_List_fromArray(
+						[
+							_Utils_Tuple2('header', true),
+							_Utils_Tuple2(
+							'no-picker',
+							$elm$core$List$isEmpty(cats))
+						]))
 				]),
 			_List_fromArray(
 				[
@@ -9068,7 +10162,7 @@ var $author$project$Main$viewInput = F2(
 							A2($elm$html$Html$Events$preventDefaultOn, 'keydown', $author$project$Main$newTodoKeydown)
 						]),
 					_List_Nil),
-					A2(
+					$elm$core$List$isEmpty(cats) ? $elm$html$Html$text('') : A2(
 					$elm$html$Html$div,
 					_List_fromArray(
 						[
@@ -9082,13 +10176,24 @@ var $author$project$Main$viewInput = F2(
 								[
 									$elm$html$Html$Attributes$class('type-picker'),
 									A2($elm$html$Html$Attributes$attribute, 'role', 'group'),
-									A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Type for new todos'),
-									$elm$html$Html$Attributes$title('Type for new todos (Alt+T)')
+									A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Category for new todos'),
+									$elm$html$Html$Attributes$title('Category for new todos (Alt+T)')
 								]),
 							A2(
 								$elm$core$List$map,
-								$author$project$Main$viewTypeChoice(newType),
-								$author$project$Main$allTypes))
+								A2($author$project$Main$viewTypeChoice, cats, newCat),
+								A2(
+									$elm$core$List$cons,
+									$elm$core$Maybe$Nothing,
+									A2(
+										$elm$core$List$map,
+										A2(
+											$elm$core$Basics$composeL,
+											$elm$core$Maybe$Just,
+											function ($) {
+												return $.id;
+											}),
+										cats))))
 						]))
 				]));
 	});
@@ -9115,12 +10220,14 @@ var $author$project$Main$statusWord = function (v) {
 			return 'active';
 		case 'Completed':
 			return 'completed';
+		case 'ArchiveView':
+			return '';
 		default:
 			return '';
 	}
 };
-var $author$project$Main$viewEmptyFiltered = F3(
-	function (visibility, typeFilter, total) {
+var $author$project$Main$viewEmptyFiltered = F4(
+	function (visibility, cats, filter, total) {
 		var words = A2(
 			$elm$core$String$join,
 			' ',
@@ -9131,14 +10238,7 @@ var $author$project$Main$viewEmptyFiltered = F3(
 					[
 						'No',
 						$author$project$Main$statusWord(visibility),
-						function () {
-						if (typeFilter.$ === 'AnyType') {
-							return '';
-						} else {
-							var t = typeFilter.a;
-							return $author$project$Main$typeLabel(t);
-						}
-					}(),
+						A2($author$project$Main$scopeWord, cats, filter),
 						'todos.'
 					])));
 		return A2(
@@ -9214,11 +10314,6 @@ var $author$project$Main$gapShift = F2(
 			return 0;
 		}
 	});
-var $elm$core$Basics$composeR = F3(
-	function (f, g, x) {
-		return g(
-			f(x));
-	});
 var $elm$core$List$sum = function (numbers) {
 	return A3($elm$core$List$foldl, $elm$core$Basics$add, 0, numbers);
 };
@@ -9284,8 +10379,8 @@ var $author$project$Main$Check = F2(
 	function (a, b) {
 		return {$: 'Check', a: a, b: b};
 	});
-var $author$project$Main$CycleEntryType = function (a) {
-	return {$: 'CycleEntryType', a: a};
+var $author$project$Main$CycleEntryCategory = function (a) {
+	return {$: 'CycleEntryCategory', a: a};
 };
 var $author$project$Main$UpdateEntry = F2(
 	function (a, b) {
@@ -9484,8 +10579,8 @@ var $author$project$Main$onRowKeydown = function (id) {
 						['target', 'tagName']),
 					$elm$json$Json$Decode$string))));
 };
-var $author$project$Main$viewEntry = F4(
-	function (showMark, confirming, rd, todo) {
+var $author$project$Main$viewEntry = F5(
+	function (cats, showMark, confirming, rd, todo) {
 		return A2(
 			$elm$html$Html$li,
 			_Utils_ap(
@@ -9596,34 +10691,57 @@ var $author$project$Main$viewEntry = F4(
 								[
 									$elm$html$Html$text(todo.description)
 								])),
-							showMark ? A2(
-							$elm$html$Html$button,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$class('row-type'),
-									$elm$html$Html$Attributes$type_('button'),
-									A2(
-									$elm$html$Html$Attributes$attribute,
-									'aria-label',
-									'Type: ' + ($author$project$Main$typeLabel(todo.entryType) + '. Click to change.')),
-									$elm$html$Html$Events$onClick(
-									$author$project$Main$CycleEntryType(todo.id))
-								]),
-							_List_fromArray(
-								[
-									A2(
-									$elm$html$Html$span,
+							function () {
+							if (showMark) {
+								var mc = A2(
+									$elm$core$Maybe$andThen,
+									$author$project$Main$findCategory(cats),
+									todo.category);
+								return A2(
+									$elm$html$Html$button,
 									_List_fromArray(
 										[
-											$elm$html$Html$Attributes$class('label')
+											$elm$html$Html$Attributes$classList(
+											_List_fromArray(
+												[
+													_Utils_Tuple2('row-type', true),
+													_Utils_Tuple2(
+													'row-type-none',
+													_Utils_eq(mc, $elm$core$Maybe$Nothing))
+												])),
+											$elm$html$Html$Attributes$type_('button'),
+											A2(
+											$elm$html$Html$Attributes$attribute,
+											'aria-label',
+											'Category: ' + (A2($author$project$Main$categoryName, cats, todo.category) + '. Click to change.')),
+											$elm$html$Html$Events$onClick(
+											$author$project$Main$CycleEntryCategory(todo.id))
 										]),
-									_List_fromArray(
-										[
-											$elm$html$Html$text(
-											$author$project$Main$typeLabel(todo.entryType))
-										])),
-									$author$project$Main$viewMark(todo.entryType)
-								])) : $elm$html$Html$text(''),
+									function () {
+										if (mc.$ === 'Just') {
+											var c = mc.a;
+											return _List_fromArray(
+												[
+													A2(
+													$elm$html$Html$span,
+													_List_fromArray(
+														[
+															$elm$html$Html$Attributes$class('label')
+														]),
+													_List_fromArray(
+														[
+															$elm$html$Html$text(c.name)
+														])),
+													$author$project$Main$viewMark(mc)
+												]);
+										} else {
+											return _List_Nil;
+										}
+									}());
+							} else {
+								return $elm$html$Html$text('');
+							}
+						}(),
 							todo.completed ? A2(
 							$elm$html$Html$button,
 							_List_fromArray(
@@ -9717,18 +10835,19 @@ var $author$project$Main$viewEntry = F4(
 						])) : $elm$html$Html$text('')
 				]));
 	});
-var $author$project$Main$viewKeyedEntry = F4(
-	function (showMark, confirming, rd, todo) {
+var $author$project$Main$viewKeyedEntry = F5(
+	function (cats, showMark, confirming, rd, todo) {
 		return _Utils_Tuple2(
 			$elm$core$String$fromInt(todo.id),
-			A5($elm$html$Html$Lazy$lazy4, $author$project$Main$viewEntry, showMark, confirming, rd, todo));
+			A6($elm$html$Html$Lazy$lazy5, $author$project$Main$viewEntry, cats, showMark, confirming, rd, todo));
 	});
 var $author$project$Main$viewRows = F2(
 	function (model, visible) {
 		var row = function (t) {
-			return A4(
+			return A5(
 				$author$project$Main$viewKeyedEntry,
-				_Utils_eq(model.typeFilter, $author$project$Main$AnyType),
+				model.categories,
+				_Utils_eq(model.categoryFilter, $author$project$Main$AnyCategory) && (!$elm$core$List$isEmpty(model.categories)),
 				_Utils_eq(
 					model.confirmingDelete,
 					$elm$core$Maybe$Just(t.id)),
@@ -9742,7 +10861,7 @@ var $author$project$Main$viewMain = function (model) {
 	var scoped = A2(
 		$elm$core$List$filter,
 		function (e) {
-			return $author$project$Main$isLive(e) && A2($author$project$Main$inScope, model.typeFilter, e);
+			return $author$project$Main$isLive(e) && A2($author$project$Main$inScope, model.categoryFilter, e);
 		},
 		model.entries);
 	var live = A2($elm$core$List$filter, $author$project$Main$isLive, model.entries);
@@ -9796,10 +10915,11 @@ var $author$project$Main$viewMain = function (model) {
 					[
 						$elm$html$Html$text('Mark all as complete')
 					])),
-				($elm$core$List$isEmpty(visible) && (!$elm$core$List$isEmpty(live))) ? A3(
+				($elm$core$List$isEmpty(visible) && (!$elm$core$List$isEmpty(live))) ? A4(
 				$author$project$Main$viewEmptyFiltered,
 				model.visibility,
-				model.typeFilter,
+				model.categories,
+				model.categoryFilter,
 				$elm$core$List$length(live)) : A2(
 				$elm$html$Html$Keyed$ul,
 				_List_fromArray(
@@ -9838,6 +10958,602 @@ var $author$project$Main$viewMain = function (model) {
 					]))
 			]));
 };
+var $author$project$Main$AddCategory = {$: 'AddCategory'};
+var $author$project$Main$UpdateNewCatName = function (a) {
+	return {$: 'UpdateNewCatName', a: a};
+};
+var $elm$html$Html$Attributes$autocomplete = function (bool) {
+	return A2(
+		$elm$html$Html$Attributes$stringProperty,
+		'autocomplete',
+		bool ? 'on' : 'off');
+};
+var $elm$html$Html$Attributes$maxlength = function (n) {
+	return A2(
+		_VirtualDom_attribute,
+		'maxlength',
+		$elm$core$String$fromInt(n));
+};
+var $author$project$Main$AskDeleteCategory = function (a) {
+	return {$: 'AskDeleteCategory', a: a};
+};
+var $author$project$Main$BlurCategory = function (a) {
+	return {$: 'BlurCategory', a: a};
+};
+var $author$project$Main$CancelEditCategory = function (a) {
+	return {$: 'CancelEditCategory', a: a};
+};
+var $author$project$Main$CommitCategory = function (a) {
+	return {$: 'CommitCategory', a: a};
+};
+var $author$project$Main$DeleteCategory = function (a) {
+	return {$: 'DeleteCategory', a: a};
+};
+var $author$project$Main$EditCategoryName = function (a) {
+	return {$: 'EditCategoryName', a: a};
+};
+var $author$project$Main$MoveCategory = F2(
+	function (a, b) {
+		return {$: 'MoveCategory', a: a, b: b};
+	});
+var $author$project$Main$SetCategoryColor = F2(
+	function (a, b) {
+		return {$: 'SetCategoryColor', a: a, b: b};
+	});
+var $author$project$Main$StartEditCategory = function (a) {
+	return {$: 'StartEditCategory', a: a};
+};
+var $author$project$Main$deleteCategoryText = function (used) {
+	return (!used) ? 'Delete category? No todos use it.' : ((used === 1) ? 'Delete category? Its 1 todo keeps its text and loses the category.' : ('Delete category? Its ' + ($elm$core$String$fromInt(used) + ' todos keep their text and lose the category.')));
+};
+var $elm$html$Html$Attributes$disabled = $elm$html$Html$Attributes$boolProperty('disabled');
+var $author$project$Main$paletteNames = _List_fromArray(
+	['Blue', 'Orange', 'Green', 'Pink', 'Purple', 'Teal', 'Ochre', 'Brown']);
+var $author$project$Main$viewCategoryRow = F4(
+	function (model, n, i, c) {
+		var used = $elm$core$List$length(
+			A2(
+				$elm$core$List$filter,
+				function (e) {
+					return _Utils_eq(
+						e.category,
+						$elm$core$Maybe$Just(c.id));
+				},
+				model.entries));
+		var sid = $elm$core$String$fromInt(c.id);
+		var tools = _List_fromArray(
+			[
+				A2(
+				$elm$html$Html$button,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$id('cat-up-' + sid),
+						$elm$html$Html$Attributes$class('cat-icon cat-tool'),
+						$elm$html$Html$Attributes$type_('button'),
+						$elm$html$Html$Attributes$disabled(!i),
+						A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Move ' + (c.name + ' up')),
+						$elm$html$Html$Events$onClick(
+						A2($author$project$Main$MoveCategory, c.id, -1))
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('\u2191')
+					])),
+				A2(
+				$elm$html$Html$button,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$id('cat-down-' + sid),
+						$elm$html$Html$Attributes$class('cat-icon cat-tool'),
+						$elm$html$Html$Attributes$type_('button'),
+						$elm$html$Html$Attributes$disabled(
+						_Utils_eq(i, n - 1)),
+						A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Move ' + (c.name + ' down')),
+						$elm$html$Html$Events$onClick(
+						A2($author$project$Main$MoveCategory, c.id, 1))
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('\u2193')
+					])),
+				A2(
+				$elm$html$Html$button,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$id('cat-del-' + sid),
+						$elm$html$Html$Attributes$class('cat-icon cat-tool cat-delete'),
+						$elm$html$Html$Attributes$type_('button'),
+						A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Delete ' + c.name),
+						A2(
+						$elm$html$Html$Events$stopPropagationOn,
+						'click',
+						$elm$json$Json$Decode$succeed(
+							_Utils_Tuple2(
+								$author$project$Main$AskDeleteCategory(c.id),
+								true)))
+					]),
+				_List_fromArray(
+					[
+						$elm$html$Html$text('\u00D7')
+					]))
+			]);
+		var inputId = 'cat-name-' + sid;
+		var ownsId = function (elId) {
+			return _Utils_eq(elId, inputId) || A2($elm$core$String$startsWith, inputId + '-sw-', elId);
+		};
+		var stillInside = A2(
+			$elm$json$Json$Decode$andThen,
+			function (rel) {
+				if (rel.$ === 'Just') {
+					var relId = rel.a;
+					return ownsId(relId) ? $elm$json$Json$Decode$fail('still editing') : $elm$json$Json$Decode$succeed(
+						$author$project$Main$BlurCategory(c.id));
+				} else {
+					return $elm$json$Json$Decode$succeed(
+						$author$project$Main$BlurCategory(c.id));
+				}
+			},
+			A2(
+				$elm$json$Json$Decode$andThen,
+				function (tid) {
+					return ownsId(tid) ? A2(
+						$elm$json$Json$Decode$at,
+						_List_fromArray(
+							['relatedTarget']),
+						$elm$json$Json$Decode$nullable(
+							A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$string))) : $elm$json$Json$Decode$fail('not ours');
+				},
+				A2(
+					$elm$json$Json$Decode$at,
+					_List_fromArray(
+						['target', 'id']),
+					$elm$json$Json$Decode$string)));
+		var swatch = F2(
+			function (idx, colorName) {
+				return A2(
+					$elm$html$Html$button,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$type_('button'),
+							$elm$html$Html$Attributes$id(
+							inputId + ('-sw-' + $elm$core$String$fromInt(idx))),
+							$elm$html$Html$Attributes$classList(
+							_List_fromArray(
+								[
+									_Utils_Tuple2('swatch', true),
+									_Utils_Tuple2(
+									'selected',
+									_Utils_eq(c.color, idx))
+								])),
+							A2($elm$html$Html$Attributes$attribute, 'role', 'radio'),
+							A2(
+							$elm$html$Html$Attributes$attribute,
+							'aria-checked',
+							_Utils_eq(c.color, idx) ? 'true' : 'false'),
+							A2($elm$html$Html$Attributes$attribute, 'aria-label', colorName),
+							$elm$html$Html$Attributes$title(colorName),
+							$elm$html$Html$Events$onClick(
+							A2($author$project$Main$SetCategoryColor, c.id, idx)),
+							A2(
+							$elm$html$Html$Events$preventDefaultOn,
+							'mousedown',
+							$elm$json$Json$Decode$succeed(
+								_Utils_Tuple2($author$project$Main$NoOp, true))),
+							$author$project$Main$onKeyPrevent(
+							_List_fromArray(
+								[
+									_Utils_Tuple2(
+									'Escape',
+									$author$project$Main$CancelEditCategory(c.id))
+								]))
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$span,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class(
+									'swatch-dot cat-' + $elm$core$String$fromInt(idx))
+								]),
+							_List_Nil)
+						]));
+			});
+		var draft = function () {
+			var _v1 = model.editingCat;
+			if (_v1.$ === 'Just') {
+				var _v2 = _v1.a;
+				var eid = _v2.a;
+				var raw = _v2.b;
+				return _Utils_eq(eid, c.id) ? $elm$core$Maybe$Just(raw) : $elm$core$Maybe$Nothing;
+			} else {
+				return $elm$core$Maybe$Nothing;
+			}
+		}();
+		var problem = A2(
+			$elm$core$Maybe$andThen,
+			A2(
+				$author$project$Main$nameProblem,
+				model.categories,
+				$elm$core$Maybe$Just(c.id)),
+			draft);
+		if (_Utils_eq(
+			model.confirmingCategory,
+			$elm$core$Maybe$Just(c.id))) {
+			return A2(
+				$elm$html$Html$li,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('cat-row confirming')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('confirm-delete cat-confirm'),
+								A2($elm$html$Html$Attributes$attribute, 'role', 'group'),
+								A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Delete category?')
+							]),
+						_List_fromArray(
+							[
+								A2(
+								$elm$html$Html$p,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('cat-confirm-text')
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text(
+										$author$project$Main$deleteCategoryText(used))
+									])),
+								A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('cat-confirm-actions')
+									]),
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$button,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('confirm-yes'),
+												$elm$html$Html$Attributes$id('cat-confirm'),
+												$elm$html$Html$Attributes$type_('button'),
+												$elm$html$Html$Events$onClick(
+												$author$project$Main$DeleteCategory(c.id))
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text('Delete')
+											])),
+										A2(
+										$elm$html$Html$button,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('confirm-no'),
+												$elm$html$Html$Attributes$id('cat-cancel'),
+												$elm$html$Html$Attributes$type_('button'),
+												$elm$html$Html$Events$onClick($author$project$Main$DismissConfirm)
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text('Cancel')
+											]))
+									]))
+							]))
+					]));
+		} else {
+			if (draft.$ === 'Nothing') {
+				return A3(
+					$elm$html$Html$Keyed$node,
+					'li',
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('cat-row')
+						]),
+					_List_fromArray(
+						[
+							_Utils_Tuple2(
+							'line',
+							A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('cat-line')
+									]),
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$span,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('cat-preview')
+											]),
+										_List_fromArray(
+											[
+												$author$project$Main$viewMark(
+												$elm$core$Maybe$Just(c))
+											])),
+										A2(
+										$elm$html$Html$button,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$id('cat-label-' + sid),
+												$elm$html$Html$Attributes$class('cat-label'),
+												$elm$html$Html$Attributes$type_('button'),
+												A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Edit ' + c.name),
+												$elm$html$Html$Events$onClick(
+												$author$project$Main$StartEditCategory(c.id))
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text(c.name)
+											]))
+									]))),
+							_Utils_Tuple2(
+							'tools',
+							A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('cat-tools')
+									]),
+								tools))
+						]));
+			} else {
+				var raw = draft.a;
+				return A3(
+					$elm$html$Html$Keyed$node,
+					'li',
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('cat-row editing'),
+							A2($elm$html$Html$Events$on, 'focusout', stillInside)
+						]),
+					_List_fromArray(
+						[
+							_Utils_Tuple2(
+							'line',
+							A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('cat-line')
+									]),
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$span,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('cat-preview')
+											]),
+										_List_fromArray(
+											[
+												$author$project$Main$viewMark(
+												$elm$core$Maybe$Just(c))
+											])),
+										A2(
+										$elm$html$Html$input,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$id(inputId),
+												$elm$html$Html$Attributes$class('cat-name'),
+												$elm$html$Html$Attributes$type_('text'),
+												$elm$html$Html$Attributes$value(raw),
+												$elm$html$Html$Attributes$maxlength(40),
+												$elm$html$Html$Attributes$autocomplete(false),
+												A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Category name'),
+												A2($elm$html$Html$Attributes$attribute, 'aria-describedby', 'cat-error-' + sid),
+												A2(
+												$elm$html$Html$Attributes$attribute,
+												'aria-invalid',
+												_Utils_eq(problem, $elm$core$Maybe$Nothing) ? 'false' : 'true'),
+												$elm$html$Html$Events$onInput($author$project$Main$EditCategoryName),
+												$author$project$Main$onKeyPrevent(
+												_List_fromArray(
+													[
+														_Utils_Tuple2(
+														'Enter',
+														$author$project$Main$CommitCategory(c.id)),
+														_Utils_Tuple2(
+														'Escape',
+														$author$project$Main$CancelEditCategory(c.id))
+													]))
+											]),
+										_List_Nil)
+									]))),
+							_Utils_Tuple2(
+							'edit',
+							A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('cat-edit')
+									]),
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$div,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('cat-swatches'),
+												A2($elm$html$Html$Attributes$attribute, 'role', 'radiogroup'),
+												A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Colour of ' + c.name)
+											]),
+										A2($elm$core$List$indexedMap, swatch, $author$project$Main$paletteNames)),
+										A2(
+										$elm$html$Html$p,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('cat-error'),
+												$elm$html$Html$Attributes$id('cat-error-' + sid),
+												A2($elm$html$Html$Attributes$attribute, 'aria-live', 'polite')
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text(
+												A2($elm$core$Maybe$withDefault, '', problem))
+											]))
+									]))),
+							_Utils_Tuple2(
+							'tools',
+							A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$class('cat-tools')
+									]),
+								tools))
+						]));
+			}
+		}
+	});
+var $author$project$Main$viewManage = function (model) {
+	var n = $elm$core$List$length(model.categories);
+	return _List_fromArray(
+		[
+			A2(
+			$elm$html$Html$div,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('archive-bar')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$a,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('archive-back'),
+							$elm$html$Html$Attributes$href(model.returnTo)
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text('\u2190 Back')
+						])),
+					A2(
+					$elm$html$Html$span,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('archive-count')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							$elm$core$String$fromInt(n) + (' of ' + $elm$core$String$fromInt($author$project$Main$maxCategories)))
+						]))
+				])),
+			A2(
+			$elm$html$Html$section,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('todoapp archive-card manage-card')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$h2,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('archive-month')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text('Categories')
+						])),
+					A2(
+					$elm$html$Html$Keyed$ul,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('cat-list')
+						]),
+					A2(
+						$elm$core$List$indexedMap,
+						F2(
+							function (i, c) {
+								return _Utils_Tuple2(
+									$elm$core$String$fromInt(c.id),
+									A4($author$project$Main$viewCategoryRow, model, n, i, c));
+							}),
+						model.categories)),
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('cat-add')
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$span,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('cat-preview')
+								]),
+							_List_fromArray(
+								[
+									$author$project$Main$viewMark($elm$core$Maybe$Nothing)
+								])),
+							A2(
+							$elm$html$Html$input,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$id('cat-new'),
+									$elm$html$Html$Attributes$class('cat-name'),
+									$elm$html$Html$Attributes$type_('text'),
+									$elm$html$Html$Attributes$placeholder('Add category'),
+									$elm$html$Html$Attributes$value(model.newCatName),
+									$elm$html$Html$Attributes$maxlength(40),
+									$elm$html$Html$Attributes$autocomplete(false),
+									A2($elm$html$Html$Attributes$attribute, 'aria-label', 'New category name'),
+									A2($elm$html$Html$Attributes$attribute, 'aria-describedby', 'cat-new-error'),
+									A2(
+									$elm$html$Html$Attributes$attribute,
+									'aria-invalid',
+									_Utils_eq(model.addError, $elm$core$Maybe$Nothing) ? 'false' : 'true'),
+									$elm$html$Html$Events$onInput($author$project$Main$UpdateNewCatName),
+									$author$project$Main$onKeyPrevent(
+									_List_fromArray(
+										[
+											_Utils_Tuple2('Enter', $author$project$Main$AddCategory)
+										]))
+								]),
+							_List_Nil),
+							A2(
+							$elm$html$Html$button,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('cat-add-btn'),
+									$elm$html$Html$Attributes$type_('button'),
+									$elm$html$Html$Events$onClick($author$project$Main$AddCategory)
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Add')
+								]))
+						])),
+					A2(
+					$elm$html$Html$p,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('cat-error'),
+							$elm$html$Html$Attributes$id('cat-new-error'),
+							A2($elm$html$Html$Attributes$attribute, 'aria-live', 'polite')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							A2($elm$core$Maybe$withDefault, '', model.addError))
+						]))
+				]))
+		]);
+};
 var $author$project$Main$view = function (model) {
 	return {
 		body: _List_fromArray(
@@ -9852,30 +11568,45 @@ var $author$project$Main$view = function (model) {
 								_Utils_Tuple2('todomvc-wrapper', true),
 								_Utils_Tuple2(
 								'is-empty',
-								$elm$core$List$isEmpty(model.entries) && (!_Utils_eq(model.visibility, $author$project$Main$ArchiveView)))
+								$elm$core$List$isEmpty(model.entries) && (!$author$project$Main$isSubPage(model.visibility)))
 							]))
 					]),
 				_List_fromArray(
 					[
-						_Utils_eq(model.visibility, $author$project$Main$ArchiveView) ? A2(
-						$elm$html$Html$div,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$class('archive-page')
-							]),
-						$author$project$Main$viewArchive(model)) : A2(
-						$elm$html$Html$section,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$class('todoapp')
-							]),
-						_List_fromArray(
-							[
-								A3($elm$html$Html$Lazy$lazy2, $author$project$Main$viewInput, model.field, model.newType),
-								$author$project$Main$viewMain(model),
-								$elm$core$List$isEmpty(model.entries) ? $elm$html$Html$text('') : $author$project$Main$viewControls(model)
-							])),
-						_Utils_eq(model.visibility, $author$project$Main$ArchiveView) ? $elm$html$Html$text('') : $author$project$Main$infoFooter
+						function () {
+						var _v0 = model.visibility;
+						switch (_v0.$) {
+							case 'ArchiveView':
+								return A2(
+									$elm$html$Html$div,
+									_List_fromArray(
+										[
+											$elm$html$Html$Attributes$class('archive-page')
+										]),
+									$author$project$Main$viewArchive(model));
+							case 'ManageView':
+								return A2(
+									$elm$html$Html$div,
+									_List_fromArray(
+										[
+											$elm$html$Html$Attributes$class('archive-page manage-page')
+										]),
+									$author$project$Main$viewManage(model));
+							default:
+								return A2(
+									$elm$html$Html$section,
+									_List_fromArray(
+										[
+											$elm$html$Html$Attributes$class('todoapp')
+										]),
+									_List_fromArray(
+										[
+											A4($elm$html$Html$Lazy$lazy3, $author$project$Main$viewInput, model.field, model.categories, model.newCategory),
+											$author$project$Main$viewMain(model),
+											$elm$core$List$isEmpty(model.entries) ? $elm$html$Html$text('') : $author$project$Main$viewControls(model)
+										]));
+						}
+					}()
 					]))
 			]),
 		title: 'Elm • TodoMVC'

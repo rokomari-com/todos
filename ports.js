@@ -75,6 +75,31 @@
 	document.addEventListener('pointercancel', function (e) { end('cancel', e); }, { passive: true });
 	window.addEventListener('blur', function () { end('cancel'); });
 	document.addEventListener('visibilitychange', function () { if (document.hidden) end('cancel'); });
+	// Clipboard: async API first; hidden-textarea + execCommand fallback (insecure origins, older Safari).
+	var copyFallback = function (text) {
+		var ta = document.createElement('textarea');
+		ta.value = text;
+		ta.setAttribute('readonly', '');
+		ta.style.position = 'fixed';
+		ta.style.top = '-1000px';
+		ta.style.opacity = '0';
+		var prev = document.activeElement;
+		document.body.appendChild(ta);
+		ta.select();
+		var ok = false;
+		try { ok = document.execCommand('copy'); } catch (e) {}
+		document.body.removeChild(ta);
+		if (prev && prev.focus) prev.focus();
+		return ok;
+	};
+	app.ports.copyText.subscribe(function (text) {
+		var done = function (ok) { app.ports.copied.send(!!ok); };
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(copyFallback(text)); });
+		} else {
+			done(copyFallback(text));
+		}
+	});
 	app.ports.setStorage.subscribe(function (state) {
 		try {
 			localStorage.setItem(KEY, JSON.stringify(state));

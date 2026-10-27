@@ -1,12 +1,6 @@
 port module Main exposing (..)
 
-{-| TodoMVC in Elm with todo types (Personal / Work).
-
-To add a type: add a constructor to `EntryType`, then extend `nextType`,
-`typeKey`, `typeLabel`, `typeShape` and `requireListed` (compiler-enforced,
-exhaustive cases) and add it to `allTypes`. `nextType` must cycle back to
-Personal. Add `.mark-<key>` (color) and, for a new shape, `.shape-*` in
-css/app.css.
+{-| TodoMVC in Elm with user-configurable categories (see README "Categories").
 -}
 
 import Browser
@@ -17,7 +11,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
-import Html.Lazy exposing (lazy2, lazy3, lazy4)
+import Html.Lazy exposing (lazy3, lazy5)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Process
@@ -45,6 +39,13 @@ port setStorage : Encode.Value -> Cmd msg
 port dragEvents : ({ kind : String, x : Float, y : Float, pageY : Float } -> msg) -> Sub msg
 
 
+{-| Clipboard write (ports.js: navigator.clipboard, execCommand fallback); the result comes back on `copied`. -}
+port copyText : String -> Cmd msg
+
+
+port copied : (Bool -> msg) -> Sub msg
+
+
 updateWithStorage : Msg -> Model -> ( Model, Cmd Msg )
 updateWithStorage msg model =
     let
@@ -60,7 +61,8 @@ updateWithStorage msg model =
     )
 
 
-{-| High-frequency drag bookkeeping never changes persisted state; skip the storage write. -}
+{-| Messages that never change persisted state (entries, field, uid, categories, nextCategoryId, newCategory,
+categoryFilter); skip the storage write. StartEditCategory is excluded: it commits any open draft. -}
 isTransient : Msg -> Bool
 isTransient msg =
     case msg of
@@ -85,89 +87,221 @@ isTransient msg =
         GotRects _ _ _ ->
             True
 
+        GotMenuRoom _ _ ->
+            True
+
+        CopyMonth _ _ ->
+            True
+
+        Copied _ ->
+            True
+
+        CopyReset _ ->
+            True
+
+        FocusMenuItem _ _ ->
+            True
+
+        EditCategoryName _ ->
+            True
+
+        UpdateNewCatName _ ->
+            True
+
+        ToggleMenu _ ->
+            True
+
+        OpenMenu _ ->
+            True
+
+        CloseMenu _ ->
+            True
+
+        CloseMenuRefocus _ ->
+            True
+
+        CancelEditCategory _ ->
+            True
+
+        DismissConfirm ->
+            True
+
+        SetStatus _ ->
+            True
+
+        OpenManage ->
+            True
+
+        UrlRequested _ ->
+            True
+
+        PressMove _ _ ->
+            True
+
         _ ->
             False
 
 
 
--- TYPES
-
-
-type EntryType
-    = Personal
-    | Work
-
-
-allTypes : List EntryType
-allTypes =
-    List.map requireListed [ Personal, Work ]
-
-
-{-| Compiler guard: adding a constructor breaks this case. Add new type to
-`allTypes` above when you extend it.
--}
-requireListed : EntryType -> EntryType
-requireListed t =
-    case t of
-        Personal ->
-            t
-
-        Work ->
-            t
-
-
-typeKey : EntryType -> String
-typeKey t =
-    case t of
-        Personal ->
-            "personal"
-
-        Work ->
-            "work"
+-- CATEGORIES
 
 
 type Shape
     = Circle
     | Square
+    | Diamond
+    | Triangle
 
 
-{-| Second visual channel besides color, for color-blind users.
+{-| A user category. `color` is a palette slot 0..7 (`--cat-N` in css/types.css); `shape` is the second
+visual channel for colour-blind users, assigned round-robin by creation order.
 -}
-typeShape : EntryType -> Shape
-typeShape t =
-    case t of
-        Personal ->
-            Circle
-
-        Work ->
-            Square
+type alias Category =
+    { id : Int
+    , name : String
+    , color : Int
+    , shape : Shape
+    }
 
 
-typeLabel : EntryType -> String
-typeLabel t =
-    case t of
-        Personal ->
-            "Personal"
-
-        Work ->
-            "Work"
+paletteSize : Int
+paletteSize =
+    8
 
 
-typeFromKey : String -> Maybe EntryType
-typeFromKey key =
-    List.filter (\t -> typeKey t == key) allTypes |> List.head
+paletteNames : List String
+paletteNames =
+    [ "Blue", "Orange", "Green", "Pink", "Purple", "Teal", "Ochre", "Brown" ]
 
 
-{-| Next type in the cycle; the last one wraps to Personal.
--}
-nextType : EntryType -> EntryType
-nextType t =
-    case t of
-        Personal ->
-            Work
+maxCategories : Int
+maxCategories =
+    12
 
-        Work ->
-            Personal
+
+allShapes : List Shape
+allShapes =
+    [ Circle, Square, Diamond, Triangle ]
+
+
+shapeKey : Shape -> String
+shapeKey s =
+    case s of
+        Circle ->
+            "circle"
+
+        Square ->
+            "square"
+
+        Diamond ->
+            "diamond"
+
+        Triangle ->
+            "triangle"
+
+
+shapeFromKey : String -> Maybe Shape
+shapeFromKey k =
+    List.filter (\s -> shapeKey s == k) allShapes |> List.head
+
+
+{-| Round-robin by creation order: ids are handed out sequentially from 1. -}
+shapeForId : Int -> Shape
+shapeForId id =
+    List.drop (modBy (List.length allShapes) (id - 1)) allShapes |> List.head |> Maybe.withDefault Circle
+
+
+findCategory : List Category -> Int -> Maybe Category
+findCategory cats id =
+    List.filter (\c -> c.id == id) cats |> List.head
+
+
+categoryName : List Category -> Maybe Int -> String
+categoryName cats mid =
+    mid |> Maybe.andThen (findCategory cats) |> Maybe.map .name |> Maybe.withDefault "None"
+
+
+{-| Cycle: Nothing -> first category -> ... -> last -> Nothing. An unknown id restarts at Nothing. -}
+nextCategory : List Category -> Maybe Int -> Maybe Int
+nextCategory cats current =
+    let
+        ids =
+            List.map .id cats
+    in
+    case current of
+        Nothing ->
+            List.head ids
+
+        Just id ->
+            case indexOf id ids of
+                Just i ->
+                    List.drop (i + 1) ids |> List.head
+
+                Nothing ->
+                    Nothing
+
+
+{-| Drop a category reference that no longer resolves. -}
+validCategory : List Category -> Maybe Int -> Maybe Int
+validCategory cats mid =
+    case mid of
+        Just id ->
+            if findCategory cats id == Nothing then
+                Nothing
+
+            else
+                mid
+
+        Nothing ->
+            Nothing
+
+
+validFilter : List Category -> CategoryFilter -> CategoryFilter
+validFilter cats f =
+    case f of
+        OnlyCategory id ->
+            if findCategory cats id == Nothing then
+                AnyCategory
+
+            else
+                f
+
+        NoCategory ->
+            if List.isEmpty cats then
+                AnyCategory
+
+            else
+                f
+
+        AnyCategory ->
+            f
+
+
+normName : String -> String
+normName =
+    String.trim >> String.toLower
+
+
+{-| Why a (trimmed) name is not acceptable for category `self` (Nothing = a new one), if it is not. -}
+nameProblem : List Category -> Maybe Int -> String -> Maybe String
+nameProblem cats self raw =
+    if String.isEmpty (String.trim raw) then
+        Just "Name can\u{2019}t be empty"
+
+    else if List.any (\c -> Just c.id /= self && normName c.name == normName raw) cats then
+        Just "Name already used"
+
+    else
+        Nothing
+
+
+{-| First palette slot no category uses yet (cycles once all are taken). -}
+freeColor : List Category -> Int -> Int
+freeColor cats id =
+    List.range 0 (paletteSize - 1)
+        |> List.filter (\i -> not (List.any (\c -> c.color == i) cats))
+        |> List.head
+        |> Maybe.withDefault (modBy paletteSize (id - 1))
 
 
 
@@ -179,22 +313,35 @@ type Visibility
     | Active
     | Completed
     | ArchiveView
+    | ManageView
 
 
-type TypeFilter
-    = AnyType
-    | OnlyType EntryType
+type CategoryFilter
+    = AnyCategory
+    | OnlyCategory Int
+    | NoCategory
 
 
 type alias Model =
     { entries : List Entry
     , field : String
     , uid : Int
-    , newType : EntryType
+    , categories : List Category
+    , nextCategoryId : Int
+    , newCategory : Maybe Int
     , visibility : Visibility
-    , typeFilter : TypeFilter
+    , categoryFilter : CategoryFilter
+    , newCatName : String
+    , addError : Maybe String
+    , editingCat : Maybe ( Int, String )
+    , confirmingCategory : Maybe Int
+    , returnTo : String
     , editBackup : Maybe ( Int, String )
-    , typeMenuOpen : Bool
+    , menuOpen : Maybe Which
+    , menuDown : Bool
+    , copyPending : Maybe String
+    , copyFlash : Maybe ( String, Bool )
+    , copySeq : Int
     , pressing : Maybe Press
     , pressSeq : Int
     , confirmingDelete : Maybe Int
@@ -243,20 +390,20 @@ type alias Entry =
     , completed : Bool
     , editing : Bool
     , id : Int
-    , entryType : EntryType
+    , category : Maybe Int
     , completedAt : Maybe Time.Posix
     , archivedAt : Maybe Time.Posix
     , order : Int
     }
 
 
-newEntry : String -> Int -> EntryType -> Int -> Entry
+newEntry : String -> Int -> Maybe Int -> Int -> Entry
 newEntry desc id t order =
     { description = desc
     , completed = False
     , editing = False
     , id = id
-    , entryType = t
+    , category = t
     , completedAt = Nothing
     , archivedAt = Nothing
     , order = order
@@ -275,8 +422,15 @@ visibilityFromUrl url =
         Just "/archive" ->
             ArchiveView
 
-        _ ->
+        Just "/categories" ->
+            ManageView
+
+        Just "/all" ->
             All
+
+        -- "#/", "#/active" and unknown hashes
+        _ ->
+            Active
 
 
 init : Decode.Value -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -289,11 +443,22 @@ init flags url key =
     ( { entries = withOrders saved.entries
       , field = saved.field
       , uid = Basics.max saved.uid (1 + maxId saved.entries)
-      , newType = saved.newType
+      , categories = saved.categories
+      , nextCategoryId = saved.nextCategoryId
+      , newCategory = saved.newCategory
       , visibility = visibilityFromUrl url
-      , typeFilter = saved.typeFilter
+      , categoryFilter = saved.categoryFilter
+      , newCatName = ""
+      , addError = Nothing
+      , editingCat = Nothing
+      , confirmingCategory = Nothing
+      , returnTo = "#/active"
       , editBackup = Nothing
-      , typeMenuOpen = False
+      , menuOpen = Nothing
+      , menuDown = False
+      , copyPending = Nothing
+      , copyFlash = Nothing
+      , copySeq = 0
       , pressing = Nothing
       , pressSeq = 0
       , confirmingDelete = Nothing
@@ -335,48 +500,46 @@ type alias Saved =
     { entries : List Entry
     , field : String
     , uid : Int
-    , newType : EntryType
-    , typeFilter : TypeFilter
+    , categories : List Category
+    , nextCategoryId : Int
+    , newCategory : Maybe Int
+    , categoryFilter : CategoryFilter
     }
 
 
 emptySaved : Saved
 emptySaved =
-    { entries = [], field = "", uid = 0, newType = Personal, typeFilter = AnyType }
+    { entries = []
+    , field = ""
+    , uid = 0
+    , categories = []
+    , nextCategoryId = 1
+    , newCategory = Nothing
+    , categoryFilter = AnyCategory
+    }
 
 
-typeDecoder : Decoder EntryType
-typeDecoder =
-    Decode.string
-        |> Decode.andThen
-            (\s ->
-                case typeFromKey s of
-                    Just t ->
-                        Decode.succeed t
-
-                    Nothing ->
-                        Decode.fail ("unknown type " ++ s)
-            )
-
-
-{-| Missing or unknown type decodes as Personal (old saved data).
--}
-typeOrPersonal : String -> Decoder EntryType
-typeOrPersonal name =
-    Decode.oneOf [ Decode.field name typeDecoder, Decode.succeed Personal ]
-
-
-entryDecoder : Decoder Entry
+{-| An entry plus its legacy `"type"` key (data saved before categories), if any. -}
+entryDecoder : Decoder ( Entry, Maybe String )
 entryDecoder =
-    Decode.succeed Entry
-        |> andMap (Decode.field "description" Decode.string)
-        |> andMap (Decode.field "completed" Decode.bool)
-        |> andMap (Decode.succeed False)
-        |> andMap (Decode.field "id" Decode.int)
-        |> andMap (typeOrPersonal "type")
-        |> andMap (optionalTime "completedAt")
-        |> andMap (optionalTime "archivedAt")
-        |> andMap (Decode.oneOf [ Decode.field "order" Decode.int, Decode.succeed -1 ])
+    Decode.map2 Tuple.pair
+        (Decode.succeed Entry
+            |> andMap (Decode.field "description" Decode.string)
+            |> andMap (Decode.field "completed" Decode.bool)
+            |> andMap (Decode.succeed False)
+            |> andMap (Decode.field "id" Decode.int)
+            |> andMap (lenientField "category" (Decode.nullable Decode.int) Nothing)
+            |> andMap (optionalTime "completedAt")
+            |> andMap (optionalTime "archivedAt")
+            |> andMap (lenientField "order" Decode.int -1)
+        )
+        (lenientField "type" (Decode.map Just Decode.string) Nothing)
+
+
+{-| Missing or malformed field decodes as the fallback. -}
+lenientField : String -> Decoder a -> a -> Decoder a
+lenientField name dec fallback =
+    Decode.oneOf [ Decode.field name dec, Decode.succeed fallback ]
 
 
 andMap : Decoder a -> Decoder (a -> b) -> Decoder b
@@ -394,37 +557,164 @@ optionalTime name =
         ]
 
 
-lenientEntries : Decoder (List Entry)
-lenientEntries =
-    Decode.list (Decode.oneOf [ Decode.map Just entryDecoder, Decode.succeed Nothing ])
+lenientList : Decoder a -> Decoder (List a)
+lenientList dec =
+    Decode.list (Decode.oneOf [ Decode.map Just dec, Decode.succeed Nothing ])
         |> Decode.map (List.filterMap identity)
 
 
-typeFilterDecoder : Decoder TypeFilter
-typeFilterDecoder =
-    Decode.oneOf
-        [ Decode.field "typeFilter" Decode.string
-            |> Decode.andThen
-                (\k ->
-                    case typeFromKey k of
-                        Just t ->
-                            Decode.succeed (OnlyType t)
+{-| Invalid colour falls back to a slot derived from the id; missing/unknown shape to the round-robin one. -}
+categoryDecoder : Decoder Category
+categoryDecoder =
+    Decode.map4
+        (\id name color shape ->
+            { id = id
+            , name = String.trim name
+            , color =
+                if color >= 0 && color < paletteSize then
+                    color
 
-                        Nothing ->
-                            Decode.succeed AnyType
+                else
+                    modBy paletteSize (id - 1)
+            , shape = shape |> Maybe.andThen shapeFromKey |> Maybe.withDefault (shapeForId id)
+            }
+        )
+        (Decode.field "id" Decode.int)
+        (Decode.field "name" Decode.string)
+        (lenientField "color" Decode.int -1)
+        (lenientField "shape" (Decode.map Just Decode.string) Nothing)
+
+
+{-| Drops nameless and duplicate (id or case-insensitive name) categories, caps at the limit. -}
+cleanCategories : List Category -> List Category
+cleanCategories =
+    List.foldl
+        (\c acc ->
+            if String.isEmpty c.name || List.any (\x -> x.id == c.id || normName x.name == normName c.name) acc then
+                acc
+
+            else
+                acc ++ [ c ]
+        )
+        []
+        >> List.take maxCategories
+
+
+filterDecoder : Decoder CategoryFilter
+filterDecoder =
+    Decode.oneOf
+        [ Decode.map OnlyCategory Decode.int
+        , Decode.string
+            |> Decode.map
+                (\k ->
+                    if k == "none" then
+                        NoCategory
+
+                    else
+                        AnyCategory
                 )
-        , Decode.succeed AnyType
+        , Decode.succeed AnyCategory
         ]
 
 
+legacyCategories : List Category
+legacyCategories =
+    [ { id = 1, name = "Personal", color = 0, shape = Circle }
+    , { id = 2, name = "Work", color = 1, shape = Square }
+    ]
+
+
+legacyId : String -> Maybe Int
+legacyId key =
+    case key of
+        "personal" ->
+            Just 1
+
+        "work" ->
+            Just 2
+
+        _ ->
+            Nothing
+
+
+{-| Stored `categories` wins. Without it, legacy `"type": "personal" | "work"` on any entry creates
+Personal (1) and Work (2) and maps entries, `newType` and `typeFilter`; otherwise there are no categories.
+Every reference is then checked against the category list (dangling -> none / All).
+-}
 savedDecoder : Decoder Saved
 savedDecoder =
-    Decode.map5 Saved
-        (Decode.oneOf [ Decode.field "entries" lenientEntries, Decode.succeed [] ])
-        (Decode.oneOf [ Decode.field "field" Decode.string, Decode.succeed "" ])
-        (Decode.oneOf [ Decode.field "uid" Decode.int, Decode.succeed 0 ])
-        (typeOrPersonal "newType")
-        typeFilterDecoder
+    Decode.map4
+        (\pairs field uid stored ->
+            Decode.map5
+                (\newCat filter legacyNew legacyFilter nextStored ->
+                    let
+                        legacy =
+                            stored == Nothing && List.any (\( _, t ) -> Maybe.andThen legacyId t /= Nothing) pairs
+
+                        cats =
+                            if legacy then
+                                legacyCategories
+
+                            else
+                                Maybe.withDefault [] stored
+
+                        entries =
+                            List.map
+                                (\( e, t ) ->
+                                    { e
+                                        | category =
+                                            validCategory cats
+                                                (if legacy then
+                                                    Maybe.andThen legacyId t
+
+                                                 else if stored == Nothing then
+                                                    Nothing
+
+                                                 else
+                                                    e.category
+                                                )
+                                    }
+                                )
+                                pairs
+                    in
+                    { entries = entries
+                    , field = field
+                    , uid = uid
+                    , categories = cats
+                    , nextCategoryId = Basics.max nextStored (1 + (List.map .id cats |> List.maximum |> Maybe.withDefault 0))
+                    , newCategory =
+                        validCategory cats
+                            (if legacy then
+                                Maybe.andThen legacyId legacyNew
+
+                             else
+                                newCat
+                            )
+                    , categoryFilter =
+                        validFilter cats
+                            (if legacy then
+                                legacyFilter |> Maybe.andThen legacyId |> Maybe.map OnlyCategory |> Maybe.withDefault AnyCategory
+
+                             else
+                                filter
+                            )
+                    }
+                )
+                (lenientField "newCategory" (Decode.nullable Decode.int) Nothing)
+                (lenientField "categoryFilter" filterDecoder AnyCategory)
+                (lenientField "newType" (Decode.map Just Decode.string) Nothing)
+                (lenientField "typeFilter" (Decode.map Just Decode.string) Nothing)
+                (lenientField "nextCategoryId" Decode.int 1)
+        )
+        (lenientField "entries" (lenientList entryDecoder) [])
+        (lenientField "field" Decode.string "")
+        (lenientField "uid" Decode.int 0)
+        (Decode.oneOf
+            [ Decode.field "categories" (Decode.map (Just << cleanCategories) (lenientList categoryDecoder))
+            , Decode.succeed Nothing
+            ]
+        )
+        |> Decode.andThen identity
 
 
 encodeEntry : Entry -> Encode.Value
@@ -433,7 +723,7 @@ encodeEntry e =
         [ ( "description", Encode.string e.description )
         , ( "completed", Encode.bool e.completed )
         , ( "id", Encode.int e.id )
-        , ( "type", Encode.string (typeKey e.entryType) )
+        , ( "category", maybeInt e.category )
         , ( "completedAt", encodeTime e.completedAt )
         , ( "archivedAt", encodeTime e.archivedAt )
         , ( "order", Encode.int e.order )
@@ -456,18 +746,36 @@ encodeModel m =
         [ ( "entries", Encode.list encodeEntry m.entries )
         , ( "field", Encode.string m.field )
         , ( "uid", Encode.int m.uid )
-        , ( "newType", Encode.string (typeKey m.newType) )
-        , ( "typeFilter"
-          , Encode.string
-                (case m.typeFilter of
-                    AnyType ->
-                        "all"
+        , ( "categories", Encode.list encodeCategory m.categories )
+        , ( "nextCategoryId", Encode.int m.nextCategoryId )
+        , ( "newCategory", maybeInt m.newCategory )
+        , ( "categoryFilter"
+          , case m.categoryFilter of
+                AnyCategory ->
+                    Encode.string "all"
 
-                    OnlyType t ->
-                        typeKey t
-                )
+                NoCategory ->
+                    Encode.string "none"
+
+                OnlyCategory id ->
+                    Encode.int id
           )
         ]
+
+
+encodeCategory : Category -> Encode.Value
+encodeCategory c =
+    Encode.object
+        [ ( "id", Encode.int c.id )
+        , ( "name", Encode.string c.name )
+        , ( "color", Encode.int c.color )
+        , ( "shape", Encode.string (shapeKey c.shape) )
+        ]
+
+
+maybeInt : Maybe Int -> Encode.Value
+maybeInt =
+    Maybe.map Encode.int >> Maybe.withDefault Encode.null
 
 
 
@@ -508,16 +816,32 @@ type Msg
     | CheckAllAt Bool Time.Posix
     | GotTime Time.Zone Time.Posix
     | Tick Time.Posix
-    | SetNewType EntryType
-    | CycleNewType
-    | CycleEntryType Int
-    | SetTypeFilter TypeFilter
-    | ToggleTypeMenu
-    | OpenTypeMenu
-    | CloseTypeMenu
-    | CloseTypeMenuRefocus
-    | FocusMenuItem Int
-    | ShowAll
+    | SetNewCategory (Maybe Int)
+    | CycleNewCategory
+    | CycleEntryCategory Int
+    | SetCategoryFilter CategoryFilter
+    | OpenManage
+    | UpdateNewCatName String
+    | AddCategory
+    | StartEditCategory Int
+    | EditCategoryName String
+    | CommitCategory Int
+    | BlurCategory Int
+    | CancelEditCategory Int
+    | SetCategoryColor Int Int
+    | MoveCategory Int Int
+    | AskDeleteCategory Int
+    | DeleteCategory Int
+    | ToggleMenu Which
+    | OpenMenu Which
+    | CloseMenu Which
+    | CloseMenuRefocus Which
+    | FocusMenuItem Which Int
+    | GotMenuRoom Which Float
+    | SetStatus Visibility
+    | CopyMonth String String
+    | Copied Bool
+    | CopyReset Int
     | UrlRequested Browser.UrlRequest
     | UrlChanged Url
 
@@ -594,19 +918,22 @@ sweep now =
         )
 
 
-inScope : TypeFilter -> Entry -> Bool
+inScope : CategoryFilter -> Entry -> Bool
 inScope filter e =
     case filter of
-        AnyType ->
+        AnyCategory ->
             True
 
-        OnlyType t ->
-            e.entryType == t
+        OnlyCategory id ->
+            e.category == Just id
+
+        NoCategory ->
+            e.category == Nothing
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch [ Time.every (60 * 60 * 1000) Tick, confirmSubs model, dragSubs model ]
+    Sub.batch [ Time.every (60 * 60 * 1000) Tick, confirmSubs model, dragSubs model, copied Copied ]
 
 
 dragSubs : Model -> Sub Msg
@@ -650,11 +977,11 @@ dragSubs model =
 
 confirmSubs : Model -> Sub Msg
 confirmSubs model =
-    case model.confirmingDelete of
-        Nothing ->
+    case ( model.confirmingDelete, model.confirmingCategory ) of
+        ( Nothing, Nothing ) ->
             Sub.none
 
-        Just _ ->
+        _ ->
             Sub.batch
                 [ Browser.Events.onKeyDown
                     (Decode.field "key" Decode.string
@@ -718,7 +1045,7 @@ update msg model =
                         model.entries
 
                     else
-                        model.entries ++ [ newEntry (String.trim model.field) model.uid model.newType (1 + maxOrder model.entries) ]
+                        model.entries ++ [ newEntry (String.trim model.field) model.uid (validCategory model.categories model.newCategory) (1 + maxOrder model.entries) ]
               }
             , Cmd.none
             )
@@ -1009,7 +1336,14 @@ update msg model =
                     ( model, Cmd.none )
 
         DismissConfirm ->
-            ( { model | confirmingDelete = Nothing, pressing = Nothing }, Cmd.none )
+            ( { model | confirmingDelete = Nothing, pressing = Nothing, confirmingCategory = Nothing }
+            , case model.confirmingCategory of
+                Just cid ->
+                    focusId ("cat-del-" ++ String.fromInt cid)
+
+                Nothing ->
+                    Cmd.none
+            )
 
         ArchiveCompleted ->
             ( model, withNow ArchiveCompletedAt )
@@ -1019,7 +1353,7 @@ update msg model =
                 | entries =
                     List.map
                         (\t ->
-                            if t.completed && isLive t && inScope model.typeFilter t then
+                            if t.completed && isLive t && inScope model.categoryFilter t then
                                 { t | archivedAt = Just now }
 
                             else
@@ -1080,7 +1414,7 @@ update msg model =
         CheckAllAt isCompleted now ->
             let
                 setAll t =
-                    if isLive t && inScope model.typeFilter t then
+                    if isLive t && inScope model.categoryFilter t then
                         setCompleted isCompleted now t
 
                     else
@@ -1094,50 +1428,267 @@ update msg model =
         Tick now ->
             ( { model | entries = sweep now model.entries }, Cmd.none )
 
-        SetNewType t ->
-            ( { model | newType = t }
+        SetNewCategory c ->
+            ( { model | newCategory = c }
             , focusId "new-todo"
             )
 
-        CycleNewType ->
-            ( { model | newType = nextType model.newType }, Cmd.none )
+        CycleNewCategory ->
+            ( { model | newCategory = nextCategory model.categories model.newCategory }, Cmd.none )
 
-        CycleEntryType id ->
-            ( { model | entries = mapEntry id (\t -> { t | entryType = nextType t.entryType }) model.entries }
+        CycleEntryCategory id ->
+            ( { model | entries = mapEntry id (\t -> { t | category = nextCategory model.categories t.category }) model.entries }
             , Cmd.none
             )
 
-        SetTypeFilter f ->
-            ( { model | typeFilter = f, typeMenuOpen = False }
+        SetCategoryFilter f ->
+            ( { model | categoryFilter = f, menuOpen = Nothing }
             , focusId "tf-button"
             )
 
-        ToggleTypeMenu ->
-            if model.typeMenuOpen then
-                ( { model | typeMenuOpen = False }, focusId "tf-button" )
+        OpenManage ->
+            ( { model | menuOpen = Nothing }, Nav.pushUrl model.key "#/categories" )
+
+        UpdateNewCatName str ->
+            ( { model | newCatName = str, addError = Nothing }, Cmd.none )
+
+        AddCategory ->
+            let
+                name_ =
+                    String.trim model.newCatName
+
+                id =
+                    model.nextCategoryId
+            in
+            if String.isEmpty name_ then
+                ( model, Cmd.none )
+
+            else if List.length model.categories >= maxCategories then
+                ( { model | addError = Just ("Limit is " ++ String.fromInt maxCategories ++ " categories") }, Cmd.none )
 
             else
-                ( { model | typeMenuOpen = True }
-                , focusId ("tf-item-" ++ String.fromInt (menuIndex model.typeFilter))
-                )
+                case nameProblem model.categories Nothing name_ of
+                    Just problem ->
+                        ( { model | addError = Just problem }, Cmd.none )
 
-        OpenTypeMenu ->
-            ( { model | typeMenuOpen = True }
-            , focusId ("tf-item-" ++ String.fromInt (menuIndex model.typeFilter))
+                    Nothing ->
+                        ( { model
+                            | categories =
+                                model.categories
+                                    ++ [ { id = id, name = name_, color = freeColor model.categories id, shape = shapeForId id } ]
+                            , nextCategoryId = id + 1
+                            , newCatName = ""
+                            , addError = Nothing
+                          }
+                        , focusId "cat-new"
+                        )
+
+        StartEditCategory id ->
+            -- One row at a time: a row still in edit state is committed (or, if invalid, reverted) first.
+            case findCategory model.categories id of
+                Just c ->
+                    ( { model | categories = commitDraft model, editingCat = Just ( id, c.name ), confirmingCategory = Nothing }
+                    , focusId ("cat-name-" ++ String.fromInt id)
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        EditCategoryName raw ->
+            ( { model | editingCat = Maybe.map (\( id, _ ) -> ( id, raw )) model.editingCat }, Cmd.none )
+
+        CommitCategory id ->
+            -- Enter: an invalid name keeps the row in edit state with its message.
+            case model.editingCat of
+                Just ( eid, raw ) ->
+                    if eid == id && nameProblem model.categories (Just id) raw == Nothing then
+                        ( { model | categories = commitDraft model, editingCat = Nothing }
+                        , focusId ("cat-label-" ++ String.fromInt id)
+                        )
+
+                    else
+                        ( model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        BlurCategory id ->
+            -- Leaving the row commits a valid name and drops an invalid one.
+            if Maybe.map Tuple.first model.editingCat == Just id then
+                ( { model | categories = commitDraft model, editingCat = Nothing }, Cmd.none )
+
+            else
+                ( model, Cmd.none )
+
+        CancelEditCategory id ->
+            if Maybe.map Tuple.first model.editingCat == Just id then
+                ( { model | editingCat = Nothing }, focusId ("cat-label-" ++ String.fromInt id) )
+
+            else
+                ( model, Cmd.none )
+
+        SetCategoryColor id color ->
+            ( { model
+                | categories =
+                    List.map
+                        (\c ->
+                            if c.id == id then
+                                { c | color = clamp 0 (paletteSize - 1) color }
+
+                            else
+                                c
+                        )
+                        model.categories
+              }
+            , Cmd.none
             )
 
-        CloseTypeMenu ->
-            ( { model | typeMenuOpen = False }, Cmd.none )
+        MoveCategory id delta ->
+            let
+                ids =
+                    List.map .id model.categories
 
-        CloseTypeMenuRefocus ->
-            ( { model | typeMenuOpen = False }, focusId "tf-button" )
+                n =
+                    List.length ids
+            in
+            case indexOf id ids of
+                Just i ->
+                    let
+                        j =
+                            clamp 0 (n - 1) (i + delta)
 
-        FocusMenuItem i ->
-            ( model, focusId ("tf-item-" ++ String.fromInt i) )
+                        others =
+                            List.filter (\c -> c.id /= id) model.categories
 
-        ShowAll ->
-            ( { model | typeFilter = AnyType, visibility = All, typeMenuOpen = False }
-            , Cmd.batch [ Nav.pushUrl model.key "#/", focusId "new-todo" ]
+                        moved =
+                            List.filter (\c -> c.id == id) model.categories
+
+                        -- Keep focus on the pressed arrow unless it is now disabled at the edge.
+                        target =
+                            if delta < 0 && j > 0 then
+                                "cat-up-"
+
+                            else if delta > 0 && j < n - 1 then
+                                "cat-down-"
+
+                            else if delta < 0 then
+                                "cat-down-"
+
+                            else
+                                "cat-up-"
+                    in
+                    ( { model | categories = List.take j others ++ moved ++ List.drop j others }
+                    , focusId (target ++ String.fromInt id)
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        AskDeleteCategory id ->
+            ( { model | confirmingCategory = Just id, categories = commitDraft model, editingCat = Nothing }, focusId "cat-cancel" )
+
+        DeleteCategory id ->
+            let
+                cats =
+                    List.filter (\c -> c.id /= id) model.categories
+            in
+            ( { model
+                | categories = cats
+                , entries =
+                    List.map
+                        (\e ->
+                            if e.category == Just id then
+                                { e | category = Nothing }
+
+                            else
+                                e
+                        )
+                        model.entries
+                , categoryFilter = validFilter cats model.categoryFilter
+                , newCategory = validCategory cats model.newCategory
+                , confirmingCategory = Nothing
+                , editingCat = Nothing
+              }
+            , focusId "cat-new"
+            )
+
+        ToggleMenu which ->
+            if model.menuOpen == Just which then
+                ( { model | menuOpen = Nothing }, focusId (menuPrefix which ++ "button") )
+
+            else
+                openMenu which model
+
+        OpenMenu which ->
+            openMenu which model
+
+        GotMenuRoom which above ->
+            -- Menus open upwards unless the rows (about 40px each, plus padding/separator) do not fit above.
+            let
+                rows =
+                    case which of
+                        StatusMenu ->
+                            3
+
+                        CatMenu ->
+                            -- Any + No category, plus "Edit categories…" outside the archive.
+                            List.length model.categories
+                                + 2
+                                + (if model.visibility == ArchiveView then
+                                    0
+
+                                   else
+                                    1
+                                  )
+            in
+            ( { model | menuDown = above < toFloat (40 * rows + 24) }, Cmd.none )
+
+        CloseMenu which ->
+            if model.menuOpen == Just which then
+                ( { model | menuOpen = Nothing }, Cmd.none )
+
+            else
+                ( model, Cmd.none )
+
+        CloseMenuRefocus which ->
+            ( { model | menuOpen = Nothing }, focusId (menuPrefix which ++ "button") )
+
+        FocusMenuItem which i ->
+            ( model, focusId (menuPrefix which ++ "item-" ++ String.fromInt i) )
+
+        CopyMonth month txt ->
+            -- One copy in flight at a time, so a result can't land on a different month's button.
+            if model.copyPending /= Nothing then
+                ( model, Cmd.none )
+
+            else
+                ( { model | copyPending = Just month }, copyText txt )
+
+        Copied ok ->
+            -- Each result restarts the 1.5s label; only the latest timer clears it, so rapid clicks don't flicker.
+            case model.copyPending of
+                Just month ->
+                    ( { model | copyPending = Nothing, copyFlash = Just ( month, ok ), copySeq = model.copySeq + 1 }
+                    , Process.sleep 1500 |> Task.perform (\_ -> CopyReset (model.copySeq + 1))
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        CopyReset seq ->
+            if seq == model.copySeq then
+                ( { model | copyFlash = Nothing }, Cmd.none )
+
+            else
+                ( model, Cmd.none )
+
+        SetStatus v ->
+            ( { model | menuOpen = Nothing }
+            , if v == model.visibility then
+                focusId "sm-button"
+
+              else
+                Cmd.batch [ Nav.pushUrl model.key (statusHash v), focusId "sm-button" ]
             )
 
         UrlRequested req ->
@@ -1149,7 +1700,130 @@ update msg model =
                     ( model, Nav.load href )
 
         UrlChanged url ->
-            ( { model | visibility = visibilityFromUrl url, confirmingDelete = Nothing, pressing = Nothing }, Cmd.none )
+            let
+                v =
+                    visibilityFromUrl url
+            in
+            ( { model
+                | visibility = v
+                , confirmingDelete = Nothing
+                , confirmingCategory = Nothing
+                , editingCat = Nothing
+                , addError = Nothing
+                , pressing = Nothing
+                , menuOpen = Nothing
+                , returnTo =
+                    case model.visibility of
+                        Active ->
+                            "#/active"
+
+                        Completed ->
+                            "#/completed"
+
+                        All ->
+                            "#/all"
+
+                        _ ->
+                            model.returnTo
+              }
+            , if v == ManageView && model.visibility /= ManageView then
+                case model.categories of
+                    c :: _ ->
+                        focusId ("cat-label-" ++ String.fromInt c.id)
+
+                    [] ->
+                        focusId "cat-new"
+
+              else
+                Cmd.none
+            )
+
+
+type Which
+    = StatusMenu
+    | CatMenu
+
+
+menuPrefix : Which -> String
+menuPrefix which =
+    case which of
+        StatusMenu ->
+            "sm-"
+
+        CatMenu ->
+            "tf-"
+
+
+statusOrder : List Visibility
+statusOrder =
+    [ Active, Completed, All ]
+
+
+statusHash : Visibility -> String
+statusHash v =
+    case v of
+        Completed ->
+            "#/completed"
+
+        All ->
+            "#/all"
+
+        _ ->
+            "#/active"
+
+
+openMenu : Which -> Model -> ( Model, Cmd Msg )
+openMenu which model =
+    let
+        prefix =
+            menuPrefix which
+
+        current =
+            case which of
+                StatusMenu ->
+                    indexOf model.visibility statusOrder |> Maybe.withDefault 0
+
+                CatMenu ->
+                    menuIndex model.categories model.categoryFilter
+    in
+    ( { model | menuOpen = Just which }
+    , Cmd.batch
+        [ focusId (prefix ++ "item-" ++ String.fromInt current)
+        , Dom.getElement (prefix ++ "button")
+            |> Task.attempt
+                (\r ->
+                    case r of
+                        Ok el ->
+                            GotMenuRoom which (el.element.y - el.viewport.y)
+
+                        Err _ ->
+                            NoOp
+                )
+        ]
+    )
+
+
+{-| Categories with the row in edit state applied, when its draft name is valid. -}
+commitDraft : Model -> List Category
+commitDraft model =
+    case model.editingCat of
+        Just ( id, raw ) ->
+            if nameProblem model.categories (Just id) raw == Nothing then
+                List.map
+                    (\c ->
+                        if c.id == id then
+                            { c | name = String.trim raw }
+
+                        else
+                            c
+                    )
+                    model.categories
+
+            else
+                model.categories
+
+        Nothing ->
+            model.categories
 
 
 {-| Row boxes for the visible rows, fetched once when a drag activates. -}
@@ -1203,7 +1877,7 @@ withSlot d =
 visibleList : Model -> List Entry
 visibleList model =
     model.entries
-        |> List.filter (\e -> isLive e && inScope model.typeFilter e && isVisible model.visibility e)
+        |> List.filter (\e -> isLive e && inScope model.categoryFilter e && isVisible model.visibility e)
         |> List.sortBy (\e -> ( e.order, e.id ))
 
 
@@ -1307,19 +1981,14 @@ focusId id =
     Task.attempt (\_ -> NoOp) (Dom.focus id)
 
 
-menuFilters : List TypeFilter
-menuFilters =
-    AnyType :: List.map OnlyType allTypes
+menuFilters : List Category -> List CategoryFilter
+menuFilters cats =
+    AnyCategory :: List.map (OnlyCategory << .id) cats ++ [ NoCategory ]
 
 
-menuIndex : TypeFilter -> Int
-menuIndex f =
-    menuFilters
-        |> List.indexedMap Tuple.pair
-        |> List.filter (\( _, x ) -> x == f)
-        |> List.head
-        |> Maybe.map Tuple.first
-        |> Maybe.withDefault 0
+menuIndex : List Category -> CategoryFilter -> Int
+menuIndex cats f =
+    indexOf f (menuFilters cats) |> Maybe.withDefault 0
 
 
 mapEntry : Int -> (Entry -> Entry) -> List Entry -> List Entry
@@ -1342,35 +2011,39 @@ view : Model -> Browser.Document Msg
 view model =
     { title = "Elm • TodoMVC"
     , body =
-        [ div [ classList [ ( "todomvc-wrapper", True ), ( "is-empty", List.isEmpty model.entries && model.visibility /= ArchiveView ) ] ]
-            [ if model.visibility == ArchiveView then
-                div [ class "archive-page" ] (viewArchive model)
+        [ div [ classList [ ( "todomvc-wrapper", True ), ( "is-empty", List.isEmpty model.entries && not (isSubPage model.visibility) ) ] ]
+            [ case model.visibility of
+                ArchiveView ->
+                    div [ class "archive-page" ] (viewArchive model)
 
-              else
-                section [ class "todoapp" ]
-                    [ lazy2 viewInput model.field model.newType
-                    , viewMain model
-                    , if List.isEmpty model.entries then
-                        text ""
+                ManageView ->
+                    div [ class "archive-page manage-page" ] (viewManage model)
 
-                      else
-                        viewControls model
-                    ]
-            , if model.visibility == ArchiveView then
-                text ""
+                _ ->
+                    section [ class "todoapp" ]
+                        [ lazy3 viewInput model.field model.categories model.newCategory
+                        , viewMain model
+                        , if List.isEmpty model.entries then
+                            text ""
 
-              else
-                infoFooter
+                          else
+                            viewControls model
+                        ]
             ]
         ]
     }
+
+
+isSubPage : Visibility -> Bool
+isSubPage v =
+    v == ArchiveView || v == ManageView
 
 
 viewMain : Model -> Html Msg
 viewMain model =
     let
         scoped =
-            List.filter (\e -> isLive e && inScope model.typeFilter e) model.entries
+            List.filter (\e -> isLive e && inScope model.categoryFilter e) model.entries
 
         live =
             List.filter isLive model.entries
@@ -1407,7 +2080,7 @@ viewMain model =
             ]
             [ text "Mark all as complete" ]
         , if List.isEmpty visible && not (List.isEmpty live) then
-            viewEmptyFiltered model.visibility model.typeFilter (List.length live)
+            viewEmptyFiltered model.visibility model.categories model.categoryFilter (List.length live)
 
           else
             Keyed.ul
@@ -1436,7 +2109,8 @@ viewRows model visible =
     let
         row t =
             viewKeyedEntry
-                (model.typeFilter == AnyType)
+                model.categories
+                (model.categoryFilter == AnyCategory && not (List.isEmpty model.categories))
                 (model.confirmingDelete == Just t.id)
                 (rowDrag model.drag t.id)
                 t
@@ -1715,7 +2389,7 @@ newTodoKeydown =
                 Decode.succeed ( Add, True )
 
             else if alt && (code == "KeyT" || key == "†") then
-                Decode.succeed ( CycleNewType, True )
+                Decode.succeed ( CycleNewCategory, True )
 
             else
                 Decode.fail "ignored key"
@@ -1747,32 +2421,28 @@ onEditKeydown id =
         )
 
 
-viewMark : EntryType -> Html msg
-viewMark t =
-    span
-        [ class
-            ("mark mark-"
-                ++ typeKey t
-                ++ (case typeShape t of
-                        Circle ->
-                            " shape-circle"
+viewMark : Maybe Category -> Html msg
+viewMark mc =
+    case mc of
+        Just c ->
+            span [ class ("mark cat-" ++ String.fromInt c.color ++ " shape-" ++ shapeKey c.shape), attribute "aria-hidden" "true" ] []
 
-                        Square ->
-                            " shape-square"
-                   )
-            )
-        , attribute "aria-hidden" "true"
-        ]
-        []
+        Nothing ->
+            span [ class "mark mark-none", attribute "aria-hidden" "true" ] []
+
+
+markFor : List Category -> Maybe Int -> Html msg
+markFor cats mid =
+    viewMark (Maybe.andThen (findCategory cats) mid)
 
 
 
 -- INPUT ROW
 
 
-viewInput : String -> EntryType -> Html Msg
-viewInput task newType =
-    header [ class "header" ]
+viewInput : String -> List Category -> Maybe Int -> Html Msg
+viewInput task cats newCat =
+    header [ classList [ ( "header", True ), ( "no-picker", List.isEmpty cats ) ] ]
         [ h1 [] [ text "todos" ]
         , textarea
             [ class "new-todo"
@@ -1787,34 +2457,38 @@ viewInput task newType =
             , preventDefaultOn "keydown" newTodoKeydown
             ]
             []
-        , div [ class "type-picker-wrap" ]
-            [ div
-                [ class "type-picker"
-                , attribute "role" "group"
-                , attribute "aria-label" "Type for new todos"
-                , title "Type for new todos (Alt+T)"
+        , if List.isEmpty cats then
+            text ""
+
+          else
+            div [ class "type-picker-wrap" ]
+                [ div
+                    [ class "type-picker"
+                    , attribute "role" "group"
+                    , attribute "aria-label" "Category for new todos"
+                    , title "Category for new todos (Alt+T)"
+                    ]
+                    (List.map (viewTypeChoice cats newCat) (Nothing :: List.map (Just << .id) cats))
                 ]
-                (List.map (viewTypeChoice newType) allTypes)
-            ]
         ]
 
 
-viewTypeChoice : EntryType -> EntryType -> Html Msg
-viewTypeChoice selected t =
+viewTypeChoice : List Category -> Maybe Int -> Maybe Int -> Html Msg
+viewTypeChoice cats selected choice =
     button
         [ type_ "button"
-        , classList [ ( "type-choice", True ), ( "selected", selected == t ) ]
-        , attribute "aria-label" (typeLabel t)
+        , classList [ ( "type-choice", True ), ( "selected", selected == choice ) ]
+        , attribute "aria-label" (categoryName cats choice)
         , attribute "aria-pressed"
-            (if selected == t then
+            (if selected == choice then
                 "true"
 
              else
                 "false"
             )
-        , onClick (SetNewType t)
+        , onClick (SetNewCategory choice)
         ]
-        [ viewMark t, span [ class "label" ] [ text (typeLabel t) ] ]
+        [ markFor cats choice, span [ class "label" ] [ text (categoryName cats choice) ] ]
 
 
 
@@ -1836,19 +2510,31 @@ statusWord v =
         ArchiveView ->
             ""
 
+        ManageView ->
+            ""
 
-viewEmptyFiltered : Visibility -> TypeFilter -> Int -> Html Msg
-viewEmptyFiltered visibility typeFilter total =
+
+{-| How a category scope reads inside a sentence ("No active Work todos."). -}
+scopeWord : List Category -> CategoryFilter -> String
+scopeWord cats f =
+    case f of
+        AnyCategory ->
+            ""
+
+        OnlyCategory id ->
+            categoryName cats (Just id)
+
+        NoCategory ->
+            "uncategorised"
+
+
+viewEmptyFiltered : Visibility -> List Category -> CategoryFilter -> Int -> Html Msg
+viewEmptyFiltered visibility cats filter total =
     let
         words =
             [ "No"
             , statusWord visibility
-            , case typeFilter of
-                AnyType ->
-                    ""
-
-                OnlyType t ->
-                    typeLabel t
+            , scopeWord cats filter
             , "todos."
             ]
                 |> List.filter (not << String.isEmpty)
@@ -1887,10 +2573,13 @@ isVisible visibility todo =
         ArchiveView ->
             False
 
+        ManageView ->
+            False
 
-viewKeyedEntry : Bool -> Bool -> RowDrag -> Entry -> ( String, Html Msg )
-viewKeyedEntry showMark confirming rd todo =
-    ( String.fromInt todo.id, lazy4 viewEntry showMark confirming rd todo )
+
+viewKeyedEntry : List Category -> Bool -> Bool -> RowDrag -> Entry -> ( String, Html Msg )
+viewKeyedEntry cats showMark confirming rd todo =
+    ( String.fromInt todo.id, lazy5 viewEntry cats showMark confirming rd todo )
 
 
 isFloating : RowDrag -> Bool
@@ -1903,8 +2592,8 @@ isFloating rd =
             False
 
 
-viewEntry : Bool -> Bool -> RowDrag -> Entry -> Html Msg
-viewEntry showMark confirming rd todo =
+viewEntry : List Category -> Bool -> Bool -> RowDrag -> Entry -> Html Msg
+viewEntry cats showMark confirming rd todo =
     li
         ([ classList
             [ ( "completed", todo.completed )
@@ -1957,13 +2646,24 @@ viewEntry showMark confirming rd todo =
                 ]
                 [ text todo.description ]
             , if showMark then
+                let
+                    mc =
+                        Maybe.andThen (findCategory cats) todo.category
+                in
+                -- No category: the button stays (click assigns one) but shows nothing, even on hover.
                 button
-                    [ class "row-type"
+                    [ classList [ ( "row-type", True ), ( "row-type-none", mc == Nothing ) ]
                     , type_ "button"
-                    , attribute "aria-label" ("Type: " ++ typeLabel todo.entryType ++ ". Click to change.")
-                    , onClick (CycleEntryType todo.id)
+                    , attribute "aria-label" ("Category: " ++ categoryName cats todo.category ++ ". Click to change.")
+                    , onClick (CycleEntryCategory todo.id)
                     ]
-                    [ span [ class "label" ] [ text (typeLabel todo.entryType) ], viewMark todo.entryType ]
+                    (case mc of
+                        Just c ->
+                            [ span [ class "label" ] [ text c.name ], viewMark mc ]
+
+                        Nothing ->
+                            []
+                    )
 
               else
                 text ""
@@ -2023,38 +2723,37 @@ viewArchive : Model -> List (Html Msg)
 viewArchive model =
     let
         archived =
-            List.filter (\e -> isArchived e && inScope model.typeFilter e) model.entries
+            List.filter (\e -> isArchived e && inScope model.categoryFilter e) model.entries
 
         showMark =
-            model.typeFilter == AnyType
+            model.categoryFilter == AnyCategory && not (List.isEmpty model.categories)
     in
     div [ class "archive-bar" ]
-        [ a [ class "archive-back", href "#/" ] [ text "\u{2190} Back" ]
+        [ a [ class "archive-back", href model.returnTo ] [ text "\u{2190} Back" ]
         , span [ class "archive-count", attribute "aria-live" "polite" ]
             [ text (String.fromInt (List.length archived) ++ " archived") ]
-        , div [ class "archive-bar-menu" ] [ viewTypeMenu model.typeFilter model.typeMenuOpen ]
+        , if List.isEmpty model.categories then
+            text ""
+
+          else
+            div [ class "archive-bar-menu" ] [ viewCategoryMenu False model (List.filter isArchived model.entries) ]
         ]
         :: (if List.isEmpty archived then
                 [ section [ class "todoapp archive-card" ]
                     [ p [ class "archive-empty" ]
                         [ text
-                            (case model.typeFilter of
-                                OnlyType t ->
-                                    if List.any isArchived model.entries then
-                                        "No archived " ++ typeLabel t ++ " todos."
+                            (if model.categoryFilter /= AnyCategory && List.any isArchived model.entries then
+                                "No archived " ++ scopeWord model.categories model.categoryFilter ++ " todos."
 
-                                    else
-                                        "Nothing archived yet."
-
-                                AnyType ->
-                                    "Nothing archived yet."
+                             else
+                                "Nothing archived yet."
                             )
                         ]
                     ]
                 ]
 
             else
-                List.map (viewArchiveGroup model.zone showMark model.confirmingDelete) (archiveGroups model.zone archived)
+                List.map (viewArchiveGroup model showMark) (archiveGroups model.zone archived)
            )
 
 
@@ -2153,20 +2852,84 @@ groupSorted zone sorted =
             ( label, same ) :: groupSorted zone others
 
 
-viewArchiveGroup : Time.Zone -> Bool -> Maybe Int -> ( String, List Entry ) -> Html Msg
-viewArchiveGroup zone showMark confirmingId ( label, entries ) =
+viewArchiveGroup : Model -> Bool -> ( String, List Entry ) -> Html Msg
+viewArchiveGroup model showMark ( label, entries ) =
+    let
+        flash =
+            case model.copyFlash of
+                Just ( month, ok ) ->
+                    if month == label then
+                        Just ok
+
+                    else
+                        Nothing
+
+                Nothing ->
+                    Nothing
+    in
     section [ class "todoapp archive-card" ]
         [ h2 [ class "archive-month" ] [ text label ]
+        , button
+            [ type_ "button"
+            , classList [ ( "copy-summary", True ), ( "flash", flash /= Nothing ) ]
+            , title "Copy this month as a prompt for a summary"
+            , onClick (CopyMonth label (summaryPrompt model label entries))
+            ]
+            [ span [ attribute "aria-live" "polite" ]
+                [ text
+                    (case flash of
+                        Just True ->
+                            "Copied"
+
+                        Just False ->
+                            "Copy failed"
+
+                        Nothing ->
+                            "Copy for summary"
+                    )
+                ]
+            ]
         , Keyed.ul [ class "todo-list" ]
             (List.map
-                (\e -> ( String.fromInt e.id, lazy4 viewArchiveEntry zone showMark (confirmingId == Just e.id) e ))
+                (\e -> ( String.fromInt e.id, lazy5 viewArchiveEntry model.zone model.categories showMark (model.confirmingDelete == Just e.id) e ))
                 entries
             )
         ]
 
 
-viewArchiveEntry : Time.Zone -> Bool -> Bool -> Entry -> Html Msg
-viewArchiveEntry zone showMark confirming e =
+{-| Clipboard text for one month card: a prompt line, then the card's todos as shown. With a category filter
+the category is named once in the prompt; otherwise each categorised line carries a [Category] bracket.
+-}
+summaryPrompt : Model -> String -> List Entry -> String
+summaryPrompt model month entries =
+    let
+        prompt =
+            case model.categoryFilter of
+                AnyCategory ->
+                    "Summarise what I got done in " ++ month ++ ". Group by theme, mention the categories, and keep it under 150 words."
+
+                OnlyCategory id ->
+                    "Summarise my " ++ categoryName model.categories (Just id) ++ " todos from " ++ month ++ ". Group by theme and keep it under 150 words."
+
+                NoCategory ->
+                    "Summarise my uncategorised todos from " ++ month ++ ". Group by theme and keep it under 150 words."
+
+        bracket e =
+            case ( model.categoryFilter, Maybe.andThen (findCategory model.categories) e.category ) of
+                ( AnyCategory, Just c ) ->
+                    "[" ++ c.name ++ "] "
+
+                _ ->
+                    ""
+
+        line e =
+            "- " ++ bracket e ++ String.join " " (String.words e.description) ++ " (completed " ++ shortDate model.zone e ++ ")"
+    in
+    String.join "\n" (prompt :: "" :: List.map line entries)
+
+
+viewArchiveEntry : Time.Zone -> List Category -> Bool -> Bool -> Entry -> Html Msg
+viewArchiveEntry zone cats showMark confirming e =
     li
         [ classList [ ( "archive-row", True ), ( "confirming", confirming ) ]
         , onTouchContextMenu
@@ -2179,8 +2942,8 @@ viewArchiveEntry zone showMark confirming e =
             , onPressCancel
             ]
             [ label [] [ text e.description ]
-            , if showMark then
-                span [ class "archive-mark" ] [ viewMark e.entryType ]
+            , if showMark && Maybe.andThen (findCategory cats) e.category /= Nothing then
+                span [ class "archive-mark" ] [ markFor cats e.category ]
 
               else
                 text ""
@@ -2203,31 +2966,280 @@ viewArchiveEntry zone showMark confirming e =
 
 
 
+-- MANAGE CATEGORIES VIEW
+
+
+viewManage : Model -> List (Html Msg)
+viewManage model =
+    let
+        n =
+            List.length model.categories
+    in
+    [ div [ class "archive-bar" ]
+        [ a [ class "archive-back", href model.returnTo ] [ text "\u{2190} Back" ]
+        , span [ class "archive-count" ] [ text (String.fromInt n ++ " of " ++ String.fromInt maxCategories) ]
+        ]
+    , section [ class "todoapp archive-card manage-card" ]
+        [ h2 [ class "archive-month" ] [ text "Categories" ]
+        , Keyed.ul [ class "cat-list" ]
+            (List.indexedMap (\i c -> ( String.fromInt c.id, viewCategoryRow model n i c )) model.categories)
+        , div [ class "cat-add" ]
+            [ span [ class "cat-preview" ] [ viewMark Nothing ]
+            , input
+                [ id "cat-new"
+                , class "cat-name"
+                , type_ "text"
+                , placeholder "Add category"
+                , value model.newCatName
+                , maxlength 40
+                , autocomplete False
+                , attribute "aria-label" "New category name"
+                , attribute "aria-describedby" "cat-new-error"
+                , attribute "aria-invalid"
+                    (if model.addError == Nothing then
+                        "false"
+
+                     else
+                        "true"
+                    )
+                , onInput UpdateNewCatName
+                , onKeyPrevent [ ( "Enter", AddCategory ) ]
+                ]
+                []
+            , button [ class "cat-add-btn", type_ "button", onClick AddCategory ] [ text "Add" ]
+            ]
+        , p [ class "cat-error", id "cat-new-error", attribute "aria-live" "polite" ]
+            [ text (Maybe.withDefault "" model.addError) ]
+        ]
+    ]
+
+
+{-| A category row. At rest: mark + name (a button; click / Enter edits) and hover-revealed ↑ ↓ ×.
+Editing (one row at a time): the name becomes a text input and the colour strip appears under it.
+Focus moving between the input and the swatches keeps the row in edit state.
+-}
+viewCategoryRow : Model -> Int -> Int -> Category -> Html Msg
+viewCategoryRow model n i c =
+    let
+        sid =
+            String.fromInt c.id
+
+        inputId =
+            "cat-name-" ++ sid
+
+        draft =
+            case model.editingCat of
+                Just ( eid, raw ) ->
+                    if eid == c.id then
+                        Just raw
+
+                    else
+                        Nothing
+
+                Nothing ->
+                    Nothing
+
+        problem =
+            draft |> Maybe.andThen (nameProblem model.categories (Just c.id))
+
+        used =
+            List.length (List.filter (\e -> e.category == Just c.id) model.entries)
+
+        ownsId elId =
+            elId == inputId || String.startsWith (inputId ++ "-sw-") elId
+
+        -- Only focus leaving the input / swatches counts; the name button's blur while it is swapped
+        -- for the input (it bubbles to this row) must not end the edit it just started.
+        stillInside =
+            Decode.at [ "target", "id" ] Decode.string
+                |> Decode.andThen
+                    (\tid ->
+                        if ownsId tid then
+                            Decode.at [ "relatedTarget" ] (Decode.nullable (Decode.field "id" Decode.string))
+
+                        else
+                            Decode.fail "not ours"
+                    )
+                |> Decode.andThen
+                    (\rel ->
+                        case rel of
+                            Just relId ->
+                                if ownsId relId then
+                                    Decode.fail "still editing"
+
+                                else
+                                    Decode.succeed (BlurCategory c.id)
+
+                            Nothing ->
+                                Decode.succeed (BlurCategory c.id)
+                    )
+
+        swatch idx colorName =
+            button
+                [ type_ "button"
+                , id (inputId ++ "-sw-" ++ String.fromInt idx)
+                , classList [ ( "swatch", True ), ( "selected", c.color == idx ) ]
+                , attribute "role" "radio"
+                , attribute "aria-checked"
+                    (if c.color == idx then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                , attribute "aria-label" colorName
+                , title colorName
+                , onClick (SetCategoryColor c.id idx)
+                , preventDefaultOn "mousedown" (Decode.succeed ( NoOp, True ))
+                , onKeyPrevent [ ( "Escape", CancelEditCategory c.id ) ]
+                ]
+                [ span [ class ("swatch-dot cat-" ++ String.fromInt idx) ] [] ]
+
+        tools =
+            [ button
+                [ id ("cat-up-" ++ sid)
+                , class "cat-icon cat-tool"
+                , type_ "button"
+                , disabled (i == 0)
+                , attribute "aria-label" ("Move " ++ c.name ++ " up")
+                , onClick (MoveCategory c.id -1)
+                ]
+                [ text "\u{2191}" ]
+            , button
+                [ id ("cat-down-" ++ sid)
+                , class "cat-icon cat-tool"
+                , type_ "button"
+                , disabled (i == n - 1)
+                , attribute "aria-label" ("Move " ++ c.name ++ " down")
+                , onClick (MoveCategory c.id 1)
+                ]
+                [ text "\u{2193}" ]
+            , button
+                [ id ("cat-del-" ++ sid)
+                , class "cat-icon cat-tool cat-delete"
+                , type_ "button"
+                , attribute "aria-label" ("Delete " ++ c.name)
+                , stopPropagationOn "click" (Decode.succeed ( AskDeleteCategory c.id, True ))
+                ]
+                [ text "\u{00D7}" ]
+            ]
+    in
+    if model.confirmingCategory == Just c.id then
+        li [ class "cat-row confirming" ]
+            [ div [ class "confirm-delete cat-confirm", attribute "role" "group", attribute "aria-label" "Delete category?" ]
+                [ p [ class "cat-confirm-text" ] [ text (deleteCategoryText used) ]
+                , div [ class "cat-confirm-actions" ]
+                    [ button [ class "confirm-yes", id "cat-confirm", type_ "button", onClick (DeleteCategory c.id) ] [ text "Delete" ]
+                    , button [ class "confirm-no", id "cat-cancel", type_ "button", onClick DismissConfirm ] [ text "Cancel" ]
+                    ]
+                ]
+            ]
+
+    else
+        case draft of
+            Nothing ->
+                Keyed.node "li"
+                    [ class "cat-row" ]
+                    [ ( "line", div [ class "cat-line" ]
+                        [ span [ class "cat-preview" ] [ viewMark (Just c) ]
+                        , button
+                            [ id ("cat-label-" ++ sid)
+                            , class "cat-label"
+                            , type_ "button"
+                            , attribute "aria-label" ("Edit " ++ c.name)
+                            , onClick (StartEditCategory c.id)
+                            ]
+                            [ text c.name ]
+                        ]
+                      )
+                    , ( "tools", div [ class "cat-tools" ] tools )
+                    ]
+
+            Just raw ->
+                Keyed.node "li"
+                    [ class "cat-row editing", on "focusout" stillInside ]
+                    [ ( "line", div [ class "cat-line" ]
+                        [ span [ class "cat-preview" ] [ viewMark (Just c) ]
+                        , input
+                                [ id inputId
+                                , class "cat-name"
+                                , type_ "text"
+                                , value raw
+                                , maxlength 40
+                                , autocomplete False
+                                , attribute "aria-label" "Category name"
+                                , attribute "aria-describedby" ("cat-error-" ++ sid)
+                                , attribute "aria-invalid"
+                                    (if problem == Nothing then
+                                        "false"
+
+                                     else
+                                        "true"
+                                    )
+                                , onInput EditCategoryName
+                                , onKeyPrevent [ ( "Enter", CommitCategory c.id ), ( "Escape", CancelEditCategory c.id ) ]
+                                ]
+                                []
+                        ]
+                      )
+                    -- One keyed child for everything edit-only: Elm's keyed diff only detects a single removed
+                    -- node per step, so two siblings disappearing at once would recreate the tools (losing focus).
+                    , ( "edit"
+                      , div [ class "cat-edit" ]
+                            [ div [ class "cat-swatches", attribute "role" "radiogroup", attribute "aria-label" ("Colour of " ++ c.name) ]
+                                (List.indexedMap swatch paletteNames)
+                            , p [ class "cat-error", id ("cat-error-" ++ sid), attribute "aria-live" "polite" ]
+                                [ text (Maybe.withDefault "" problem) ]
+                            ]
+                      )
+
+                    -- After the swatches in DOM order so Tab goes input -> colours -> tools; placed top-right by CSS.
+                    , ( "tools", div [ class "cat-tools" ] tools )
+                    ]
+
+
+deleteCategoryText : Int -> String
+deleteCategoryText used =
+    if used == 0 then
+        "Delete category? No todos use it."
+
+    else if used == 1 then
+        "Delete category? Its 1 todo keeps its text and loses the category."
+
+    else
+        "Delete category? Its " ++ String.fromInt used ++ " todos keep their text and lose the category."
+
+
+
 -- FOOTER
 
 
+{-| Footer: a status menu and a category menu, centred; "Archive completed" only in the Completed view. -}
 viewControls : Model -> Html Msg
 viewControls model =
     let
         scoped =
-            List.filter (\e -> isLive e && inScope model.typeFilter e) model.entries
+            List.filter (\e -> isLive e && inScope model.categoryFilter e) model.entries
 
         archivedCount =
-            List.length (List.filter (\e -> isArchived e && inScope model.typeFilter e) model.entries)
+            List.length (List.filter (\e -> isArchived e && inScope model.categoryFilter e) model.entries)
 
         completed =
             List.length (List.filter .completed scoped)
 
-        left =
-            List.length scoped - completed
-
-        hidden_ =
-            List.length (List.filter isLive model.entries) - List.length (List.filter (isVisible model.visibility) scoped)
+        statusScoped =
+            List.filter (\e -> isLive e && isVisible model.visibility e) model.entries
     in
     footer [ class "footer" ]
-        [ lazy3 viewCount left (not (List.isEmpty scoped)) hidden_
-        , viewFilters model
-        , if completed > 0 then
+        [ div [ class "footer-menus" ]
+            [ viewStatusMenu model scoped
+            , if List.isEmpty model.categories then
+                a [ class "add-categories", href "#/categories" ] [ text "Add categories\u{2026}" ]
+
+              else
+                viewCategoryMenu True model statusScoped
+            ]
+        , if model.visibility == Completed && completed > 0 then
             button [ type_ "button", class "clear-completed", onClick ArchiveCompleted ] [ text "Archive completed" ]
 
           else
@@ -2240,175 +3252,240 @@ viewControls model =
         ]
 
 
-viewCount : Int -> Bool -> Int -> Html Msg
-viewCount left anyInScope hidden_ =
-    span
-        [ class "todo-count"
-        , attribute "aria-live" "polite"
-        ]
-        ((if left == 0 && anyInScope then
-            [ text "All done" ]
+statusName : Visibility -> String
+statusName v =
+    case v of
+        Completed ->
+            "Completed"
 
-          else
-            [ strong [] [ text (String.fromInt left) ], text " left" ]
-         )
-            ++ (if hidden_ > 0 then
-                    [ text ", "
-                    , button
-                        [ type_ "button"
-                        , class "hidden-hint"
-                        , title "Show all todos"
-                        , attribute "aria-label" (String.fromInt hidden_ ++ " hidden. Show all todos")
-                        , onClick ShowAll
-                        ]
-                        [ text (String.fromInt hidden_ ++ " hidden") ]
-                    ]
+        All ->
+            "All"
 
-                else
-                    []
-               )
-        )
+        _ ->
+            "Active"
 
 
-viewFilters : Model -> Html Msg
-viewFilters model =
-    ul [ class "filters" ]
-        [ statusLink "#/" "All" (model.visibility == All)
-        , text " "
-        , statusLink "#/active" "Active" (model.visibility == Active)
-        , text " "
-        , statusLink "#/completed" "Completed" (model.visibility == Completed)
-        , text " "
-        , li [ class "type-filter-item" ] [ viewTypeMenu model.typeFilter model.typeMenuOpen ]
-        ]
-
-
-statusLink : String -> String -> Bool -> Html Msg
-statusLink uri name_ isSelected =
-    li []
-        [ a
-            [ href uri
-            , classList [ ( "selected", isSelected ) ]
-            , attribute "aria-current"
-                (if isSelected then
-                    "page"
-
-                 else
-                    "false"
-                )
-            ]
-            [ text name_ ]
-        ]
-
-
-filterLabel : TypeFilter -> String
-filterLabel f =
-    case f of
-        AnyType ->
-            "All types"
-
-        OnlyType t ->
-            typeLabel t
-
-
-viewTypeMenu : TypeFilter -> Bool -> Html Msg
-viewTypeMenu current open =
+{-| Status menu; counts are within the current category scope (`scoped`). -}
+viewStatusMenu : Model -> List Entry -> Html Msg
+viewStatusMenu model scoped =
     let
-        buttonContent =
-            case current of
-                AnyType ->
-                    [ text "All types" ]
+        row v =
+            { content = [ text (statusName v) ]
+            , count = Just (List.length (List.filter (isVisible v) scoped))
+            , selected = Just (model.visibility == v)
+            , pick = SetStatus v
+            , divider = False
+            }
+    in
+    viewMenu StatusMenu
+        { open = model.menuOpen == Just StatusMenu
+        , down = model.menuDown
+        , label = "Status: " ++ statusName model.visibility
+        , deviates = model.visibility /= Active
+        , buttonContent = [ text (statusName model.visibility) ]
+        , rows = List.map row statusOrder
+        }
 
-                OnlyType t ->
-                    [ viewMark t, text (typeLabel t) ]
+
+{-| Category menu; counts are within the current status scope (`base`). `withEdit` adds "Edit categories…" (footer only). -}
+viewCategoryMenu : Bool -> Model -> List Entry -> Html Msg
+viewCategoryMenu withEdit model base =
+    let
+        cats =
+            model.categories
+
+        current =
+            model.categoryFilter
+
+        content f =
+            case f of
+                AnyCategory ->
+                    [ text "Any category" ]
+
+                OnlyCategory id ->
+                    [ markFor cats (Just id), span [ class "tf-name" ] [ text (categoryName cats (Just id)) ] ]
+
+                NoCategory ->
+                    [ viewMark Nothing, text "No category" ]
+
+        row f =
+            { content = content f
+            , count = Just (List.length (List.filter (inScope f) base))
+            , selected = Just (f == current)
+            , pick = SetCategoryFilter f
+            , divider = False
+            }
+
+        edit =
+            { content = [ text "Edit categories\u{2026}" ]
+            , count = Nothing
+            , selected = Nothing
+            , pick = OpenManage
+            , divider = True
+            }
+    in
+    viewMenu CatMenu
+        { open = model.menuOpen == Just CatMenu
+        , down = model.menuDown
+        , label = "Category filter: " ++ filterLabel cats current
+        , deviates = current /= AnyCategory
+        , buttonContent = content current
+        , rows =
+            List.map row (menuFilters cats)
+                ++ (if withEdit then
+                        [ edit ]
+
+                    else
+                        []
+                   )
+        }
+
+
+filterLabel : List Category -> CategoryFilter -> String
+filterLabel cats f =
+    case f of
+        AnyCategory ->
+            "Any category"
+
+        OnlyCategory id ->
+            categoryName cats (Just id)
+
+        NoCategory ->
+            "No category"
+
+
+type alias MenuRow =
+    { content : List (Html Msg)
+    , count : Maybe Int
+    , selected : Maybe Bool
+    , pick : Msg
+    , divider : Bool
+    }
+
+
+type alias MenuSpec =
+    { open : Bool
+    , down : Bool
+    , label : String
+    , deviates : Bool
+    , buttonContent : List (Html Msg)
+    , rows : List MenuRow
+    }
+
+
+{-| Dropdown shared by the status and category menus. Ids: `<prefix>button`, `<prefix>menu`, `<prefix>item-N`.
+Enter/Space/ArrowDown open; arrows wrap, Home/End, Esc closes and refocuses the button, Tab closes.
+-}
+viewMenu : Which -> MenuSpec -> Html Msg
+viewMenu which spec =
+    let
+        prefix =
+            menuPrefix which
 
         n =
-            List.length menuFilters
+            List.length spec.rows
 
-        item i f =
-            button
-                [ type_ "button"
-                , id ("tf-item-" ++ String.fromInt i)
-                , tabindex -1
-                , classList [ ( "menu-item", True ), ( "selected", f == current ) ]
-                , attribute "role" "menuitemradio"
-                , attribute "aria-checked"
-                    (if f == current then
-                        "true"
+        item i r =
+            [ if r.divider then
+                div [ class "menu-sep", attribute "role" "separator" ] []
 
-                     else
-                        "false"
-                    )
-                , onClick (SetTypeFilter f)
-                , preventDefaultOn "mousedown" (Decode.succeed ( NoOp, True ))
-                , onKeyPrevent
-                    [ ( "ArrowDown", FocusMenuItem (modBy n (i + 1)) )
-                    , ( "ArrowUp", FocusMenuItem (modBy n (i - 1)) )
-                    , ( "Home", FocusMenuItem 0 )
-                    , ( "End", FocusMenuItem (n - 1) )
-                    , ( "Escape", CloseTypeMenuRefocus )
-                    , ( "Tab", CloseTypeMenu )
+              else
+                text ""
+            , button
+                ([ type_ "button"
+                 , id (prefix ++ "item-" ++ String.fromInt i)
+                 , tabindex -1
+                 , classList
+                    [ ( "menu-item", True )
+                    , ( "selected", r.selected == Just True )
+                    , ( "menu-edit", r.selected == Nothing )
                     ]
-                ]
-                (case f of
-                    AnyType ->
-                        [ text "All types" ]
+                 , onClick r.pick
+                 , preventDefaultOn "mousedown" (Decode.succeed ( NoOp, True ))
+                 , onKeyPrevent
+                    [ ( "ArrowDown", FocusMenuItem which (modBy n (i + 1)) )
+                    , ( "ArrowUp", FocusMenuItem which (modBy n (i - 1)) )
+                    , ( "Home", FocusMenuItem which 0 )
+                    , ( "End", FocusMenuItem which (n - 1) )
+                    , ( "Escape", CloseMenuRefocus which )
+                    , ( "Tab", CloseMenu which )
+                    ]
+                 ]
+                    ++ (case r.selected of
+                            Just sel ->
+                                [ attribute "role" "menuitemradio"
+                                , attribute "aria-checked"
+                                    (if sel then
+                                        "true"
 
-                    OnlyType t ->
-                        [ viewMark t, text (typeLabel t) ]
+                                     else
+                                        "false"
+                                    )
+                                ]
+
+                            Nothing ->
+                                [ attribute "role" "menuitem" ]
+                       )
                 )
+                (r.content
+                    ++ (case r.count of
+                            Just c ->
+                                [ span [ class "menu-count" ] [ text (String.fromInt c) ] ]
+
+                            Nothing ->
+                                []
+                       )
+                )
+            ]
 
         leavesMenu =
             Decode.at [ "relatedTarget" ] (Decode.nullable (Decode.field "id" Decode.string))
                 |> Decode.andThen
                     (\rel ->
                         case rel of
-                            Just id ->
-                                if String.startsWith "tf-" id then
+                            Just relId ->
+                                if String.startsWith prefix relId then
                                     Decode.fail "still inside"
 
                                 else
-                                    Decode.succeed CloseTypeMenu
+                                    Decode.succeed (CloseMenu which)
 
                             Nothing ->
-                                Decode.succeed CloseTypeMenu
+                                Decode.succeed (CloseMenu which)
                     )
     in
     div [ class "type-menu-wrap", on "focusout" leavesMenu ]
         [ button
             [ type_ "button"
-            , id "tf-button"
-            , classList [ ( "type-filter-button", True ), ( "active", current /= AnyType ) ]
+            , id (prefix ++ "button")
+            , classList [ ( "menu-button", True ), ( "deviates", spec.deviates ) ]
             , attribute "aria-haspopup" "menu"
-            , attribute "aria-controls" "tf-menu"
+            , attribute "aria-controls" (prefix ++ "menu")
             , attribute "aria-expanded"
-                (if open then
+                (if spec.open then
                     "true"
 
                  else
                     "false"
                 )
-            , attribute "aria-label" ("Type filter: " ++ filterLabel current)
-            , onClick ToggleTypeMenu
+            , attribute "aria-label" spec.label
+            , onClick (ToggleMenu which)
             , preventDefaultOn "mousedown" (Decode.succeed ( NoOp, True ))
             , onKeyPrevent
-                [ ( "Escape", CloseTypeMenu )
-                , ( "ArrowDown", OpenTypeMenu )
-                , ( "ArrowUp", OpenTypeMenu )
+                [ ( "Escape", CloseMenu which )
+                , ( "ArrowDown", OpenMenu which )
+                , ( "ArrowUp", OpenMenu which )
                 ]
             ]
-            (buttonContent ++ [ span [ class "caret", attribute "aria-hidden" "true" ] [] ])
-        , if open then
-            div [ class "type-menu", id "tf-menu", attribute "role" "menu" ] (List.indexedMap item menuFilters)
+            spec.buttonContent
+        , if spec.open then
+            div
+                [ classList [ ( "type-menu", True ), ( "menu-down", spec.down ) ]
+                , id (prefix ++ "menu")
+                , attribute "role" "menu"
+                ]
+                (List.concat (List.indexedMap item spec.rows))
 
           else
             text ""
-        ]
-
-
-infoFooter : Html msg
-infoFooter =
-    footer [ class "info" ]
-        [ p [ class "hint-pointer" ] [ text "Double-click to edit a todo. Drag a row (or Alt+\u{2191}/\u{2193}) to reorder. Alt+T switches the type." ]
-        , p [ class "hint-touch" ] [ text "Tap a todo to edit it. Press and hold to delete. Drag the handle to reorder." ]
         ]
