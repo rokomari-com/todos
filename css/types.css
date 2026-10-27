@@ -815,3 +815,89 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 .todo-list li:not(.completed):focus-within .row-cat:not(.row-cat-none) > .row-type .mark { opacity: 1; }
 /* Picker mark: 0.6 when revealed by input-row hover, 1 on picker hover / focus. */
 .header:hover .type-picker-wrap:not(:hover):not(:focus-within) .type-choice.selected { opacity: 0.6; }
+
+/* Gutter tab (desktop with room beside the card): on row hover / focus-within the row's surface extends past
+   the card's right edge as a tab holding that row's hover-only controls, so nothing inside the card moves.
+   Without the gutter (narrow window) or on touch, the in-row placement above applies. No motion. */
+@media (hover: hover) and (min-width: 740px) {
+	/* Todo rows: archive (completed only) then ×, 44px each. */
+	.todo-list li:not(.archive-row)::after {
+		content: '';
+		display: none;
+		position: absolute;
+		top: -1px;
+		bottom: -1px;
+		left: 100%;
+		width: 44px;
+		z-index: 0;
+		background: #fff;
+		border: 1px solid #ededed;
+		border-left: 0;
+		border-radius: 0 2px 2px 0;
+		box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
+		clip-path: inset(-8px -8px -8px 0);
+		pointer-events: auto;
+	}
+	.todo-list li.completed:not(.archive-row)::after { width: 88px; }
+	.todo-list li:not(.archive-row):hover::after,
+	.todo-list li:not(.archive-row):focus-within::after { display: block; }
+	.todo-list li.editing::after,
+	.todo-list li.confirming::after,
+	.todo-list.drag-active li::after { display: none !important; }
+
+	.todo-list li:not(.archive-row) .destroy { right: -42px; z-index: 1; }
+	.todo-list li.completed:not(.archive-row) .destroy { right: -86px; }
+	.todo-list li:not(.archive-row) .archive-item { right: -42px; z-index: 1; }
+	/* Keyboard: focus anywhere in the row reveals the tab's controls (vendored CSS shows × on :hover only). */
+	.todo-list li:not(.archive-row):focus-within .destroy { display: block; }
+	.todo-list li:not(.archive-row):focus-within .archive-item { opacity: 1; }
+	/* Hover label hugs the mark again (× is no longer beside it). */
+	.todo-list li .row-cat .row-type .label,
+	.todo-list li.completed .row-cat .row-type .label { margin-right: -6px; }
+
+	/* Manage rows: ↑ ↓ × in the tab, top-aligned (rows grow while editing). */
+	.cat-row .cat-tools {
+		top: -1px;
+		bottom: -1px;
+		right: auto;
+		left: 100%;
+		z-index: 1;
+		display: none;
+		align-items: flex-start;
+		gap: 0;
+		padding: 8px 0 0;
+		background: #fff;
+		border: 1px solid #ededed;
+		border-left: 0;
+		border-radius: 0 2px 2px 0;
+		box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
+		clip-path: inset(-8px -8px -8px 0);
+	}
+	.cat-row:hover .cat-tools,
+	.cat-row:focus-within .cat-tools,
+	.cat-row.editing .cat-tools { display: flex; }
+	.cat-row .cat-tool { width: 44px; }
+	.cat-row.confirming .cat-tools { display: none; }
+}
+/* Archive rows: Restore / Delete are wider text buttons, so their tab needs a wider gutter. */
+@media (hover: hover) and (min-width: 900px) {
+	.archive-row .archive-actions {
+		top: -1px;
+		bottom: -1px;
+		right: auto;
+		left: 100%;
+		z-index: 1;
+		display: none;
+		padding: 0 6px;
+		opacity: 1;
+		pointer-events: auto;
+		border: 1px solid #ededed;
+		border-left: 0;
+		border-radius: 0 2px 2px 0;
+		box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
+		clip-path: inset(-8px -8px -8px 0);
+	}
+	.archive-row:hover .archive-actions,
+	.archive-row:focus-within .archive-actions { display: flex; }
+	.archive-row.confirming .archive-actions { display: none; }
+}

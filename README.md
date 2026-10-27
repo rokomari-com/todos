@@ -30,6 +30,7 @@ TodoMVC (Elm 0.19.1) plus user-configurable categories. Original TodoMVC styling
 - Each category has a colour (palette slot 0..7 = `--cat-0..7` in `css/types.css`, all ≥ 3:1 on white) and a shape (circle, square, diamond, triangle, round-robin by creation order) so colour is never the only cue.
 - Storage (localStorage `elm-todo-save`): `categories: [{id, name, color, shape}]`, `nextCategoryId`, `newCategory` (id or null), `categoryFilter` (`"all"`, `"none"` or an id); each entry has `category` (id or null). Decoding is lenient: invalid categories are dropped, dangling ids become null / `"all"`.
 - Migration: if `categories` is absent and any entry has legacy `"type": "personal" | "work"`, Personal (id 1, blue, circle) and Work (id 2, orange, square) are created and entries, `newType` and `typeFilter` are mapped; entries without a type get no category. Without legacy types the list starts empty. `seed.html` writes legacy data, so it exercises this path.
+- Hover-only row controls (todo ×/archive, archive Restore/Delete, manage ↑ ↓ ×) appear in a tab past the card's right edge (no motion) on row hover or keyboard focus, so nothing inside the card moves. Narrow windows (no gutter) and touch keep them inside the row.
 
 ## Footer
 
