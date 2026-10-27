@@ -3347,7 +3347,7 @@ viewStatusMenu model scoped =
             List.length (List.filter (\e -> isArchived e && inScope model.categoryFilter e) model.entries)
 
         archivedRow =
-            { content = [ span [ class "menu-mark" ] [ icon "archive" ], span [ class "menu-label" ] [ text "Archived" ] ]
+            { content = [ span [ class "menu-label" ] [ text "Archived" ] ]
             , count = Just archivedCount
             , selected = Nothing
             , pick = OpenArchive

@@ -942,8 +942,8 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 .copy-summary,
 .archive-actions button { display: inline-flex; align-items: center; gap: 6px; }
 .menu-item.selected .menu-mark { color: #b83f45; } /* a selected row's icon matches its red label */
-/* Status menu: no status icons, so the "Archived" row's icon sits in the check column and its label lines up. */
-.type-menu.menu-status .menu-item.menu-edit { padding-left: 6px; }
+/* Status menu: words only; the "Archived" row's label lines up with the status labels (past the check column). */
+.type-menu.menu-status .menu-item.menu-edit { padding-left: 28px; }
 /* Manage rows: ↑ ↓ × inside the row at the right (no gutter tab), revealed on hover / focus-within; grey at rest. */
 .cat-row .cat-tool { color: #b3b3b3; }
 .cat-row .cat-tool:disabled { color: #e3e3e3; }

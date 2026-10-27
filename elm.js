@@ -10302,16 +10302,6 @@ var $author$project$Main$viewStatusMenu = F2(
 					$elm$html$Html$span,
 					_List_fromArray(
 						[
-							$elm$html$Html$Attributes$class('menu-mark')
-						]),
-					_List_fromArray(
-						[
-							$author$project$Main$icon('archive')
-						])),
-					A2(
-					$elm$html$Html$span,
-					_List_fromArray(
-						[
 							$elm$html$Html$Attributes$class('menu-label')
 						]),
 					_List_fromArray(
