@@ -11,7 +11,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
-import Html.Lazy exposing (lazy3, lazy5, lazy7)
+import Html.Lazy exposing (lazy3, lazy4, lazy5, lazy7)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Process
@@ -2090,7 +2090,7 @@ view model =
 
                 _ ->
                     section [ class "todoapp" ]
-                        [ lazy3 viewInput model.field model.categories model.newCategory
+                        [ lazy4 viewInput model.field model.categories model.newCategory (model.categoryFilter /= AnyCategory)
                         , viewMain model
                         , if List.isEmpty model.entries then
                             text ""
@@ -2535,9 +2535,9 @@ markFor cats mid =
 -- INPUT ROW
 
 
-viewInput : String -> List Category -> Maybe Int -> Html Msg
-viewInput task cats newCat =
-    header [ classList [ ( "header", True ), ( "no-picker", List.isEmpty cats ) ] ]
+viewInput : String -> List Category -> Maybe Int -> Bool -> Html Msg
+viewInput task cats newCat filterSet =
+    header [ classList [ ( "header", True ), ( "no-picker", List.isEmpty cats ), ( "filter-set", filterSet ) ] ]
         [ h1 [] [ text "todos" ]
         , textarea
             [ class "new-todo"

@@ -789,3 +789,10 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 .menu-item .menu-label.cat-text-6, .menu-item.selected .menu-label.cat-text-6, .cat-label.cat-text-6 { color: var(--cat-6-text); }
 .cat-text-7, .menu-button.deviates.cat-text-7, .row-type .label.cat-text-7,
 .menu-item .menu-label.cat-text-7, .menu-item.selected .menu-label.cat-text-7, .cat-label.cat-text-7 { color: var(--cat-7-text); }
+
+/* A category filter is set, so the picker already follows it: hide the collapsed mark (still focusable)
+   until the input row is hovered or the picker itself has focus (typing in the input does not reveal it). Faint on touch. */
+.header.filter-set:not(:hover) .type-picker-wrap:not(:focus-within) .type-choice.selected { opacity: 0; }
+@media (hover: none) {
+	.header.filter-set:not(:hover) .type-picker-wrap:not(:focus-within) .type-choice.selected { opacity: 0.5; }
+}
