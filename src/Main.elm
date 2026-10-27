@@ -11,7 +11,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
-import Html.Lazy exposing (lazy3, lazy4, lazy5, lazy7)
+import Html.Lazy exposing (lazy3, lazy5, lazy7)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Process
@@ -136,6 +136,9 @@ isTransient msg =
             True
 
         SetStatus _ ->
+            True
+
+        OpenArchive ->
             True
 
         OpenManage ->
@@ -869,6 +872,7 @@ type Msg
     | Batch (List Msg)
     | GotMenuRoom Which Float Float
     | SetStatus Visibility
+    | OpenArchive
     | CopyMonth String String
     | Copied Bool
     | CopyReset Int
@@ -1729,6 +1733,9 @@ update msg model =
             else
                 ( model, Cmd.none )
 
+        OpenArchive ->
+            ( { model | menuOpen = Nothing }, Nav.pushUrl model.key "#/archive" )
+
         SetStatus v ->
             ( { model | menuOpen = Nothing, noRing = pickRing StatusMenu model }
             , if v == model.visibility then
@@ -2090,7 +2097,7 @@ view model =
 
                 _ ->
                     section [ class "todoapp" ]
-                        [ lazy4 viewInput model.field model.categories model.newCategory (model.categoryFilter /= AnyCategory)
+                        [ lazy3 viewInput model.field model.categories model.newCategory
                         , viewMain model
                         , if List.isEmpty model.entries then
                             text ""
@@ -2535,9 +2542,9 @@ markFor cats mid =
 -- INPUT ROW
 
 
-viewInput : String -> List Category -> Maybe Int -> Bool -> Html Msg
-viewInput task cats newCat filterSet =
-    header [ classList [ ( "header", True ), ( "no-picker", List.isEmpty cats ), ( "filter-set", filterSet ) ] ]
+viewInput : String -> List Category -> Maybe Int -> Html Msg
+viewInput task cats newCat =
+    header [ classList [ ( "header", True ), ( "no-picker", List.isEmpty cats ) ] ]
         [ h1 [] [ text "todos" ]
         , textarea
             [ class "new-todo"
@@ -3305,9 +3312,6 @@ viewControls model =
         scoped =
             List.filter (\e -> isLive e && inScope model.categoryFilter e) model.entries
 
-        archivedCount =
-            List.length (List.filter (\e -> isArchived e && inScope model.categoryFilter e) model.entries)
-
         completed =
             List.length (List.filter .completed scoped)
 
@@ -3325,11 +3329,6 @@ viewControls model =
             ]
         , if model.visibility == Completed && completed > 0 then
             button [ type_ "button", class "clear-completed", onClick ArchiveCompleted ] [ text "Archive all" ]
-
-          else
-            text ""
-        , if archivedCount > 0 then
-            a [ class "archive-link", href "#/archive" ] [ text ("Archive \u{00B7} " ++ String.fromInt archivedCount) ]
 
           else
             text ""
@@ -3360,6 +3359,18 @@ viewStatusMenu model scoped =
             , pick = SetStatus v
             , divider = False
             }
+
+        -- Archived todos in the current category scope; the row only exists when there are some.
+        archivedCount =
+            List.length (List.filter (\e -> isArchived e && inScope model.categoryFilter e) model.entries)
+
+        archivedRow =
+            { content = [ span [ class "menu-label" ] [ text "Archived" ] ]
+            , count = Just archivedCount
+            , selected = Nothing
+            , pick = OpenArchive
+            , divider = True
+            }
     in
     viewMenu StatusMenu
         { wrapClass = ""
@@ -3370,7 +3381,14 @@ viewStatusMenu model scoped =
         , label = "Status: " ++ statusName model.visibility
         , deviates = model.visibility /= Active
         , buttonContent = [ text (statusName model.visibility) ]
-        , rows = List.map row statusOrder
+        , rows =
+            List.map row statusOrder
+                ++ (if archivedCount > 0 then
+                        [ archivedRow ]
+
+                    else
+                        []
+                   )
         }
 
 

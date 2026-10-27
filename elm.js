@@ -7038,6 +7038,8 @@ var $author$project$Main$isTransient = function (msg) {
 			return true;
 		case 'SetStatus':
 			return true;
+		case 'OpenArchive':
+			return true;
 		case 'OpenManage':
 			return true;
 		case 'UrlRequested':
@@ -8726,6 +8728,12 @@ var $author$project$Main$update = F2(
 							model,
 							{copyFlash: $elm$core$Maybe$Nothing}),
 						$elm$core$Platform$Cmd$none) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				case 'OpenArchive':
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{menuOpen: $elm$core$Maybe$Nothing}),
+						A2($elm$browser$Browser$Navigation$pushUrl, model.key, '#/archive'));
 				case 'SetStatus':
 					var v = msg.a;
 					return _Utils_Tuple2(
@@ -8843,8 +8851,8 @@ var $elm$html$Html$div = _VirtualDom_node('div');
 var $author$project$Main$isSubPage = function (v) {
 	return _Utils_eq(v, $author$project$Main$ArchiveView) || _Utils_eq(v, $author$project$Main$ManageView);
 };
-var $elm$virtual_dom$VirtualDom$lazy4 = _VirtualDom_lazy4;
-var $elm$html$Html$Lazy$lazy4 = $elm$virtual_dom$VirtualDom$lazy4;
+var $elm$virtual_dom$VirtualDom$lazy3 = _VirtualDom_lazy3;
+var $elm$html$Html$Lazy$lazy3 = $elm$virtual_dom$VirtualDom$lazy3;
 var $elm$html$Html$section = _VirtualDom_node('section');
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
@@ -10233,6 +10241,7 @@ var $author$project$Main$viewArchive = function (model) {
 };
 var $author$project$Main$ArchiveCompleted = {$: 'ArchiveCompleted'};
 var $elm$html$Html$footer = _VirtualDom_node('footer');
+var $author$project$Main$OpenArchive = {$: 'OpenArchive'};
 var $author$project$Main$SetStatus = function (a) {
 	return {$: 'SetStatus', a: a};
 };
@@ -10276,6 +10285,32 @@ var $author$project$Main$viewStatusMenu = F2(
 					_Utils_eq(model.visibility, v))
 			};
 		};
+		var archivedCount = $elm$core$List$length(
+			A2(
+				$elm$core$List$filter,
+				function (e) {
+					return $author$project$Main$isArchived(e) && A2($author$project$Main$inScope, model.categoryFilter, e);
+				},
+				model.entries));
+		var archivedRow = {
+			content: _List_fromArray(
+				[
+					A2(
+					$elm$html$Html$span,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('menu-label')
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text('Archived')
+						]))
+				]),
+			count: $elm$core$Maybe$Just(archivedCount),
+			divider: true,
+			pick: $author$project$Main$OpenArchive,
+			selected: $elm$core$Maybe$Nothing
+		};
 		return A2(
 			$author$project$Main$viewMenu,
 			$author$project$Main$StatusMenu,
@@ -10295,7 +10330,10 @@ var $author$project$Main$viewStatusMenu = F2(
 				open: _Utils_eq(
 					model.menuOpen,
 					$elm$core$Maybe$Just($author$project$Main$StatusMenu)),
-				rows: A2($elm$core$List$map, row, $author$project$Main$statusOrder),
+				rows: _Utils_ap(
+					A2($elm$core$List$map, row, $author$project$Main$statusOrder),
+					(archivedCount > 0) ? _List_fromArray(
+						[archivedRow]) : _List_Nil),
 				wrapClass: ''
 			});
 	});
@@ -10319,13 +10357,6 @@ var $author$project$Main$viewControls = function (model) {
 				return $.completed;
 			},
 			scoped));
-	var archivedCount = $elm$core$List$length(
-		A2(
-			$elm$core$List$filter,
-			function (e) {
-				return $author$project$Main$isArchived(e) && A2($author$project$Main$inScope, model.categoryFilter, e);
-			},
-			model.entries));
 	return A2(
 		$elm$html$Html$footer,
 		_List_fromArray(
@@ -10366,18 +10397,6 @@ var $author$project$Main$viewControls = function (model) {
 				_List_fromArray(
 					[
 						$elm$html$Html$text('Archive all')
-					])) : $elm$html$Html$text(''),
-				(archivedCount > 0) ? A2(
-				$elm$html$Html$a,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('archive-link'),
-						$elm$html$Html$Attributes$href('#/archive')
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text(
-						'Archive \u00B7 ' + $elm$core$String$fromInt(archivedCount))
 					])) : $elm$html$Html$text('')
 			]));
 };
@@ -10493,8 +10512,8 @@ var $author$project$Main$viewTypeChoice = F3(
 						]))
 				]));
 	});
-var $author$project$Main$viewInput = F4(
-	function (task, cats, newCat, filterSet) {
+var $author$project$Main$viewInput = F3(
+	function (task, cats, newCat) {
 		return A2(
 			$elm$html$Html$header,
 			_List_fromArray(
@@ -10505,8 +10524,7 @@ var $author$project$Main$viewInput = F4(
 							_Utils_Tuple2('header', true),
 							_Utils_Tuple2(
 							'no-picker',
-							$elm$core$List$isEmpty(cats)),
-							_Utils_Tuple2('filter-set', filterSet)
+							$elm$core$List$isEmpty(cats))
 						]))
 				]),
 			_List_fromArray(
@@ -12061,13 +12079,7 @@ var $author$project$Main$view = function (model) {
 										]),
 									_List_fromArray(
 										[
-											A5(
-											$elm$html$Html$Lazy$lazy4,
-											$author$project$Main$viewInput,
-											model.field,
-											model.categories,
-											model.newCategory,
-											!_Utils_eq(model.categoryFilter, $author$project$Main$AnyCategory)),
+											A4($elm$html$Html$Lazy$lazy3, $author$project$Main$viewInput, model.field, model.categories, model.newCategory),
 											$author$project$Main$viewMain(model),
 											$elm$core$List$isEmpty(model.entries) ? $elm$html$Html$text('') : $author$project$Main$viewControls(model)
 										]));

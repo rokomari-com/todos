@@ -386,19 +386,6 @@ html .footer .clear-completed:active {
 }
 .confirm-delete .confirm-alt { background: #fff; color: #777; border-color: #949494; }
 
-.archive-link {
-	position: fixed;
-	right: 20px;
-	bottom: 16px;
-	bottom: max(16px, env(safe-area-inset-bottom));
-	z-index: 40;
-	padding: 4px 2px;
-	font-size: 12px;
-	color: #4d4d4d;
-	text-decoration: none;
-}
-.archive-link:focus-visible { outline: 0; border-radius: 3px; box-shadow: 0 0 2px 2px #cf7d7d; }
-.archive-link:hover { color: #111; text-decoration: underline; }
 
 /* Archive view: no title; a slim bar, then one card per month */
 .archive-page { margin: 40px 0 40px; }
@@ -790,9 +777,26 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 .cat-text-7, .menu-button.deviates.cat-text-7, .row-type .label.cat-text-7,
 .menu-item .menu-label.cat-text-7, .menu-item.selected .menu-label.cat-text-7, .cat-label.cat-text-7 { color: var(--cat-7-text); }
 
-/* A category filter is set, so the picker already follows it: hide the collapsed mark (still focusable)
-   until the input row is hovered or the picker itself has focus (typing in the input does not reveal it). Faint on touch. */
-.header.filter-set:not(:hover) .type-picker-wrap:not(:focus-within) .type-choice.selected { opacity: 0; }
+/* Collapsed picker mark: hidden at rest (still focusable); shown on input-row hover or when the picker itself
+   has focus. Typing in the input does not reveal it. Faint on touch. */
+.header:not(:hover) .type-picker-wrap:not(:focus-within) .type-choice.selected { opacity: 0; }
 @media (hover: none) {
-	.header.filter-set:not(:hover) .type-picker-wrap:not(:focus-within) .type-choice.selected { opacity: 0.5; }
+	.header:not(:hover) .type-picker-wrap:not(:focus-within) .type-choice.selected { opacity: 0.5; }
 }
+
+/* Quieter checkbox rings (vendored #949494): #d9d9d9 at rest, #b3b3b3 on row hover; checked state unchanged. */
+.todo-list li .toggle:not(:checked) + label {
+	background-image: url('data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2240%22%20height%3D%2240%22%20viewBox%3D%22-10%20-18%20100%20135%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22none%22%20stroke%3D%22%23d9d9d9%22%20stroke-width%3D%223%22/%3E%3C/svg%3E');
+}
+.todo-list li:hover .toggle:not(:checked) + label {
+	background-image: url('data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2240%22%20height%3D%2240%22%20viewBox%3D%22-10%20-18%20100%20135%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22none%22%20stroke%3D%22%23b3b3b3%22%20stroke-width%3D%223%22/%3E%3C/svg%3E');
+}
+
+/* Toggle-all chevron: faint at rest; full on hover / keyboard focus, or when everything is done. */
+.toggle-all + label { opacity: 0.35; }
+.toggle-all + label:hover,
+.toggle-all:focus-visible + label,
+.toggle-all:checked + label { opacity: 1; }
+
+/* Status menu "Archived" row lines up with the status labels (no mark slot). */
+.type-menu.menu-status .menu-item.menu-edit { padding-left: 28px; }
