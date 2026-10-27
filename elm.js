@@ -9984,7 +9984,7 @@ var $author$project$Main$viewCategoryMenu = F3(
 						]),
 					_List_fromArray(
 						[
-							$elm$html$Html$text('Edit categories\u2026')
+							$elm$html$Html$text('Manage categories\u2026')
 						]))
 				]),
 			count: $elm$core$Maybe$Nothing,

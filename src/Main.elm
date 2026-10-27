@@ -3370,7 +3370,7 @@ viewStatusMenu model scoped =
         }
 
 
-{-| Category menu; counts are within the current status scope (`base`). `withEdit` adds "Edit categories…" (footer only). -}
+{-| Category menu; counts are within the current status scope (`base`). `withEdit` adds "Manage categories…" (main view only). -}
 viewCategoryMenu : Bool -> Model -> List Entry -> Html Msg
 viewCategoryMenu withEdit model base =
     let
@@ -3416,7 +3416,7 @@ viewCategoryMenu withEdit model base =
             }
 
         edit =
-            { content = [ span [ class "menu-label" ] [ text "Edit categories\u{2026}" ] ]
+            { content = [ span [ class "menu-label" ] [ text "Manage categories\u{2026}" ] ]
             , count = Nothing
             , selected = Nothing
             , pick = OpenManage
@@ -3739,7 +3739,7 @@ viewMenu which spec =
             spec.buttonContent
         , if spec.open then
             let
-                -- Choice rows scroll (more than 8); action rows (Edit categories…) stay fixed below.
+                -- Choice rows scroll (more than 8); action rows (Manage categories…) stay fixed below.
                 ( choices, actions ) =
                     List.indexedMap Tuple.pair spec.rows
                         |> List.partition (\( _, r ) -> r.selected /= Nothing)

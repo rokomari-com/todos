@@ -242,6 +242,27 @@ textarea.new-todo::placeholder { line-height: 33px; }
 .status-corner .type-menu.menu-down { top: calc(100% + 8px); bottom: auto; left: auto; right: 0; transform: none; }
 .category-dock .type-menu,
 .category-dock .type-menu.menu-down { top: auto; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); }
+/* Fixed pills and the archive bar's pill: 16px text, 34px tall; their menus 15px / 36px rows (44 on touch), 20px wider.
+   Row category menus keep the base 14px / 32px. */
+.fixed-controls .menu-button,
+.fixed-controls .add-categories,
+.archive-bar-menu .menu-button { height: 34px; padding: 0 14px; border-radius: 17px; font-size: 16px; }
+.fixed-controls .type-menu,
+.archive-bar-menu .type-menu { width: 240px; }
+.fixed-controls .type-menu.menu-status { width: 220px; }
+.fixed-controls .menu-item,
+.archive-bar-menu .menu-item { height: 36px; font-size: 15px; }
+.fixed-controls .menu-list,
+.archive-bar-menu .menu-list { max-height: 288px; } /* 8 rows before scrolling */
+@media (hover: none) {
+	.fixed-controls .menu-item,
+	.archive-bar-menu .menu-item { height: 44px; }
+	.fixed-controls .menu-list,
+	.archive-bar-menu .menu-list { max-height: 352px; }
+	.fixed-controls .menu-button::after,
+	.fixed-controls .add-categories::after,
+	.archive-bar-menu .menu-button::after { inset: -5px -2px; }
+}
 /* "html .clear-completed:active" in index.css (0,2,1) sets its own position mid-click; the :active selector here
    outranks it so the button never moves under the pointer. */
 .fixed-controls .clear-completed,
