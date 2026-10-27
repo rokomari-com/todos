@@ -536,10 +536,10 @@ html .filter-line .clear-completed:active {
 	.type-choice { padding: 0 12px; }
 }
 
-/* Card width: original 550px +10% → 605px; wide desktop 632px +10% → 696px */
-body { max-width: 605px; }
+/* Card width: 545px; wide desktop (≥800px) 626px */
+body { max-width: 545px; }
 @media (min-width: 800px) {
-	body { max-width: 696px; }
+	body { max-width: 626px; }
 }
 
 /* No todos: center the card vertically; the move animates when the first todo is added / last removed */
