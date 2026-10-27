@@ -8828,8 +8828,8 @@ var $elm$html$Html$div = _VirtualDom_node('div');
 var $author$project$Main$isSubPage = function (v) {
 	return _Utils_eq(v, $author$project$Main$ArchiveView) || _Utils_eq(v, $author$project$Main$ManageView);
 };
-var $elm$virtual_dom$VirtualDom$lazy3 = _VirtualDom_lazy3;
-var $elm$html$Html$Lazy$lazy3 = $elm$virtual_dom$VirtualDom$lazy3;
+var $elm$virtual_dom$VirtualDom$lazy4 = _VirtualDom_lazy4;
+var $elm$html$Html$Lazy$lazy4 = $elm$virtual_dom$VirtualDom$lazy4;
 var $elm$html$Html$section = _VirtualDom_node('section');
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
@@ -10416,6 +10416,14 @@ var $elm$html$Html$Attributes$boolProperty = F2(
 			$elm$json$Json$Encode$bool(bool));
 	});
 var $elm$html$Html$Attributes$autofocus = $elm$html$Html$Attributes$boolProperty('autofocus');
+var $author$project$Main$expectedNewCategory = function (filter) {
+	if (filter.$ === 'OnlyCategory') {
+		var c = filter.a;
+		return $elm$core$Maybe$Just(c);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
 var $elm$html$Html$h1 = _VirtualDom_node('h1');
 var $elm$html$Html$header = _VirtualDom_node('header');
 var $elm$html$Html$Attributes$name = $elm$html$Html$Attributes$stringProperty('name');
@@ -10517,8 +10525,8 @@ var $author$project$Main$viewTypeChoice = F3(
 						]))
 				]));
 	});
-var $author$project$Main$viewInput = F3(
-	function (task, cats, newCat) {
+var $author$project$Main$viewInput = F4(
+	function (task, cats, newCat, filter) {
 		return A2(
 			$elm$html$Html$header,
 			_List_fromArray(
@@ -10569,7 +10577,16 @@ var $author$project$Main$viewInput = F3(
 					$elm$html$Html$div,
 					_List_fromArray(
 						[
-							$elm$html$Html$Attributes$class('type-picker-wrap')
+							$elm$html$Html$Attributes$classList(
+							_List_fromArray(
+								[
+									_Utils_Tuple2('type-picker-wrap', true),
+									_Utils_Tuple2(
+									'picker-deviates',
+									!_Utils_eq(
+										newCat,
+										$author$project$Main$expectedNewCategory(filter)))
+								]))
 						]),
 					_List_fromArray(
 						[
@@ -12063,7 +12080,7 @@ var $author$project$Main$view = function (model) {
 												]),
 											_List_fromArray(
 												[
-													A4($elm$html$Html$Lazy$lazy3, $author$project$Main$viewInput, model.field, model.categories, model.newCategory),
+													A5($elm$html$Html$Lazy$lazy4, $author$project$Main$viewInput, model.field, model.categories, model.newCategory, model.categoryFilter),
 													$author$project$Main$viewMain(model)
 												])),
 											A2($elm$core$List$any, $author$project$Main$isLive, model.entries) ? $author$project$Main$viewControls(model) : $elm$html$Html$text('')

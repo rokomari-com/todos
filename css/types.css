@@ -123,7 +123,10 @@ textarea.new-todo::placeholder { line-height: 33px; }
 .type-picker-wrap:focus-within .type-choice.selected { border-color: #ce4646; }
 
 /* Rows */
-.todo-list li label { padding-right: 100px; }
+/* Label right padding = width of the controls inside the card in that state + 16px. Base: narrow desktop, no
+   gutter tab: mark (right 8, 44) + × (right 52, 40) = 92 -> 108; completed adds archive (right 94, 40) = 134 -> 150.
+   Gutter / filter-set / touch overrides below. */
+.todo-list li label { padding-right: 108px; }
 
 .row-type {
 	position: absolute;
@@ -366,7 +369,7 @@ html .filter-line .clear-completed:active {
 }
 
 /* Archive: per-row icon (completed rows, hover), overlay "Archive" button, archive view */
-.todo-list li.completed label { padding-right: 144px; }
+.todo-list li.completed label { padding-right: 150px; }
 .todo-list li .archive-item {
 	position: absolute;
 	top: 0;
@@ -396,7 +399,6 @@ html .filter-line .clear-completed:active {
 .todo-list li .archive-item:focus-visible { color: #555; }
 .todo-list li .archive-item:focus-visible { outline: 0; box-shadow: 0 0 2px 2px rgba(207, 125, 125, 0.55); border-radius: 3px; }
 .todo-list li.editing .archive-item { display: none; }
-.todo-list li.completed .row-type .label { margin-right: 38px; }
 @media (hover: none) {
 	.todo-list li .archive-item { display: none; }
 	.todo-list li.completed label { padding-right: 52px; }
@@ -821,7 +823,9 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 .todo-list li:not(.completed):hover .row-cat:not(.row-cat-none) > .row-type .mark,
 .todo-list li:not(.completed):focus-within .row-cat:not(.row-cat-none) > .row-type .mark { opacity: 1; }
 /* Picker mark: 0.6 when revealed by input-row hover, 1 on picker hover / focus. */
-.header:hover .type-picker-wrap:not(:hover):not(:focus-within) .type-choice.selected { opacity: 0.6; }
+.header:hover .type-picker-wrap:not(:hover):not(:focus-within) .type-choice.selected,
+/* Picker differs from what the filter implies: the mark stays visible at rest so the deviation shows. */
+.header:not(:hover) .type-picker-wrap.picker-deviates:not(:focus-within) .type-choice.selected { opacity: 0.6; }
 
 /* Gutter tab (desktop with room beside the card): on row hover / focus-within the row's surface extends past
    the card's right edge as a tab holding that row's hover-only controls, so nothing inside the card moves.
@@ -854,6 +858,9 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 
 	.todo-list li:not(.archive-row) .destroy { right: -42px; z-index: 1; }
 	.todo-list li.completed:not(.archive-row) .destroy { right: -86px; }
+	/* Only the mark slot (right 8, 44 wide) is inside the card: 52 + 16. */
+	.todo-list li:not(.archive-row) label,
+	.todo-list li.completed:not(.archive-row) label { padding-right: 68px; }
 	.todo-list li:not(.archive-row) .archive-item { right: -42px; z-index: 1; }
 	/* Keyboard: focus anywhere in the row reveals the tab's controls (vendored CSS shows × on :hover only). */
 	.todo-list li:not(.archive-row):focus-within .destroy { display: block; }
@@ -872,6 +879,9 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 	.main.filter-set .todo-list li.completed:not(.archive-row) .destroy { right: 10px; }
 	.main.filter-set .todo-list li:not(.archive-row) .archive-item { right: 52px; }
 	.main.filter-set .todo-list li:not(.archive-row)::after { display: none; }
+	/* No mark: × (right 10, 40) = 50 -> 66; completed adds archive (right 52, 40) = 92 -> 108. */
+	.main.filter-set .todo-list li:not(.archive-row) label { padding-right: 66px; }
+	.main.filter-set .todo-list li.completed:not(.archive-row) label { padding-right: 108px; }
 }
 /* Archive rows: Restore / Delete are wider text buttons, so their tab needs a wider gutter. */
 @media (hover: hover) and (min-width: 900px) {

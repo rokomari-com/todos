@@ -11,7 +11,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Keyed as Keyed
-import Html.Lazy exposing (lazy3, lazy5, lazy7)
+import Html.Lazy exposing (lazy3, lazy4, lazy5, lazy7)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Process
@@ -2082,7 +2082,7 @@ view model =
                 _ ->
                     div [ class "app-stack" ]
                         [ section [ class "todoapp" ]
-                            [ lazy3 viewInput model.field model.categories model.newCategory
+                            [ lazy4 viewInput model.field model.categories model.newCategory model.categoryFilter
                             , viewMain model
                             ]
                         , if List.any isLive model.entries then
@@ -2515,8 +2515,8 @@ markFor cats mid =
 -- INPUT ROW
 
 
-viewInput : String -> List Category -> Maybe Int -> Html Msg
-viewInput task cats newCat =
+viewInput : String -> List Category -> Maybe Int -> CategoryFilter -> Html Msg
+viewInput task cats newCat filter =
     header [ classList [ ( "header", True ), ( "no-picker", List.isEmpty cats ) ] ]
         [ h1 [] [ text "todos" ]
         , textarea
@@ -2539,7 +2539,7 @@ viewInput task cats newCat =
             text ""
 
           else
-            div [ class "type-picker-wrap" ]
+            div [ classList [ ( "type-picker-wrap", True ), ( "picker-deviates", newCat /= expectedNewCategory filter ) ] ]
                 [ div
                     [ class "type-picker"
                     , attribute "role" "group"
@@ -2549,6 +2549,16 @@ viewInput task cats newCat =
                     (List.map (viewTypeChoice cats newCat) (Nothing :: List.map (Just << .id) cats))
                 ]
         ]
+
+
+expectedNewCategory : CategoryFilter -> Maybe Int
+expectedNewCategory filter =
+    case filter of
+        OnlyCategory c ->
+            Just c
+
+        _ ->
+            Nothing
 
 
 viewTypeChoice : List Category -> Maybe Int -> Maybe Int -> Html Msg
