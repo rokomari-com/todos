@@ -800,3 +800,18 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 
 /* Status menu "Archived" row lines up with the status labels (no mark slot). */
 .type-menu.menu-status .menu-item.menu-edit { padding-left: 28px; }
+
+/* Row mark always in the right-most slot (lined up with the input-row picker mark). On row hover / focus-within
+   × appears immediately left of it, then the hover label: [label][×][mark] from the left. Nothing moves; touch hides ×. */
+@media (hover: hover) {
+	.todo-list li .row-cat { right: 8px; }
+	.todo-list li .destroy { right: 52px; }
+	.todo-list li .row-cat .row-type .label { margin-right: 34px; }
+	.todo-list li.completed .row-cat .row-type .label { margin-right: 76px; }
+}
+/* Dimmed marks at rest; full on row hover / focus. Completed rows keep their own lower opacity. */
+.todo-list li:not(.completed) .row-cat:not(.row-cat-none) > .row-type .mark { opacity: 0.6; }
+.todo-list li:not(.completed):hover .row-cat:not(.row-cat-none) > .row-type .mark,
+.todo-list li:not(.completed):focus-within .row-cat:not(.row-cat-none) > .row-type .mark { opacity: 1; }
+/* Picker mark: 0.6 when revealed by input-row hover, 1 on picker hover / focus. */
+.header:hover .type-picker-wrap:not(:hover):not(:focus-within) .type-choice.selected { opacity: 0.6; }
