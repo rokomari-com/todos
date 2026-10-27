@@ -10022,7 +10022,7 @@ var $author$project$Main$viewCategoryMenu = F3(
 				case 'AnyCategory':
 					return _List_fromArray(
 						[
-							$author$project$Main$viewMark($elm$core$Maybe$Nothing),
+							$author$project$Main$icon('any'),
 							$elm$html$Html$text('Any category')
 						]);
 				case 'OnlyCategory':
@@ -10070,7 +10070,7 @@ var $author$project$Main$viewCategoryMenu = F3(
 							case 'AnyCategory':
 								return _List_fromArray(
 									[
-										$author$project$Main$viewMark($elm$core$Maybe$Nothing)
+										$author$project$Main$icon('any')
 									]);
 							case 'OnlyCategory':
 								var id = f.a;
@@ -11972,7 +11972,7 @@ var $author$project$Main$viewManage = function (model) {
 								]),
 							_List_fromArray(
 								[
-									$author$project$Main$viewMark($elm$core$Maybe$Nothing)
+									$author$project$Main$icon('plus')
 								])),
 							A2(
 							$elm$html$Html$input,

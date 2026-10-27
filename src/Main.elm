@@ -3049,7 +3049,7 @@ viewManage model =
         , Keyed.ul [ class "cat-list" ]
             (List.indexedMap (\i c -> ( String.fromInt c.id, viewCategoryRow model n i c )) model.categories)
         , div [ class "cat-add" ]
-            [ span [ class "cat-preview" ] [ viewMark Nothing ]
+            [ span [ class "cat-preview" ] [ icon "plus" ]
             , input
                 [ id "cat-new"
                 , class "cat-name"
@@ -3400,7 +3400,7 @@ viewCategoryMenu withEdit model base =
         content f =
             case f of
                 AnyCategory ->
-                    [ viewMark Nothing, text "Any category" ]
+                    [ icon "any", text "Any category" ]
 
                 OnlyCategory id ->
                     [ markFor cats (Just id), span [ class "tf-name" ] [ text (categoryName cats (Just id)) ] ]
@@ -3413,7 +3413,7 @@ viewCategoryMenu withEdit model base =
             [ span [ class "menu-mark" ]
                 (case f of
                     AnyCategory ->
-                        [ viewMark Nothing ]
+                        [ icon "any" ]
 
                     OnlyCategory id ->
                         [ markFor cats (Just id) ]
