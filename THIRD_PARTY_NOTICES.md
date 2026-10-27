@@ -48,8 +48,3 @@ License: Creative Commons Attribution 4.0 International
 
 `css/base.css` is vendored unmodified from the `todomvc-common` npm package.
 Source: https://github.com/tastejs/todomvc
-
-## Noto Sans, Noto Sans Bengali — Google (SIL Open Font License 1.1)
-
-Loaded at runtime from Google Fonts (https://fonts.google.com/noto); not vendored in this repository.
-License: https://openfontlicense.org (SIL OFL 1.1).

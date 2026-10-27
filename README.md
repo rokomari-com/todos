@@ -4,9 +4,7 @@ Live: https://rokomari-com.github.io/todos/
 
 Built on [Evan Czaplicki's Elm TodoMVC](https://github.com/evancz/elm-todomvc) (BSD-3-Clause) and the [TodoMVC](https://todomvc.com) stylesheets. MIT licensed; see `LICENSE` and `THIRD_PARTY_NOTICES.md`.
 
-TodoMVC (Elm 0.19.1) plus user-configurable categories. Original TodoMVC styling is vendored in `css/` (todomvc-common 1.0.5, todomvc-app-css 2.4.3); `css/types.css` adds the category UI. No CDN at runtime except the web fonts.
-
-Fonts: text is Noto Sans + Noto Sans Bengali 300 (23px rows/input) from Google Fonts, linked in `index.html` and falling back to Helvetica; the "todos" title stays Helvetica Neue.
+TodoMVC (Elm 0.19.1) plus user-configurable categories. Original TodoMVC styling is vendored in `css/` (todomvc-common 1.0.5, todomvc-app-css 2.4.3); `css/types.css` adds the category UI. No CDN at runtime.
 
 ## Build and run
 
@@ -47,7 +45,7 @@ Fonts: text is Noto Sans + Noto Sans Bengali 300 (23px rows/input) from Google F
 - Footer "Archive all" (Completed view) archives all completed todos in the current category scope (nothing is deleted). Completed rows also get a hover archive icon (desktop) or an "Archive" button in the long-press overlay (touch).
 - Completed todos untouched for 30 days archive automatically (checked on load and hourly). Toggling or editing a completed todo resets its clock.
 - `#/archive` lists archived todos as one card per month of completion (newest first, date at the right edge, no title), with Restore (back to active) and Delete. The category filter applies. Reached from the status menu: an "Archived" row with its count, below a divider, appears only when that count is above 0.
-- Archived todos are excluded from the lists, menu counts and toggle-all.
+- Archived todos are excluded from the lists, and menu counts.
 - Each month card has "Copy for summary" (hover/focus; always faint on touch): copies an LLM prompt plus that month's shown todos ("- [Category] text (completed 20 Oct)"). With a category filter the category is named once in the prompt and brackets are dropped. Clipboard goes through the `copyText` / `copied` ports (navigator.clipboard, execCommand fallback); the label shows "Copied" or "Copy failed" for 1.5s.
 - Saved entries carry `completedAt` and `archivedAt` (epoch ms or null). Old data without them loads fine; completed entries lacking `completedAt` are stamped with the load time so nothing archives right after upgrading. Time comes from `Time.now` / `Time.here` tasks (init, each toggle/archive) and an hourly `Time.every`.
 

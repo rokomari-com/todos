@@ -7059,10 +7059,6 @@ var $author$project$Main$ArchiveItemAt = F2(
 		return {$: 'ArchiveItemAt', a: a, b: b};
 	});
 var $author$project$Main$CatMenu = {$: 'CatMenu'};
-var $author$project$Main$CheckAllAt = F2(
-	function (a, b) {
-		return {$: 'CheckAllAt', a: a, b: b};
-	});
 var $author$project$Main$CheckAt = F3(
 	function (a, b, c) {
 		return {$: 'CheckAt', a: a, b: b, c: c};
@@ -8281,25 +8277,6 @@ var $author$project$Main$update = F2(
 									id,
 									A2($author$project$Main$setCompleted, isCompleted, now),
 									model.entries)
-							}),
-						$elm$core$Platform$Cmd$none);
-				case 'CheckAll':
-					var isCompleted = msg.a;
-					return _Utils_Tuple2(
-						model,
-						$author$project$Main$withNow(
-							$author$project$Main$CheckAllAt(isCompleted)));
-				case 'CheckAllAt':
-					var isCompleted = msg.a;
-					var now = msg.b;
-					var setAll = function (t) {
-						return ($author$project$Main$isLive(t) && A2($author$project$Main$inScope, model.categoryFilter, t)) ? A3($author$project$Main$setCompleted, isCompleted, now, t) : t;
-					};
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								entries: A2($elm$core$List$map, setAll, model.entries)
 							}),
 						$elm$core$Platform$Cmd$none);
 				case 'GotTime':
@@ -10360,7 +10337,7 @@ var $author$project$Main$viewControls = function (model) {
 		$elm$html$Html$div,
 		_List_fromArray(
 			[
-				$elm$html$Html$Attributes$class('filter-line')
+				$elm$html$Html$Attributes$class('fixed-controls')
 			]),
 		_List_fromArray(
 			[
@@ -10368,11 +10345,32 @@ var $author$project$Main$viewControls = function (model) {
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('filter-menus')
+						$elm$html$Html$Attributes$class('status-corner')
 					]),
 				_List_fromArray(
 					[
-						A2($author$project$Main$viewStatusMenu, model, scoped),
+						(_Utils_eq(model.visibility, $author$project$Main$Completed) && (completed > 0)) ? A2(
+						$elm$html$Html$button,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$type_('button'),
+								$elm$html$Html$Attributes$class('clear-completed'),
+								$elm$html$Html$Events$onClick($author$project$Main$ArchiveCompleted)
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Archive all')
+							])) : $elm$html$Html$text(''),
+						A2($author$project$Main$viewStatusMenu, model, scoped)
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('category-dock')
+					]),
+				_List_fromArray(
+					[
 						$elm$core$List$isEmpty(model.categories) ? A2(
 						$elm$html$Html$a,
 						_List_fromArray(
@@ -10384,19 +10382,7 @@ var $author$project$Main$viewControls = function (model) {
 							[
 								$elm$html$Html$text('Add categories\u2026')
 							])) : A3($author$project$Main$viewCategoryMenu, true, model, statusScoped)
-					])),
-				(_Utils_eq(model.visibility, $author$project$Main$Completed) && (completed > 0)) ? A2(
-				$elm$html$Html$button,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$type_('button'),
-						$elm$html$Html$Attributes$class('clear-completed'),
-						$elm$html$Html$Events$onClick($author$project$Main$ArchiveCompleted)
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Archive all')
-					])) : $elm$html$Html$text('')
+					]))
 			]));
 };
 var $author$project$Main$UpdateField = function (a) {
@@ -10586,12 +10572,6 @@ var $author$project$Main$viewInput = F3(
 						]))
 				]));
 	});
-var $author$project$Main$CheckAll = function (a) {
-	return {$: 'CheckAll', a: a};
-};
-var $elm$html$Html$Attributes$checked = $elm$html$Html$Attributes$boolProperty('checked');
-var $elm$html$Html$Attributes$for = $elm$html$Html$Attributes$stringProperty('htmlFor');
-var $elm$html$Html$input = _VirtualDom_node('input');
 var $author$project$Main$isRowMenu = function (w) {
 	if ((w.$ === 'Just') && (w.a.$ === 'RowMenu')) {
 		return true;
@@ -10774,7 +10754,9 @@ var $author$project$Main$UpdateEntry = F2(
 	function (a, b) {
 		return {$: 'UpdateEntry', a: a, b: b};
 	});
+var $elm$html$Html$Attributes$checked = $elm$html$Html$Attributes$boolProperty('checked');
 var $elm$core$String$fromFloat = _String_fromNumber;
+var $elm$html$Html$input = _VirtualDom_node('input');
 var $author$project$Main$isFloating = function (rd) {
 	if (rd.$ === 'Floating') {
 		return true;
@@ -11300,22 +11282,10 @@ var $author$project$Main$viewRows = F2(
 	});
 var $author$project$Main$viewMain = function (model) {
 	var visible = $author$project$Main$visibleList(model);
-	var scoped = A2(
-		$elm$core$List$filter,
-		function (e) {
-			return $author$project$Main$isLive(e) && A2($author$project$Main$inScope, model.categoryFilter, e);
-		},
-		model.entries);
 	var live = A2($elm$core$List$filter, $author$project$Main$isLive, model.entries);
 	var cssVisibility = function (empty) {
 		return empty ? 'hidden' : 'visible';
 	};
-	var allCompleted = (!$elm$core$List$isEmpty(scoped)) && A2(
-		$elm$core$List$all,
-		function ($) {
-			return $.completed;
-		},
-		scoped);
 	return A2(
 		$elm$html$Html$section,
 		_List_fromArray(
@@ -11340,34 +11310,6 @@ var $author$project$Main$viewMain = function (model) {
 			]),
 		_List_fromArray(
 			[
-				A2(
-				$elm$html$Html$input,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$class('toggle-all'),
-						$elm$html$Html$Attributes$type_('checkbox'),
-						$elm$html$Html$Attributes$name('toggle'),
-						$elm$html$Html$Attributes$id('toggle-all'),
-						$elm$html$Html$Attributes$checked(allCompleted),
-						$elm$html$Html$Events$onClick(
-						$author$project$Main$CheckAll(!allCompleted))
-					]),
-				_List_Nil),
-				A2(
-				$elm$html$Html$label,
-				_List_fromArray(
-					[
-						$elm$html$Html$Attributes$for('toggle-all'),
-						A2(
-						$elm$html$Html$Attributes$style,
-						'visibility',
-						cssVisibility(
-							$elm$core$List$isEmpty(scoped)))
-					]),
-				_List_fromArray(
-					[
-						$elm$html$Html$text('Mark all as complete')
-					])),
 				($elm$core$List$isEmpty(visible) && (!$elm$core$List$isEmpty(live))) ? A4(
 				$author$project$Main$viewEmptyFiltered,
 				model.visibility,

@@ -36,7 +36,6 @@
 			new ResizeObserver(syncNew).observe(nt);
 		}
 		fit(nt);
-		document.documentElement.style.setProperty('--nt-extra', Math.max(0, nt.offsetHeight - 65) + 'px');
 	};
 	// Elm re-renders (field cleared, edit field mounted, value restored) without input events.
 	new MutationObserver(function (muts) {

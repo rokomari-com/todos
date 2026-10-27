@@ -842,8 +842,6 @@ type Msg
     | Touched Int Time.Posix
     | Check Int Bool
     | CheckAt Int Bool Time.Posix
-    | CheckAll Bool
-    | CheckAllAt Bool Time.Posix
     | GotTime Time.Zone Time.Posix
     | Tick Time.Posix
     | SetNewCategory (Maybe Int)
@@ -1454,20 +1452,6 @@ update msg model =
             ( { model | entries = mapEntry id (setCompleted isCompleted now) model.entries }
             , Cmd.none
             )
-
-        CheckAll isCompleted ->
-            ( model, withNow (CheckAllAt isCompleted) )
-
-        CheckAllAt isCompleted now ->
-            let
-                setAll t =
-                    if isLive t && inScope model.categoryFilter t then
-                        setCompleted isCompleted now t
-
-                    else
-                        t
-            in
-            ( { model | entries = List.map setAll model.entries }, Cmd.none )
 
         GotTime zone now ->
             ( { model | zone = zone, entries = model.entries |> migrate now |> sweep now }, Cmd.none )
@@ -2120,17 +2104,11 @@ isSubPage v =
 viewMain : Model -> Html Msg
 viewMain model =
     let
-        scoped =
-            List.filter (\e -> isLive e && inScope model.categoryFilter e) model.entries
-
         live =
             List.filter isLive model.entries
 
         visible =
             visibleList model
-
-        allCompleted =
-            not (List.isEmpty scoped) && List.all .completed scoped
 
         cssVisibility empty =
             if empty then
@@ -2151,21 +2129,7 @@ viewMain model =
                 "block"
             )
         ]
-        [ input
-            [ class "toggle-all"
-            , type_ "checkbox"
-            , name "toggle"
-            , id "toggle-all"
-            , checked allCompleted
-            , onClick (CheckAll (not allCompleted))
-            ]
-            []
-        , label
-            [ for "toggle-all"
-            , style "visibility" (cssVisibility (List.isEmpty scoped))
-            ]
-            [ text "Mark all as complete" ]
-        , if List.isEmpty visible && not (List.isEmpty live) then
+        [ if List.isEmpty visible && not (List.isEmpty live) then
             viewEmptyFiltered model.visibility model.categories model.categoryFilter (List.length live)
 
           else
@@ -3311,11 +3275,12 @@ deleteCategoryText used =
 
 
 
--- FILTER LINE
+-- FIXED CONTROLS
 
 
-{-| Filter line below the card, outside it: a status menu and a category menu, centred; "Archive all" at the
-right end, Completed view only.
+{-| Fixed controls, outside the card: the status menu in the viewport's top-right corner ("Archive all" just left
+of it, Completed view only) and the category menu at the bottom centre. DOM order gives Tab order: after the rows,
+"Archive all", status, category.
 -}
 viewControls : Model -> Html Msg
 viewControls model =
@@ -3329,20 +3294,22 @@ viewControls model =
         statusScoped =
             List.filter (\e -> isLive e && isVisible model.visibility e) model.entries
     in
-    div [ class "filter-line" ]
-        [ div [ class "filter-menus" ]
-            [ viewStatusMenu model scoped
-            , if List.isEmpty model.categories then
+    div [ class "fixed-controls" ]
+        [ div [ class "status-corner" ]
+            [ if model.visibility == Completed && completed > 0 then
+                button [ type_ "button", class "clear-completed", onClick ArchiveCompleted ] [ text "Archive all" ]
+
+              else
+                text ""
+            , viewStatusMenu model scoped
+            ]
+        , div [ class "category-dock" ]
+            [ if List.isEmpty model.categories then
                 a [ class "add-categories", href "#/categories" ] [ text "Add categories\u{2026}" ]
 
               else
                 viewCategoryMenu True model statusScoped
             ]
-        , if model.visibility == Completed && completed > 0 then
-            button [ type_ "button", class "clear-completed", onClick ArchiveCompleted ] [ text "Archive all" ]
-
-          else
-            text ""
         ]
 
 

@@ -67,8 +67,6 @@ textarea.new-todo { min-height: 65px; line-height: 33px; }
 textarea.new-todo::placeholder { line-height: 33px; }
 .todo-list li label { white-space: pre-wrap; }
 
-/* Chevron stays at the first line while the header grows (--nt-extra set in ports.js) */
-.toggle-all + label { top: calc(-65px - var(--nt-extra, 0px)); }
 
 .type-picker-wrap {
 	position: absolute;
@@ -218,47 +216,47 @@ textarea.new-todo::placeholder { line-height: 33px; }
 .empty-title { margin: 0; font-size: 16px; font-weight: 300; color: #757575; }
 .empty-sub { margin: 4px 0 0; font-size: 13px; color: #757575; }
 
-/* Filter line (outside the card, 12px below it): two borderless pill buttons centred under the card; grey at rest,
-   pale fill on hover / open, red text only for a non-default choice. "Archive all" at the right end, Completed view only.
-   The card ends at its last row, with only its own shadow. */
-.app-stack > .todoapp { margin-bottom: 0; }
-.filter-line {
-	position: relative;
-	display: grid;
-	grid-template-columns: 1fr auto 1fr;
-	align-items: center;
-	gap: 6px;
-	min-height: 28px;
-	margin: 12px 0 40px;
-	padding: 0 15px;
-	font-weight: 300;
-	font-size: 14px;
-	letter-spacing: .01em;
-}
-.filter-menus {
-	grid-column: 2;
-	position: relative;
-	z-index: 20;
+/* Fixed controls, outside the card. Status menu: viewport top-right, menu drops down right-aligned; "Archive all"
+   (Completed view) just left of it. Category menu: bottom centre, menu opens upward. Borderless pills, grey at rest,
+   pale fill on hover / open, red text only for a non-default choice. Direction is fixed by position, not measured. */
+.app-stack { padding-bottom: 72px; } /* the last row can scroll clear of the bottom pill */
+.fixed-controls { font-weight: 300; font-size: 14px; letter-spacing: .01em; }
+.status-corner,
+.category-dock {
+	position: fixed;
+	z-index: 40;
 	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
 	align-items: center;
 	gap: 6px;
 }
+.status-corner { top: 16px; right: 20px; }
+.category-dock { bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); }
+/* Legible where they float over the card or rows: page-colour fill behind the pills at rest. */
+.fixed-controls .menu-button,
+.fixed-controls .add-categories,
+.fixed-controls .clear-completed { background: rgba(245, 245, 245, .92); }
+.fixed-controls .menu-button:hover,
+.fixed-controls .add-categories:hover { background: #ececec; }
+.fixed-controls .menu-button[aria-expanded="true"] { background: #e9e9e9; }
+.status-corner .type-menu,
+.status-corner .type-menu.menu-down { top: calc(100% + 8px); bottom: auto; left: auto; right: 0; transform: none; }
+.category-dock .type-menu,
+.category-dock .type-menu.menu-down { top: auto; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); }
 /* "html .clear-completed:active" in index.css (0,2,1) sets its own position mid-click; the :active selector here
    outranks it so the button never moves under the pointer. */
-.filter-line .clear-completed,
-html .filter-line .clear-completed:active {
-	grid-column: 3;
-	justify-self: end;
+.fixed-controls .clear-completed,
+html .fixed-controls .clear-completed:active {
 	position: relative;
 	float: none;
+	height: 28px;
+	padding: 0 10px;
+	border-radius: 14px;
 	font-size: 14px;
 	line-height: 28px;
 	color: #777;
 	white-space: nowrap;
 }
-.filter-line .clear-completed:hover { color: #4d4d4d; text-decoration: underline; text-underline-offset: 3px; }
+.fixed-controls .clear-completed:hover { color: #4d4d4d; text-decoration: underline; text-underline-offset: 3px; }
 
 .type-menu-wrap { position: relative; display: inline-block; }
 
@@ -342,13 +340,13 @@ html .filter-line .clear-completed:active {
 	/* Pills stay 28px; an invisible halo gives a 44px tap target. Menu rows grow to 44px. */
 	.menu-button::after,
 	.add-categories::after { content: ''; position: absolute; inset: -8px -2px; }
-	.filter-line .clear-completed::after { content: ''; position: absolute; inset: -8px -6px; }
+	.fixed-controls .clear-completed::after { content: ''; position: absolute; inset: -8px -2px; }
 	.menu-item { height: 44px; }
 	.menu-list { max-height: 352px; }
 }
 @media (max-width: 480px) {
-	.filter-line { padding: 0 9px; }
-	.filter-line .type-menu { left: 0; transform: none; }
+	/* Narrow: "Archive all" drops under the status pill (right-aligned) so it clears the title; Tab order unchanged. */
+	.status-corner { right: 12px; flex-direction: column-reverse; align-items: flex-end; gap: 16px; }
 }
 
 /* Archive: per-row icon (completed rows, hover), overlay "Archive" button, archive view */
@@ -522,9 +520,10 @@ html .filter-line .clear-completed:active {
 	.type-choice { padding: 0 12px; }
 }
 
-/* Wide desktop: original card (550px) +15% → 632px */
+/* Card width: original 550px +10% → 605px; wide desktop 632px +10% → 696px */
+body { max-width: 605px; }
 @media (min-width: 800px) {
-	body { max-width: 632px; }
+	body { max-width: 696px; }
 }
 
 /* No todos: center the card vertically; the move animates when the first todo is added / last removed */
@@ -542,7 +541,6 @@ html .filter-line .clear-completed:active {
 /* Softer focus ring everywhere (vendored index.css uses solid #CF7D7D) */
 :focus,
 .toggle:focus + label,
-.toggle-all:focus + label,
 .todo-list li .edit:focus,
 .todo-list li .destroy:focus {
 	box-shadow: 0 0 2px 2px rgba(207, 125, 125, 0.55);
@@ -755,7 +753,7 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 @media (prefers-reduced-motion: reduce) {
 	.todo-list li .row-cat-none .mark-none { transition: none; }
 }
-/* An open row menu may overlap the input row (picker z 3) or the filter-line menus (z 20); lift the list above both. */
+/* An open row menu may overlap the input row (picker z 3) or the input picker; lift the list above both. */
 .main.row-menu-open { z-index: 25; }
 /* Pointer pick: the button gets focus back (a11y) but no ring; cleared on the next key or blur. */
 .no-ring:focus-visible { outline: none; box-shadow: none; }
@@ -793,11 +791,6 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 	background-image: url('data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2240%22%20height%3D%2240%22%20viewBox%3D%22-10%20-18%20100%20135%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22none%22%20stroke%3D%22%23b3b3b3%22%20stroke-width%3D%223%22/%3E%3C/svg%3E');
 }
 
-/* Toggle-all chevron: faint at rest; full on hover / keyboard focus, or when everything is done. */
-.toggle-all + label { opacity: 0.35; }
-.toggle-all + label:hover,
-.toggle-all:focus-visible + label,
-.toggle-all:checked + label { opacity: 1; }
 
 /* Status menu "Archived" row lines up with the status labels (no mark slot). */
 .type-menu.menu-status .menu-item.menu-edit { padding-left: 28px; }
@@ -901,25 +894,3 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 	.archive-row:hover .archive-actions,
 	.archive-row:focus-within .archive-actions { display: flex; }
 	.archive-row.confirming .archive-actions { display: none; }
-}
-
-/* Text font: Noto Sans + Noto Sans Bengali (Google Fonts, OFL 1.1; linked in index.html), Helvetica as fallback.
-   Rows / input / edit at 23px with the old px line-heights so the row rhythm and textarea growth stay as before.
-   The "todos" title keeps Helvetica Neue. */
-:root { --app-font: "Noto Sans", "Noto Sans Bengali", "Helvetica Neue", Helvetica, Arial, sans-serif; }
-body,
-.todoapp,
-.todoapp input,
-.todoapp textarea,
-.todoapp button,
-.todoapp input::placeholder,
-.todoapp textarea::placeholder,
-.type-menu,
-.filter-line,
-.archive-bar { font-family: var(--app-font); }
-.todoapp h1 { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
-.todo-list li { font-size: 23px; }
-.todo-list li label { line-height: 28.8px; }
-.new-todo { font-size: 23px; line-height: 33px; }
-.edit,
-.todo-list li .edit { font-size: 23px; line-height: 33.6px; }
