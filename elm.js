@@ -10240,7 +10240,6 @@ var $author$project$Main$viewArchive = function (model) {
 			A2($author$project$Main$archiveGroups, model.zone, archived)));
 };
 var $author$project$Main$ArchiveCompleted = {$: 'ArchiveCompleted'};
-var $elm$html$Html$footer = _VirtualDom_node('footer');
 var $author$project$Main$OpenArchive = {$: 'OpenArchive'};
 var $author$project$Main$SetStatus = function (a) {
 	return {$: 'SetStatus', a: a};
@@ -10358,10 +10357,10 @@ var $author$project$Main$viewControls = function (model) {
 			},
 			scoped));
 	return A2(
-		$elm$html$Html$footer,
+		$elm$html$Html$div,
 		_List_fromArray(
 			[
-				$elm$html$Html$Attributes$class('footer')
+				$elm$html$Html$Attributes$class('filter-line')
 			]),
 		_List_fromArray(
 			[
@@ -10369,7 +10368,7 @@ var $author$project$Main$viewControls = function (model) {
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('footer-menus')
+						$elm$html$Html$Attributes$class('filter-menus')
 					]),
 				_List_fromArray(
 					[
@@ -11333,7 +11332,11 @@ var $author$project$Main$viewMain = function (model) {
 				$elm$html$Html$Attributes$style,
 				'visibility',
 				cssVisibility(
-					$elm$core$List$isEmpty(model.entries)))
+					$elm$core$List$isEmpty(live))),
+				A2(
+				$elm$html$Html$Attributes$style,
+				'display',
+				$elm$core$List$isEmpty(live) ? 'none' : 'block')
 			]),
 		_List_fromArray(
 			[
@@ -12072,16 +12075,25 @@ var $author$project$Main$view = function (model) {
 									$author$project$Main$viewManage(model));
 							default:
 								return A2(
-									$elm$html$Html$section,
+									$elm$html$Html$div,
 									_List_fromArray(
 										[
-											$elm$html$Html$Attributes$class('todoapp')
+											$elm$html$Html$Attributes$class('app-stack')
 										]),
 									_List_fromArray(
 										[
-											A4($elm$html$Html$Lazy$lazy3, $author$project$Main$viewInput, model.field, model.categories, model.newCategory),
-											$author$project$Main$viewMain(model),
-											$elm$core$List$isEmpty(model.entries) ? $elm$html$Html$text('') : $author$project$Main$viewControls(model)
+											A2(
+											$elm$html$Html$section,
+											_List_fromArray(
+												[
+													$elm$html$Html$Attributes$class('todoapp')
+												]),
+											_List_fromArray(
+												[
+													A4($elm$html$Html$Lazy$lazy3, $author$project$Main$viewInput, model.field, model.categories, model.newCategory),
+													$author$project$Main$viewMain(model)
+												])),
+											A2($elm$core$List$any, $author$project$Main$isLive, model.entries) ? $author$project$Main$viewControls(model) : $elm$html$Html$text('')
 										]));
 						}
 					}()

@@ -218,41 +218,47 @@ textarea.new-todo::placeholder { line-height: 33px; }
 .empty-title { margin: 0; font-size: 16px; font-weight: 300; color: #757575; }
 .empty-sub { margin: 4px 0 0; font-size: 13px; color: #757575; }
 
-/* Footer (direction A1): two borderless pill buttons centred in a 40px row; grey at rest, pale fill on
-   hover / open, red text only for a non-default choice. "Archive all" sits at the right, Completed view only. */
-.footer {
+/* Filter line (outside the card, 12px below it): two borderless pill buttons centred under the card; grey at rest,
+   pale fill on hover / open, red text only for a non-default choice. "Archive all" at the right end, Completed view only.
+   The card ends at its last row, with only its own shadow. */
+.app-stack > .todoapp { margin-bottom: 0; }
+.filter-line {
 	position: relative;
-	display: flex;
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
 	align-items: center;
-	justify-content: center;
 	gap: 6px;
-	height: 40px;
+	min-height: 28px;
+	margin: 12px 0 40px;
 	padding: 0 15px;
-	border-top: 1px solid #ededed;
 	font-weight: 300;
 	font-size: 14px;
 	letter-spacing: .01em;
 }
-.footer-menus {
+.filter-menus {
+	grid-column: 2;
 	position: relative;
 	z-index: 20;
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
 	align-items: center;
 	gap: 6px;
 }
-/* "html .clear-completed:active" in index.css (0,2,1) would switch it to position: relative mid-click, so the
-   button jumps and the click lands on the footer; the :active selector here outranks it. */
-.footer .clear-completed,
-html .footer .clear-completed:active {
-	position: absolute;
-	right: 15px;
+/* "html .clear-completed:active" in index.css (0,2,1) sets its own position mid-click; the :active selector here
+   outranks it so the button never moves under the pointer. */
+.filter-line .clear-completed,
+html .filter-line .clear-completed:active {
+	grid-column: 3;
+	justify-self: end;
+	position: relative;
 	float: none;
 	font-size: 14px;
 	line-height: 28px;
 	color: #777;
 	white-space: nowrap;
 }
-.footer .clear-completed:hover { color: #4d4d4d; text-decoration: underline; text-underline-offset: 3px; }
+.filter-line .clear-completed:hover { color: #4d4d4d; text-decoration: underline; text-underline-offset: 3px; }
 
 .type-menu-wrap { position: relative; display: inline-block; }
 
@@ -336,16 +342,13 @@ html .footer .clear-completed:active {
 	/* Pills stay 28px; an invisible halo gives a 44px tap target. Menu rows grow to 44px. */
 	.menu-button::after,
 	.add-categories::after { content: ''; position: absolute; inset: -8px -2px; }
-	.footer .clear-completed,
-	html .footer .clear-completed:active { line-height: 44px; }
+	.filter-line .clear-completed::after { content: ''; position: absolute; inset: -8px -6px; }
 	.menu-item { height: 44px; }
 	.menu-list { max-height: 352px; }
 }
 @media (max-width: 480px) {
-	.footer { justify-content: flex-start; padding: 0 9px; }
-	.footer .clear-completed,
-	html .footer .clear-completed:active { position: static; margin-left: auto; padding: 0 6px; }
-	.footer .type-menu { left: 0; transform: none; }
+	.filter-line { padding: 0 9px; }
+	.filter-line .type-menu { left: 0; transform: none; }
 }
 
 /* Archive: per-row icon (completed rows, hover), overlay "Archive" button, archive view */
@@ -718,8 +721,6 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 	.cat-add { padding-left: 8px; padding-right: 8px; }
 }
 
-/* No stacked-paper edge under the card (vendored .footer:before box-shadow stack) */
-.footer::before { display: none; }
 
 /* Lighter row text (vendored index.css sets labels to 400) */
 .todo-list li label,
@@ -754,7 +755,7 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 @media (prefers-reduced-motion: reduce) {
 	.todo-list li .row-cat-none .mark-none { transition: none; }
 }
-/* An open row menu may overlap the input row (picker z 3) or the footer menus (z 20); lift the list above both. */
+/* An open row menu may overlap the input row (picker z 3) or the filter-line menus (z 20); lift the list above both. */
 .main.row-menu-open { z-index: 25; }
 /* Pointer pick: the button gets focus back (a11y) but no ring; cleared on the next key or blur. */
 .no-ring:focus-visible { outline: none; box-shadow: none; }
@@ -914,7 +915,7 @@ body,
 .todoapp input::placeholder,
 .todoapp textarea::placeholder,
 .type-menu,
-.footer,
+.filter-line,
 .archive-bar { font-family: var(--app-font); }
 .todoapp h1 { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
 .todo-list li { font-size: 23px; }

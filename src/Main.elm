@@ -2096,14 +2096,16 @@ view model =
                     div [ class "archive-page manage-page" ] (viewManage model)
 
                 _ ->
-                    section [ class "todoapp" ]
-                        [ lazy3 viewInput model.field model.categories model.newCategory
-                        , viewMain model
-                        , if List.isEmpty model.entries then
-                            text ""
+                    div [ class "app-stack" ]
+                        [ section [ class "todoapp" ]
+                            [ lazy3 viewInput model.field model.categories model.newCategory
+                            , viewMain model
+                            ]
+                        , if List.any isLive model.entries then
+                            viewControls model
 
                           else
-                            viewControls model
+                            text ""
                         ]
             ]
         ]
@@ -2140,7 +2142,14 @@ viewMain model =
     section
         [ class "main"
         , classList [ ( "row-menu-open", isRowMenu model.menuOpen ) ]
-        , style "visibility" (cssVisibility (List.isEmpty model.entries))
+        , style "visibility" (cssVisibility (List.isEmpty live))
+        , style "display"
+            (if List.isEmpty live then
+                "none"
+
+             else
+                "block"
+            )
         ]
         [ input
             [ class "toggle-all"
@@ -3302,10 +3311,12 @@ deleteCategoryText used =
 
 
 
--- FOOTER
+-- FILTER LINE
 
 
-{-| Footer: a status menu and a category menu, centred; "Archive all" only in the Completed view. -}
+{-| Filter line below the card, outside it: a status menu and a category menu, centred; "Archive all" at the
+right end, Completed view only.
+-}
 viewControls : Model -> Html Msg
 viewControls model =
     let
@@ -3318,8 +3329,8 @@ viewControls model =
         statusScoped =
             List.filter (\e -> isLive e && isVisible model.visibility e) model.entries
     in
-    footer [ class "footer" ]
-        [ div [ class "footer-menus" ]
+    div [ class "filter-line" ]
+        [ div [ class "filter-menus" ]
             [ viewStatusMenu model scoped
             , if List.isEmpty model.categories then
                 a [ class "add-categories", href "#/categories" ] [ text "Add categories\u{2026}" ]
