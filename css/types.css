@@ -818,7 +818,7 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 
 /* Gutter tab (desktop with room beside the card): on row hover / focus-within the row's surface extends past
    the card's right edge as a tab holding that row's hover-only controls, so nothing inside the card moves.
-   Without the gutter (narrow window) or on touch, the in-row placement above applies. No motion. */
+   Without the gutter (narrow window) or on touch, the in-row placement above applies. Manage rows never use it. No motion. */
 @media (hover: hover) and (min-width: 740px) {
 	/* Todo rows: archive (completed only) then ×, 44px each. */
 	.todo-list li:not(.archive-row)::after {
@@ -855,29 +855,6 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 	.todo-list li .row-cat .row-type .label,
 	.todo-list li.completed .row-cat .row-type .label { margin-right: -6px; }
 
-	/* Manage rows: ↑ ↓ × in the tab, top-aligned (rows grow while editing). */
-	.cat-row .cat-tools {
-		top: -1px;
-		bottom: -1px;
-		right: auto;
-		left: 100%;
-		z-index: 1;
-		display: none;
-		align-items: flex-start;
-		gap: 0;
-		padding: 8px 0 0;
-		background: #fff;
-		border: 1px solid #ededed;
-		border-left: 0;
-		border-radius: 0 2px 2px 0;
-		box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
-		clip-path: inset(-8px -8px -8px 0);
-	}
-	.cat-row:hover .cat-tools,
-	.cat-row:focus-within .cat-tools,
-	.cat-row.editing .cat-tools { display: flex; }
-	.cat-row .cat-tool { width: 44px; }
-	.cat-row.confirming .cat-tools { display: none; }
 }
 /* Category filter set (OnlyCategory / NoCategory): rows show no mark, so × returns inside the row in the right-most
    slot, dimmed, with the archive icon (completed rows) to its left; no gutter tab. Any category keeps the tab. */
@@ -914,12 +891,9 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 
 /* Icon vocabulary: one thin-line set (Lucide-style paths, inline SVG masks; no font, no request). 1em (14px beside 14px text),
    stroke 2.25 in the 24-unit box, painted in currentColor so a coloured pill colours its icon. One glyph, one meaning:
-   circle Active · dashed circle Any category · circle-check Completed · three lines All · archive box Archived / archive · x delete · plus add ·
+   dashed circle Any category · archive box Archived / archive · x delete · plus add ·
    gear manage · rotate-ccw restore · two squares copy · dash No category. Always aria-hidden next to a text label. */
 :root {
-	--i-active: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3C/svg%3E");
-	--i-completed: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m8.5 12 2.5 2.5 4.5-5'/%3E%3C/svg%3E");
-	--i-all: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6h16M4 12h16M4 18h16'/%3E%3C/svg%3E");
 	--i-archive: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.5' y='3.5' width='19' height='5' rx='1'/%3E%3Cpath d='M4.5 8.5V19a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V8.5M10 12.5h4'/%3E%3C/svg%3E");
 	--i-x: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E");
 	--i-plus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M12 5v14'/%3E%3C/svg%3E");
@@ -938,10 +912,7 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 	-webkit-mask: var(--icon) center / 1em 1em no-repeat;
 	mask: var(--icon) center / 1em 1em no-repeat;
 }
-.icon-active { --icon: var(--i-active); }
 .icon-any { --icon: var(--i-any); }
-.icon-completed { --icon: var(--i-completed); }
-.icon-all { --icon: var(--i-all); }
 .icon-archive { --icon: var(--i-archive); }
 .icon-x { --icon: var(--i-x); }
 .icon-plus { --icon: var(--i-plus); }
@@ -971,3 +942,25 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 .copy-summary,
 .archive-actions button { display: inline-flex; align-items: center; gap: 6px; }
 .menu-item.selected .menu-mark { color: #b83f45; } /* a selected row's icon matches its red label */
+/* Status menu: no status icons, so the "Archived" row's icon sits in the check column and its label lines up. */
+.type-menu.menu-status .menu-item.menu-edit { padding-left: 6px; }
+/* Manage rows: ↑ ↓ × inside the row at the right (no gutter tab), revealed on hover / focus-within; grey at rest. */
+.cat-row .cat-tool { color: #b3b3b3; }
+.cat-row .cat-tool:disabled { color: #e3e3e3; }
+.cat-row .cat-tool:hover:not(:disabled),
+.cat-row .cat-tool:focus-visible { color: #777; background: transparent; }
+/* Delete × everywhere (row tab or in-row, archive Delete, manage ×): grey at rest, red on hover / keyboard focus. */
+.todo-list li .destroy,
+.main.filter-set .todo-list li:not(.archive-row) .destroy,
+.archive-actions .archive-delete,
+.cat-delete { color: #b3b3b3; }
+.todo-list li .destroy:hover,
+.todo-list li .destroy:focus-visible,
+.main.filter-set .todo-list li:not(.archive-row) .destroy:hover,
+.main.filter-set .todo-list li:not(.archive-row) .destroy:focus-visible,
+.archive-actions .archive-delete:hover,
+.archive-actions .archive-delete:focus-visible,
+.cat-row .cat-delete:hover:not(:disabled),
+.cat-row .cat-delete:focus-visible,
+.cat-delete:hover:not(:disabled),
+.cat-delete:focus-visible { color: #af5b5e; }

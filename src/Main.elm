@@ -3317,19 +3317,6 @@ icon name =
     span [ class ("icon icon-" ++ name), attribute "aria-hidden" "true" ] []
 
 
-statusIcon : Visibility -> Html msg
-statusIcon v =
-    case v of
-        Completed ->
-            icon "completed"
-
-        All ->
-            icon "all"
-
-        _ ->
-            icon "active"
-
-
 statusName : Visibility -> String
 statusName v =
     case v of
@@ -3348,7 +3335,7 @@ viewStatusMenu : Model -> List Entry -> Html Msg
 viewStatusMenu model scoped =
     let
         row v =
-            { content = [ span [ class "menu-mark" ] [ statusIcon v ], span [ class "menu-label" ] [ text (statusName v) ] ]
+            { content = [ span [ class "menu-label" ] [ text (statusName v) ] ]
             , count = Just (List.length (List.filter (isVisible v) scoped))
             , selected = Just (model.visibility == v)
             , pick = SetStatus v
@@ -3375,7 +3362,7 @@ viewStatusMenu model scoped =
         , down = model.menuDown
         , label = "Status: " ++ statusName model.visibility
         , deviates = model.visibility /= Active
-        , buttonContent = [ statusIcon model.visibility, text (statusName model.visibility) ]
+        , buttonContent = [ text (statusName model.visibility) ]
         , rows =
             List.map row statusOrder
                 ++ (if archivedCount > 0 then

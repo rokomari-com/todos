@@ -10248,16 +10248,6 @@ var $author$project$Main$OpenArchive = {$: 'OpenArchive'};
 var $author$project$Main$SetStatus = function (a) {
 	return {$: 'SetStatus', a: a};
 };
-var $author$project$Main$statusIcon = function (v) {
-	switch (v.$) {
-		case 'Completed':
-			return $author$project$Main$icon('completed');
-		case 'All':
-			return $author$project$Main$icon('all');
-		default:
-			return $author$project$Main$icon('active');
-	}
-};
 var $author$project$Main$statusName = function (v) {
 	switch (v.$) {
 		case 'Completed':
@@ -10274,16 +10264,6 @@ var $author$project$Main$viewStatusMenu = F2(
 			return {
 				content: _List_fromArray(
 					[
-						A2(
-						$elm$html$Html$span,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$class('menu-mark')
-							]),
-						_List_fromArray(
-							[
-								$author$project$Main$statusIcon(v)
-							])),
 						A2(
 						$elm$html$Html$span,
 						_List_fromArray(
@@ -10351,7 +10331,6 @@ var $author$project$Main$viewStatusMenu = F2(
 				buttonClass: 'menu-button',
 				buttonContent: _List_fromArray(
 					[
-						$author$project$Main$statusIcon(model.visibility),
 						$elm$html$Html$text(
 						$author$project$Main$statusName(model.visibility))
 					]),
