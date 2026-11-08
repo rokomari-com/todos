@@ -337,6 +337,7 @@ freeColor cats id =
 type Visibility
     = All
     | Active
+    | Someday
     | Completed
     | ArchiveView
     | ManageView
@@ -422,6 +423,7 @@ type alias Entry =
     , completedAt : Maybe Time.Posix
     , archivedAt : Maybe Time.Posix
     , order : Int
+    , someday : Bool
     }
 
 
@@ -435,6 +437,7 @@ newEntry desc id t order =
     , completedAt = Nothing
     , archivedAt = Nothing
     , order = order
+    , someday = False
     }
 
 
@@ -446,6 +449,9 @@ visibilityFromUrl url =
 
         Just "/completed" ->
             Completed
+
+        Just "/someday" ->
+            Someday
 
         Just "/archive" ->
             ArchiveView
@@ -562,6 +568,9 @@ entryDecoder =
             |> andMap (optionalTime "completedAt")
             |> andMap (optionalTime "archivedAt")
             |> andMap (lenientField "order" Decode.int -1)
+            |> andMap (lenientField "someday" Decode.bool False)
+            -- A completed todo is never someday.
+            |> Decode.map (\e -> { e | someday = e.someday && not e.completed })
         )
         (lenientField "type" (Decode.map Just Decode.string) Nothing)
 
@@ -757,6 +766,7 @@ encodeEntry e =
         , ( "completedAt", encodeTime e.completedAt )
         , ( "archivedAt", encodeTime e.archivedAt )
         , ( "order", Encode.int e.order )
+        , ( "someday", Encode.bool e.someday )
         ]
 
 
@@ -838,6 +848,7 @@ type Msg
     | ArchiveCompletedAt Time.Posix
     | ArchiveItem Int
     | ArchiveItemAt Int Time.Posix
+    | SetSomeday Int Bool
     | Restore Int
     | Touched Int Time.Posix
     | Check Int Bool
@@ -1089,7 +1100,10 @@ update msg model =
                         model.entries
 
                     else
-                        model.entries ++ [ newEntry (String.trim model.field) model.uid (validCategory model.categories model.newCategory) (1 + maxOrder model.entries) ]
+                        model.entries
+                            ++ [ newEntry (String.trim model.field) model.uid (validCategory model.categories model.newCategory) (1 + maxOrder model.entries)
+                                    |> (\e -> { e | someday = model.visibility == Someday })
+                               ]
               }
             , Cmd.none
             )
@@ -1428,6 +1442,24 @@ update msg model =
             , Cmd.none
             )
 
+        SetSomeday id on ->
+            ( { model
+                | entries =
+                    mapEntry id
+                        (\t ->
+                            if not t.completed && isLive t then
+                                { t | someday = on }
+
+                            else
+                                t
+                        )
+                        model.entries
+                , confirmingDelete = Nothing
+                , pressing = Nothing
+              }
+            , Cmd.none
+            )
+
         Restore id ->
             ( { model
                 | entries =
@@ -1755,6 +1787,9 @@ update msg model =
                         Active ->
                             "#/active"
 
+                        Someday ->
+                            "#/someday"
+
                         Completed ->
                             "#/completed"
 
@@ -1809,12 +1844,15 @@ menuPrefix which =
 
 statusOrder : List Visibility
 statusOrder =
-    [ Active, Completed, All ]
+    [ Active, Someday, Completed, All ]
 
 
 statusHash : Visibility -> String
 statusHash v =
     case v of
+        Someday ->
+            "#/someday"
+
         Completed ->
             "#/completed"
 
@@ -2030,7 +2068,7 @@ setCompleted isCompleted now t =
         t
 
     else if isCompleted then
-        { t | completed = True, completedAt = Just now }
+        { t | completed = True, completedAt = Just now, someday = False }
 
     else
         { t | completed = False, completedAt = Nothing }
@@ -2592,6 +2630,9 @@ statusWord v =
         Active ->
             "active"
 
+        Someday ->
+            "someday"
+
         Completed ->
             "completed"
 
@@ -2653,7 +2694,10 @@ isVisible visibility todo =
             todo.completed
 
         Active ->
-            not todo.completed
+            not todo.completed && not todo.someday
+
+        Someday ->
+            not todo.completed && todo.someday
 
         All ->
             True
@@ -2755,7 +2799,19 @@ viewEntry cats showMark confirming rd menu ringless todo =
                     []
 
               else
-                text ""
+                -- Same slot as archive: moon sends the row to Someday; on a someday row, restore brings it back.
+                let
+                    ( cls, lbl ) =
+                        somedayAction todo
+                in
+                button
+                    [ class ("someday-item " ++ cls)
+                    , type_ "button"
+                    , attribute "aria-label" lbl
+                    , title lbl
+                    , onClick (SetSomeday todo.id (not todo.someday))
+                    ]
+                    []
             , button
                 [ class "destroy"
                 , type_ "button"
@@ -2782,7 +2838,20 @@ viewEntry cats showMark confirming rd menu ringless todo =
                     button [ class "confirm-alt", type_ "button", onClick (ArchiveItem todo.id) ] [ text "Archive" ]
 
                   else
-                    text ""
+                    button
+                        [ class "confirm-alt"
+                        , type_ "button"
+                        , attribute "aria-label" (Tuple.second (somedayAction todo))
+                        , onClick (SetSomeday todo.id (not todo.someday))
+                        ]
+                        [ text
+                            (if todo.someday then
+                                "Make active"
+
+                             else
+                                "Someday"
+                            )
+                        ]
                 , button [ class "confirm-yes", type_ "button", onClick (Delete todo.id) ] [ text "Delete" ]
                 , button [ class "confirm-no", type_ "button", onClick DismissConfirm ] [ text "Cancel" ]
                 ]
@@ -2790,6 +2859,17 @@ viewEntry cats showMark confirming rd menu ringless todo =
           else
             text ""
         ]
+
+
+
+{-| Class and label of a live, non-completed row's Someday toggle. -}
+somedayAction : Entry -> ( String, String )
+somedayAction todo =
+    if todo.someday then
+        ( "make-active", "Make active" )
+
+    else
+        ( "to-someday", "Move to Someday" )
 
 
 
@@ -3333,6 +3413,9 @@ icon name =
 statusName : Visibility -> String
 statusName v =
     case v of
+        Someday ->
+            "Someday"
+
         Completed ->
             "Completed"
 

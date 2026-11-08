@@ -124,9 +124,9 @@ textarea.new-todo::placeholder { line-height: 33px; }
 
 /* Rows */
 /* Label right padding = width of the controls inside the card in that state + 16px. Base: narrow desktop, no
-   gutter tab: mark (right 8, 44) + × (right 52, 40) = 92 -> 108; completed adds archive (right 94, 40) = 134 -> 150.
+   gutter tab: mark (right 8, 44) + × (right 52, 40) + row tool (archive / someday, right 94, 40) = 134 -> 150.
    Gutter / filter-set / touch overrides below. */
-.todo-list li label { padding-right: 108px; }
+.todo-list li label { padding-right: 150px; }
 
 .row-type {
 	position: absolute;
@@ -368,9 +368,10 @@ html .filter-line .clear-completed:active {
 	.filter-menus > :last-child .type-menu { left: auto; right: 0; transform: none; }
 }
 
-/* Archive: per-row icon (completed rows, hover), overlay "Archive" button, archive view */
-.todo-list li.completed label { padding-right: 150px; }
-.todo-list li .archive-item {
+/* Row tool, one per row in the archive icon's slot: archive (completed rows) or someday / make active (others),
+   hover only; overlay "Archive" / "Someday" / "Make active" button; archive view */
+.todo-list li .archive-item,
+.todo-list li .someday-item {
 	position: absolute;
 	top: 0;
 	bottom: 0;
@@ -394,14 +395,33 @@ html .filter-line .clear-completed:active {
 	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4h18v4H3zM5 8v12h14V8M12 11v6M9 14l3 3 3-3'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .todo-list li:hover .archive-item,
-.todo-list li .archive-item:focus-visible { opacity: 1; }
+.todo-list li .archive-item:focus-visible,
+.todo-list li:hover .someday-item,
+.todo-list li .someday-item:focus-visible { opacity: 1; }
 .todo-list li .archive-item:hover,
-.todo-list li .archive-item:focus-visible { color: #555; }
-.todo-list li .archive-item:focus-visible { outline: 0; box-shadow: 0 0 2px 2px rgba(207, 125, 125, 0.55); border-radius: 3px; }
-.todo-list li.editing .archive-item { display: none; }
+.todo-list li .archive-item:focus-visible,
+.todo-list li .someday-item:hover,
+.todo-list li .someday-item:focus-visible { color: #555; }
+.todo-list li .archive-item:focus-visible,
+.todo-list li .someday-item:focus-visible { outline: 0; box-shadow: 0 0 2px 2px rgba(207, 125, 125, 0.55); border-radius: 3px; }
+.todo-list li.editing .archive-item,
+.todo-list li.editing .someday-item { display: none; }
+/* Touch: archive / someday visually hidden but kept in the a11y tree, same as × above (here so it beats the base rule);
+   the long-press overlay is the visible path. */
 @media (hover: none) {
-	.todo-list li .archive-item { display: none; }
-	.todo-list li.completed label { padding-right: 52px; }
+	.todo-list li .archive-item,
+	.todo-list li .someday-item {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		clip-path: inset(50%);
+		white-space: nowrap;
+		border: 0;
+	}
 }
 .confirm-delete .confirm-alt { background: #fff; color: #777; border-color: #949494; }
 
@@ -589,7 +609,8 @@ body { max-width: 545px; }
 	.todo-list li .toggle,
 	.todo-list li .destroy,
 	.todo-list li .row-type,
-	.todo-list li .archive-item { cursor: pointer; }
+	.todo-list li .archive-item,
+	.todo-list li .someday-item { cursor: pointer; }
 }
 /* Lifted card while dragging: the .view floats with the pointer (transform set inline); the li stays as an
 empty grey slot while the other rows shift (inline translateY) to open a gap at the drop target. */
@@ -605,6 +626,7 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 }
 .todo-list li.dragging .destroy,
 .todo-list li.dragging .archive-item,
+.todo-list li.dragging .someday-item,
 .todo-list li.dragging .row-type .label { display: none !important; }
 @media (prefers-reduced-motion: no-preference) {
 	/* Only while a drag is live, so the drop (class and transforms cleared together) does not animate. */
@@ -815,8 +837,7 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 @media (hover: hover) {
 	.todo-list li .row-cat { right: 8px; }
 	.todo-list li .destroy { right: 52px; }
-	.todo-list li .row-cat .row-type .label { margin-right: 34px; }
-	.todo-list li.completed .row-cat .row-type .label { margin-right: 76px; }
+	.todo-list li .row-cat .row-type .label { margin-right: 76px; }
 }
 /* Dimmed marks at rest; full on row hover / focus. Completed rows keep their own lower opacity. */
 .todo-list li:not(.completed) .row-cat:not(.row-cat-none) > .row-type .mark { opacity: 0.6; }
@@ -831,7 +852,7 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
    the card's right edge as a tab holding that row's hover-only controls, so nothing inside the card moves.
    Without the gutter (narrow window) or on touch, the in-row placement above applies. Manage rows never use it. No motion. */
 @media (hover: hover) and (min-width: 740px) {
-	/* Todo rows: archive (completed only) then ×, 44px each. */
+	/* Todo rows: row tool (archive / someday) then ×, 44px each. */
 	.todo-list li:not(.archive-row)::after {
 		content: '';
 		display: none;
@@ -839,7 +860,7 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 		top: -1px;
 		bottom: -1px;
 		left: 100%;
-		width: 44px;
+		width: 88px;
 		z-index: 0;
 		background: #fff;
 		border: 1px solid #ededed;
@@ -849,39 +870,36 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 		clip-path: inset(-8px -8px -8px 0);
 		pointer-events: auto;
 	}
-	.todo-list li.completed:not(.archive-row)::after { width: 88px; }
 	.todo-list li:not(.archive-row):hover::after,
 	.todo-list li:not(.archive-row):focus-within::after { display: block; }
 	.todo-list li.editing::after,
 	.todo-list li.confirming::after,
 	.todo-list.drag-active li::after { display: none !important; }
 
-	.todo-list li:not(.archive-row) .destroy { right: -42px; z-index: 1; }
-	.todo-list li.completed:not(.archive-row) .destroy { right: -86px; }
+	.todo-list li:not(.archive-row) .destroy { right: -86px; z-index: 1; }
 	/* Only the mark slot (right 8, 44 wide) is inside the card: 52 + 16. */
-	.todo-list li:not(.archive-row) label,
-	.todo-list li.completed:not(.archive-row) label { padding-right: 68px; }
-	.todo-list li:not(.archive-row) .archive-item { right: -42px; z-index: 1; }
+	.todo-list li:not(.archive-row) label { padding-right: 68px; }
+	.todo-list li:not(.archive-row) .archive-item,
+	.todo-list li:not(.archive-row) .someday-item { right: -42px; z-index: 1; }
 	/* Keyboard: focus anywhere in the row reveals the tab's controls (vendored CSS shows × on :hover only). */
 	.todo-list li:not(.archive-row):focus-within .destroy { display: block; }
-	.todo-list li:not(.archive-row):focus-within .archive-item { opacity: 1; }
+	.todo-list li:not(.archive-row):focus-within .archive-item,
+	.todo-list li:not(.archive-row):focus-within .someday-item { opacity: 1; }
 	/* Hover label hugs the mark again (× is no longer beside it). */
-	.todo-list li .row-cat .row-type .label,
-	.todo-list li.completed .row-cat .row-type .label { margin-right: -6px; }
+	.todo-list li .row-cat .row-type .label { margin-right: -6px; }
 
 }
 /* Category filter set (OnlyCategory / NoCategory): rows show no mark, so × returns inside the row in the right-most
-   slot, dimmed, with the archive icon (completed rows) to its left; no gutter tab. Any category keeps the tab. */
+   slot, dimmed, with the row tool (archive / someday) to its left; no gutter tab. Any category keeps the tab. */
 @media (hover: hover) {
 	.main.filter-set .todo-list li:not(.archive-row) .destroy { right: 10px; color: #cc9a9a; }
 	.main.filter-set .todo-list li:not(.archive-row) .destroy:hover,
 	.main.filter-set .todo-list li:not(.archive-row) .destroy:focus-visible { color: #af5b5e; }
-	.main.filter-set .todo-list li.completed:not(.archive-row) .destroy { right: 10px; }
-	.main.filter-set .todo-list li:not(.archive-row) .archive-item { right: 52px; }
+	.main.filter-set .todo-list li:not(.archive-row) .archive-item,
+	.main.filter-set .todo-list li:not(.archive-row) .someday-item { right: 52px; }
 	.main.filter-set .todo-list li:not(.archive-row)::after { display: none; }
-	/* No mark: × (right 10, 40) = 50 -> 66; completed adds archive (right 52, 40) = 92 -> 108. */
-	.main.filter-set .todo-list li:not(.archive-row) label { padding-right: 66px; }
-	.main.filter-set .todo-list li.completed:not(.archive-row) label { padding-right: 108px; }
+	/* No mark: × (right 10, 40) + row tool (right 52, 40) = 92 -> 108. */
+	.main.filter-set .todo-list li:not(.archive-row) label { padding-right: 108px; }
 }
 /* Archive rows: Restore / Delete are wider text buttons, so their tab needs a wider gutter. */
 @media (hover: hover) and (min-width: 900px) {
@@ -909,13 +927,14 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 /* Icon vocabulary: one thin-line set (Lucide-style paths, inline SVG masks; no font, no request). 1em (14px beside 14px text),
    stroke 2.25 in the 24-unit box, painted in currentColor so a coloured pill colours its icon. One glyph, one meaning:
    dashed circle Any category · archive box Archived / archive · x delete · plus add ·
-   gear manage · rotate-ccw restore · two squares copy · dash No category. Always aria-hidden next to a text label. */
+   gear manage · rotate-ccw restore / make active · crescent moon with z someday · two squares copy · dash No category. Always aria-hidden next to a text label. */
 :root {
 	--i-archive: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.5' y='3.5' width='19' height='5' rx='1'/%3E%3Cpath d='M4.5 8.5V19a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V8.5M10 12.5h4'/%3E%3C/svg%3E");
 	--i-x: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E");
 	--i-plus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M12 5v14'/%3E%3C/svg%3E");
 	--i-dash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 12h8'/%3E%3C/svg%3E");
 	--i-restore: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3C/svg%3E");
+	--i-moon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9ZM15 3h5l-5 5h5'/%3E%3C/svg%3E");
 	--i-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='8' y='8' width='13' height='13' rx='2'/%3E%3Cpath d='M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2'/%3E%3C/svg%3E");
 	--i-any: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9' stroke-dasharray='3.5 3.57'/%3E%3C/svg%3E");
 	--i-gear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
@@ -940,6 +959,7 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 .menu-button, .add-categories { gap: 6px; }
 /* Per-row archive and delete, and the manage view's delete: the same glyphs, centred in their 40 / 44px buttons. */
 .todo-list li .archive-item:after,
+.todo-list li .someday-item:after,
 .todo-list li .destroy:after {
 	content: '';
 	position: absolute;
@@ -955,6 +975,8 @@ empty grey slot while the other rows shift (inline translateY) to open a gap at 
 	-webkit-mask-image: var(--i-x);
 	mask-image: var(--i-x);
 }
+.todo-list li .someday-item.to-someday:after { -webkit-mask-image: var(--i-moon); mask-image: var(--i-moon); }
+.todo-list li .someday-item.make-active:after { -webkit-mask-image: var(--i-restore); mask-image: var(--i-restore); }
 .cat-delete { display: inline-flex; align-items: center; justify-content: center; }
 .copy-summary,
 .archive-actions button { display: inline-flex; align-items: center; gap: 6px; }

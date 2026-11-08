@@ -30,15 +30,21 @@ TodoMVC (Elm 0.19.1) plus user-configurable categories. Original TodoMVC styling
 - Each category has a colour (palette slot 0..7 = `--cat-0..7` in `css/types.css`, all ≥ 3:1 on white) and a shape (circle, square, diamond, triangle, round-robin by creation order) so colour is never the only cue.
 - Storage (localStorage `elm-todo-save`): `categories: [{id, name, color, shape}]`, `nextCategoryId`, `newCategory` (id or null), `categoryFilter` (`"all"`, `"none"` or an id); each entry has `category` (id or null). Decoding is lenient: invalid categories are dropped, dangling ids become null / `"all"`.
 - Migration: if `categories` is absent and any entry has legacy `"type": "personal" | "work"`, Personal (id 1, blue, circle) and Work (id 2, orange, square) are created and entries, `newType` and `typeFilter` are mapped; entries without a type get no category. Without legacy types the list starts empty. `seed.html` writes legacy data, so it exercises this path.
-- Hover-only row controls (todo ×/archive, archive Restore/Delete, manage ↑ ↓ ×) appear in a tab past the card's right edge (no motion) on row hover or keyboard focus, so nothing inside the card moves. Narrow windows (no gutter) and touch keep them inside the row.
+- Hover-only row controls (todo ×, archive / Someday / Make active, archive Restore/Delete, manage ↑ ↓ ×) appear in a tab past the card's right edge (no motion) on row hover or keyboard focus, so nothing inside the card moves. Narrow windows (no gutter) and touch keep them inside the row.
 
 ## Footer
 
-- Two centred pill dropdowns (grey text; pale fill on hover / open; no border, no chevron): status ("Active") and category ("Any category", or mark + name when set, truncated at about 14 characters). A non-default choice (All, Completed, any category) shows its text in red.
-- Status menu: Active / Completed / All, each with its count in the current category scope. Category menu: Any category / each category / No category, each with its count in the current status scope, then "Manage categories…".
+- Two centred pill dropdowns (grey text; pale fill on hover / open; no border, no chevron): status ("Active") and category ("Any category", or mark + name when set, truncated at about 14 characters). A non-default choice (Someday, Completed, All, any category) shows its text in red.
+- Status menu: Active / Someday / Completed / All, each with its count in the current category scope. Category menu: Any category / each category / No category, each with its count in the current status scope, then "Manage categories…".
 - Both menus: Enter, Space, ↓ or ↑ opens; arrows wrap, Home/End jump, Esc closes and refocuses the button, Tab closes. They open upward, or downward when there is no room above.
 - "Archive all" appears at the right only in the Completed view when the category scope has a completed todo.
-- Routes: `#/active` (also `#/` and any unknown hash, the default), `#/completed`, `#/all`, `#/archive`, `#/categories`.
+- Routes: `#/active` (also `#/` and any unknown hash, the default), `#/someday`, `#/completed`, `#/all`, `#/archive`, `#/categories`.
+
+## Someday
+
+- A status for todos you won't touch now. Someday todos show only in `#/someday` and All; Active excludes them.
+- Non-completed rows get a hover moon icon ("Someday") in the archive icon's slot; on someday rows it is ↺ "Make active". Touch: the long-press overlay has a "Someday" / "Make active" button.
+- Typing in the Someday view adds a someday todo. Completing a todo clears the flag. Saved entries carry `someday` (bool); data without it loads as not someday.
 
 ## Archive
 

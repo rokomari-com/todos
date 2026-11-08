@@ -5597,12 +5597,13 @@ var $elm$core$Basics$composeL = F3(
 		return g(
 			f(x));
 	});
-var $author$project$Main$Entry = F8(
-	function (description, completed, editing, id, category, completedAt, archivedAt, order) {
-		return {archivedAt: archivedAt, category: category, completed: completed, completedAt: completedAt, description: description, editing: editing, id: id, order: order};
+var $author$project$Main$Entry = F9(
+	function (description, completed, editing, id, category, completedAt, archivedAt, order, someday) {
+		return {archivedAt: archivedAt, category: category, completed: completed, completedAt: completedAt, description: description, editing: editing, id: id, order: order, someday: someday};
 	});
 var $author$project$Main$andMap = $elm$json$Json$Decode$map2($elm$core$Basics$apR);
 var $elm$json$Json$Decode$bool = _Json_decodeBool;
+var $elm$core$Basics$not = _Basics_not;
 var $elm$json$Json$Decode$null = _Json_decodeNull;
 var $elm$json$Json$Decode$nullable = function (decoder) {
 	return $elm$json$Json$Decode$oneOf(
@@ -5634,34 +5635,44 @@ var $author$project$Main$entryDecoder = A3(
 	$elm$json$Json$Decode$map2,
 	$elm$core$Tuple$pair,
 	A2(
-		$author$project$Main$andMap,
-		A3($author$project$Main$lenientField, 'order', $elm$json$Json$Decode$int, -1),
+		$elm$json$Json$Decode$map,
+		function (e) {
+			return _Utils_update(
+				e,
+				{someday: e.someday && (!e.completed)});
+		},
 		A2(
 			$author$project$Main$andMap,
-			$author$project$Main$optionalTime('archivedAt'),
+			A3($author$project$Main$lenientField, 'someday', $elm$json$Json$Decode$bool, false),
 			A2(
 				$author$project$Main$andMap,
-				$author$project$Main$optionalTime('completedAt'),
+				A3($author$project$Main$lenientField, 'order', $elm$json$Json$Decode$int, -1),
 				A2(
 					$author$project$Main$andMap,
-					A3(
-						$author$project$Main$lenientField,
-						'category',
-						$elm$json$Json$Decode$nullable($elm$json$Json$Decode$int),
-						$elm$core$Maybe$Nothing),
+					$author$project$Main$optionalTime('archivedAt'),
 					A2(
 						$author$project$Main$andMap,
-						A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$int),
+						$author$project$Main$optionalTime('completedAt'),
 						A2(
 							$author$project$Main$andMap,
-							$elm$json$Json$Decode$succeed(false),
+							A3(
+								$author$project$Main$lenientField,
+								'category',
+								$elm$json$Json$Decode$nullable($elm$json$Json$Decode$int),
+								$elm$core$Maybe$Nothing),
 							A2(
 								$author$project$Main$andMap,
-								A2($elm$json$Json$Decode$field, 'completed', $elm$json$Json$Decode$bool),
+								A2($elm$json$Json$Decode$field, 'id', $elm$json$Json$Decode$int),
 								A2(
 									$author$project$Main$andMap,
-									A2($elm$json$Json$Decode$field, 'description', $elm$json$Json$Decode$string),
-									$elm$json$Json$Decode$succeed($author$project$Main$Entry))))))))),
+									$elm$json$Json$Decode$succeed(false),
+									A2(
+										$author$project$Main$andMap,
+										A2($elm$json$Json$Decode$field, 'completed', $elm$json$Json$Decode$bool),
+										A2(
+											$author$project$Main$andMap,
+											A2($elm$json$Json$Decode$field, 'description', $elm$json$Json$Decode$string),
+											$elm$json$Json$Decode$succeed($author$project$Main$Entry))))))))))),
 	A3(
 		$author$project$Main$lenientField,
 		'type',
@@ -5893,9 +5904,10 @@ var $author$project$Main$All = {$: 'All'};
 var $author$project$Main$ArchiveView = {$: 'ArchiveView'};
 var $author$project$Main$Completed = {$: 'Completed'};
 var $author$project$Main$ManageView = {$: 'ManageView'};
+var $author$project$Main$Someday = {$: 'Someday'};
 var $author$project$Main$visibilityFromUrl = function (url) {
 	var _v0 = url.fragment;
-	_v0$5:
+	_v0$6:
 	while (true) {
 		if (_v0.$ === 'Just') {
 			switch (_v0.a) {
@@ -5903,6 +5915,8 @@ var $author$project$Main$visibilityFromUrl = function (url) {
 					return $author$project$Main$Active;
 				case '/completed':
 					return $author$project$Main$Completed;
+				case '/someday':
+					return $author$project$Main$Someday;
 				case '/archive':
 					return $author$project$Main$ArchiveView;
 				case '/categories':
@@ -5910,10 +5924,10 @@ var $author$project$Main$visibilityFromUrl = function (url) {
 				case '/all':
 					return $author$project$Main$All;
 				default:
-					break _v0$5;
+					break _v0$6;
 			}
 		} else {
-			break _v0$5;
+			break _v0$6;
 		}
 	}
 	return $author$project$Main$Active;
@@ -6929,7 +6943,10 @@ var $author$project$Main$encodeEntry = function (e) {
 				$author$project$Main$encodeTime(e.archivedAt)),
 				_Utils_Tuple2(
 				'order',
-				$elm$json$Json$Encode$int(e.order))
+				$elm$json$Json$Encode$int(e.order)),
+				_Utils_Tuple2(
+				'someday',
+				$elm$json$Json$Encode$bool(e.someday))
 			]));
 };
 var $elm$json$Json$Encode$list = F2(
@@ -6979,7 +6996,6 @@ var $author$project$Main$encodeModel = function (m) {
 				}())
 			]));
 };
-var $elm$core$Basics$not = _Basics_not;
 var $elm$core$List$all = F2(
 	function (isOkay, list) {
 		return !A2(
@@ -7183,7 +7199,9 @@ var $author$project$Main$isVisible = F2(
 			case 'Completed':
 				return todo.completed;
 			case 'Active':
-				return !todo.completed;
+				return (!todo.completed) && (!todo.someday);
+			case 'Someday':
+				return (!todo.completed) && todo.someday;
 			case 'All':
 				return true;
 			case 'ArchiveView':
@@ -7451,7 +7469,7 @@ var $author$project$Main$moveTo = F3(
 	});
 var $author$project$Main$newEntry = F4(
 	function (desc, id, t, order) {
-		return {archivedAt: $elm$core$Maybe$Nothing, category: t, completed: false, completedAt: $elm$core$Maybe$Nothing, description: desc, editing: false, id: id, order: order};
+		return {archivedAt: $elm$core$Maybe$Nothing, category: t, completed: false, completedAt: $elm$core$Maybe$Nothing, description: desc, editing: false, id: id, order: order, someday: false};
 	});
 var $author$project$Main$nextCategory = F2(
 	function (cats, current) {
@@ -7521,7 +7539,7 @@ var $author$project$Main$rowMenuChoices = function (cats) {
 			cats));
 };
 var $author$project$Main$statusOrder = _List_fromArray(
-	[$author$project$Main$Active, $author$project$Main$Completed, $author$project$Main$All]);
+	[$author$project$Main$Active, $author$project$Main$Someday, $author$project$Main$Completed, $author$project$Main$All]);
 var $author$project$Main$openMenu = F2(
 	function (which, model) {
 		var prefix = $author$project$Main$menuPrefix(which);
@@ -7602,7 +7620,8 @@ var $author$project$Main$setCompleted = F3(
 			t,
 			{
 				completed: true,
-				completedAt: $elm$core$Maybe$Just(now)
+				completedAt: $elm$core$Maybe$Just(now),
+				someday: false
 			}) : _Utils_update(
 			t,
 			{completed: false, completedAt: $elm$core$Maybe$Nothing}));
@@ -7612,6 +7631,8 @@ var $elm$core$Process$sleep = _Process_sleep;
 var $elm$core$Basics$sqrt = _Basics_sqrt;
 var $author$project$Main$statusHash = function (v) {
 	switch (v.$) {
+		case 'Someday':
+			return '#/someday';
 		case 'Completed':
 			return '#/completed';
 		case 'All':
@@ -7736,12 +7757,19 @@ var $author$project$Main$update = F2(
 									model.entries,
 									_List_fromArray(
 										[
+											function (e) {
+											return _Utils_update(
+												e,
+												{
+													someday: _Utils_eq(model.visibility, $author$project$Main$Someday)
+												});
+										}(
 											A4(
-											$author$project$Main$newEntry,
-											$elm$core$String$trim(model.field),
-											model.uid,
-											A2($author$project$Main$validCategory, model.categories, model.newCategory),
-											1 + $author$project$Main$maxOrder(model.entries))
+												$author$project$Main$newEntry,
+												$elm$core$String$trim(model.field),
+												model.uid,
+												A2($author$project$Main$validCategory, model.categories, model.newCategory),
+												1 + $author$project$Main$maxOrder(model.entries)))
 										])),
 								field: '',
 								uid: model.uid + 1
@@ -8211,6 +8239,26 @@ var $author$project$Main$update = F2(
 											}) : t;
 									},
 									model.entries)
+							}),
+						$elm$core$Platform$Cmd$none);
+				case 'SetSomeday':
+					var id = msg.a;
+					var on = msg.b;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								confirmingDelete: $elm$core$Maybe$Nothing,
+								entries: A3(
+									$author$project$Main$mapEntry,
+									id,
+									function (t) {
+										return ((!t.completed) && $author$project$Main$isLive(t)) ? _Utils_update(
+											t,
+											{someday: on}) : t;
+									},
+									model.entries),
+								pressing: $elm$core$Maybe$Nothing
 							}),
 						$elm$core$Platform$Cmd$none);
 				case 'Restore':
@@ -8763,6 +8811,8 @@ var $author$project$Main$update = F2(
 									switch (_v28.$) {
 										case 'Active':
 											return '#/active';
+										case 'Someday':
+											return '#/someday';
 										case 'Completed':
 											return '#/completed';
 										case 'All':
@@ -10250,6 +10300,8 @@ var $author$project$Main$SetStatus = function (a) {
 };
 var $author$project$Main$statusName = function (v) {
 	switch (v.$) {
+		case 'Someday':
+			return 'Someday';
 		case 'Completed':
 			return 'Completed';
 		case 'All':
@@ -10632,6 +10684,8 @@ var $author$project$Main$statusWord = function (v) {
 			return '';
 		case 'Active':
 			return 'active';
+		case 'Someday':
+			return 'someday';
 		case 'Completed':
 			return 'completed';
 		case 'ArchiveView':
@@ -10794,6 +10848,10 @@ var $author$project$Main$ArchiveItem = function (a) {
 var $author$project$Main$Check = F2(
 	function (a, b) {
 		return {$: 'Check', a: a, b: b};
+	});
+var $author$project$Main$SetSomeday = F2(
+	function (a, b) {
+		return {$: 'SetSomeday', a: a, b: b};
 	});
 var $author$project$Main$UpdateEntry = F2(
 	function (a, b) {
@@ -10993,6 +11051,9 @@ var $author$project$Main$onRowKeydown = function (id) {
 					_List_fromArray(
 						['target', 'tagName']),
 					$elm$json$Json$Decode$string))));
+};
+var $author$project$Main$somedayAction = function (todo) {
+	return todo.someday ? _Utils_Tuple2('make-active', 'Make active') : _Utils_Tuple2('to-someday', 'Move to Someday');
 };
 var $author$project$Main$SetEntryCategory = F2(
 	function (a, b) {
@@ -11203,18 +11264,38 @@ var $author$project$Main$viewEntry = F7(
 								return $elm$html$Html$text('');
 							}
 						}(),
-							todo.completed ? A2(
-							$elm$html$Html$button,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$class('archive-item'),
-									$elm$html$Html$Attributes$type_('button'),
-									A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Archive'),
-									$elm$html$Html$Attributes$title('Archive'),
-									$elm$html$Html$Events$onClick(
-									$author$project$Main$ArchiveItem(todo.id))
-								]),
-							_List_Nil) : $elm$html$Html$text(''),
+							function () {
+							if (todo.completed) {
+								return A2(
+									$elm$html$Html$button,
+									_List_fromArray(
+										[
+											$elm$html$Html$Attributes$class('archive-item'),
+											$elm$html$Html$Attributes$type_('button'),
+											A2($elm$html$Html$Attributes$attribute, 'aria-label', 'Archive'),
+											$elm$html$Html$Attributes$title('Archive'),
+											$elm$html$Html$Events$onClick(
+											$author$project$Main$ArchiveItem(todo.id))
+										]),
+									_List_Nil);
+							} else {
+								var _v2 = $author$project$Main$somedayAction(todo);
+								var cls = _v2.a;
+								var lbl = _v2.b;
+								return A2(
+									$elm$html$Html$button,
+									_List_fromArray(
+										[
+											$elm$html$Html$Attributes$class('someday-item ' + cls),
+											$elm$html$Html$Attributes$type_('button'),
+											A2($elm$html$Html$Attributes$attribute, 'aria-label', lbl),
+											$elm$html$Html$Attributes$title(lbl),
+											$elm$html$Html$Events$onClick(
+											A2($author$project$Main$SetSomeday, todo.id, !todo.someday))
+										]),
+									_List_Nil);
+							}
+						}(),
 							A2(
 							$elm$html$Html$button,
 							_List_fromArray(
@@ -11267,7 +11348,24 @@ var $author$project$Main$viewEntry = F7(
 							_List_fromArray(
 								[
 									$elm$html$Html$text('Archive')
-								])) : $elm$html$Html$text(''),
+								])) : A2(
+							$elm$html$Html$button,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('confirm-alt'),
+									$elm$html$Html$Attributes$type_('button'),
+									A2(
+									$elm$html$Html$Attributes$attribute,
+									'aria-label',
+									$author$project$Main$somedayAction(todo).b),
+									$elm$html$Html$Events$onClick(
+									A2($author$project$Main$SetSomeday, todo.id, !todo.someday))
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text(
+									todo.someday ? 'Make active' : 'Someday')
+								])),
 							A2(
 							$elm$html$Html$button,
 							_List_fromArray(
